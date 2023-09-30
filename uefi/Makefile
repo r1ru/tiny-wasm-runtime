@@ -1,10 +1,10 @@
 # Before make, gnu-efi must be built and installed.
 
-CC 		:= gcc
-LD 		:= ld
+CC := gcc
+LD := ld
 OBJCOPY := objcopy
-INC 	:= /usr/local/include/
-LIB		:= /usr/local/lib/
+INC := /usr/local/include/
+LIB := /usr/local/lib/
 
 CFLAGS 	:= 	-I$(INC)/efi -Wno-error=pragmas -mno-red-zone -mno-avx -fPIE \
 			-g -O2 -Wall -Wextra -Wno-pointer-sign -Werror -funsigned-char \
