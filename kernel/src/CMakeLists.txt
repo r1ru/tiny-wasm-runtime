@@ -1,0 +1,1 @@
+add_executable(cmd buffer.c parse.c cmd.c)
