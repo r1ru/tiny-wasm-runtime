@@ -1,6 +1,3 @@
-[submodule "kernel/test/testsuite"]
-	path = kernel/test/testsuite
-	url = https://github.com/WebAssembly/testsuite
 [submodule "third_party/parson"]
 	path = third_party/parson
 	url = https://github.com/kgabis/parson
