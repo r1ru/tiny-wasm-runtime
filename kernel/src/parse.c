@@ -5,8 +5,9 @@
 typedef struct section * (*parser_t) (struct buffer *buf);
 
 static parser_t parsers[11] = {
-    [1] = parse_typesec,
-    [3] = parse_funcsec
+    [1]     = parse_typesec,
+    [3]     = parse_funcsec,
+    [10]    = parse_codesec,
 };
 
 struct section *parse_typesec(struct buffer *buf) {
@@ -52,6 +53,53 @@ struct section *parse_funcsec(struct buffer *buf) {
     };
 
     return funcsec;
+}
+
+instr_t *parse_instr(struct buffer *buf) {
+    instr_t *instr = malloc(sizeof(instr_t));
+    instr->next = NULL;
+
+    instr->op = read_byte(buf);
+
+    // todo: fix this
+    switch(instr->op) {
+
+    }
+
+    return instr;
+}
+
+struct section *parse_codesec(struct buffer *buf) {
+    struct section *codesec = malloc(sizeof(struct section));
+
+    uint32_t n = read_u64_leb128(buf);
+    VECTOR_INIT(codesec->codes, n, code_t);
+
+    VECTOR_FOR_EACH(code, codesec->codes, code_t) {
+        code->size = read_u64_leb128(buf);
+
+        // parse func
+        func_t *func = &code->func;
+
+        // parse locals
+        n = read_u64_leb128(buf);
+        VECTOR_INIT(func->locals, n, locals_t);
+        
+        VECTOR_FOR_EACH(locals, func->locals, locals_t) {
+            locals->n       = read_u64_leb128(buf);
+            locals->type    = read_byte(buf);
+        };
+
+        // parse expr
+        func->expr = parse_instr(buf);
+        instr_t *instr = func->expr;
+        
+        while(instr->op != OP_END) {
+            instr = instr->next = parse_instr(buf);
+        }
+    }
+    
+    return codesec;
 }
 
 struct module *parse_module(struct buffer *buf) {
