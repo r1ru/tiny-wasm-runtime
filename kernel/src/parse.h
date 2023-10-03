@@ -2,4 +2,4 @@
 
 #include "buffer.h"
 
-void parse_module(struct buffer *mod);
+int parse_module(struct buffer *mod);

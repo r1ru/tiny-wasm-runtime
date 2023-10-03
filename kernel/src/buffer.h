@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 void *malloc(size_t size);
 void free(void *ptr);
@@ -17,4 +18,8 @@ struct buffer {
 };
 
 struct buffer *new_buffer(uint8_t *head, size_t size);
-uint32_t readu32(struct buffer *buf);
+bool eof(struct buffer *buf);
+struct buffer *read_buffer(struct buffer *buf, size_t size);
+uint8_t read_byte(struct buffer *buf);
+uint32_t read_u32(struct buffer *buf);
+uint64_t read_u64_leb128(struct buffer *buf);
