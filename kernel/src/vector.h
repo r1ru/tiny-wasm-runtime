@@ -1,8 +1,7 @@
 #pragma once
 
 #include <stddef.h>
-
-void *malloc(size_t size);
+#include "memory.h"
 
 struct vector {
     size_t  n;
@@ -16,3 +15,6 @@ typedef struct vector vector_t;
         vec.n = (len);                          \
         vec.p = malloc(sizeof(type) * (len));   \
     })
+
+#define VECTOR_FOR_EACH(elem, vec, type)        \
+    for(type *elem = &((type *)vec.p)[0]; elem != &((type *)vec.p)[vec.n]; elem++)

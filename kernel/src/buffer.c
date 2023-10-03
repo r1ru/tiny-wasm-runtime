@@ -1,4 +1,5 @@
 #include "buffer.h"
+#include "memory.h"
 
 struct buffer *new_buffer(uint8_t *p, size_t size) {
     struct buffer *buffer = malloc(sizeof(struct buffer));

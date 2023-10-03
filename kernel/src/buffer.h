@@ -4,9 +4,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-void *malloc(size_t size);
-void free(void *ptr);
-
 /*
 Use this structure whenever you access to binary data. 
 This makes the code clearer and reduces the number of function arguments.
