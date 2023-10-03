@@ -122,5 +122,5 @@ struct module *parse_module(struct buffer *buf) {
             mod->known_sections[id] = parsers[id](sec);
     }
 
-    return 0;
+    return mod;
 }
