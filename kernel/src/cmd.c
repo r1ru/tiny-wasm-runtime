@@ -54,6 +54,15 @@ static void print_instr(instr_t *instr) {
         case OP_END:
             puts("end");
             break;
+        
+        case OP_LOCAL_GET:
+            printf("local.get %#x\n", instr->localidx);
+            break;
+        
+        case OP_LOCAL_SET:
+            printf("local.set %#x\n", instr->localidx);
+            break;
+        
         case OP_I32_CONST:
             printf("i32.const %#x\n", instr->c.i32);
             break;

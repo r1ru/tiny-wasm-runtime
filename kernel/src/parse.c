@@ -63,6 +63,14 @@ instr_t *parse_instr(buffer_t *buf) {
         case OP_END:
             break;
         
+        case OP_LOCAL_GET:
+            instr->localidx = readi64_LEB128(buf);
+            break;
+        
+        case OP_LOCAL_SET:
+            instr->localidx = readi64_LEB128(buf);
+            break;
+        
         case OP_I32_CONST:
             instr->c.i32 = readi64_LEB128(buf);
             break;

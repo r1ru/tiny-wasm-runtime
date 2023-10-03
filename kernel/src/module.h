@@ -12,6 +12,8 @@ typedef struct {
 
 enum op {
    OP_END       = 0x0b,
+   OP_LOCAL_GET = 0x20,
+   OP_LOCAL_SET = 0x21,
    OP_I32_CONST = 0x41, 
 };
 
@@ -24,8 +26,11 @@ typedef struct instr {
     uint8_t         op;
 
     union {
+        // variable instructions
+        uint32_t    localidx;
+        
         // const instrcutions
-        value_t c;
+        value_t     c;        
     };
     
 } instr_t;
