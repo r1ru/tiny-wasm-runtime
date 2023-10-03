@@ -49,11 +49,14 @@ static void print_funcsec(section_t *sec) {
     putchar('\n');
 }
 
-static void print_instr(instr_t *i) {
-    switch(i->op) {
+static void print_instr(instr_t *instr) {
+    switch(instr->op) {
         case OP_END:
             puts("end");
-        // todo: add here
+            break;
+        case OP_I32_CONST:
+            printf("i32.const %#x\n", instr->c.i32);
+            break;
     }
 }
 

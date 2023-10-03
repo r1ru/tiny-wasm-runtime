@@ -50,3 +50,18 @@ uint64_t read_u64_leb128(buffer_t *buf) {
             return result;
     }
 }
+
+int64_t readi64_LEB128(buffer_t *buf) {
+    int64_t result = 0, shift = 0;
+    while(1) {
+        uint8_t byte = read_byte(buf);
+        result |= (byte & 0b1111111) << shift;
+        shift += 7;
+        if((0b10000000 & byte) == 0) {
+            if((byte & 0b1000000) != 0)
+                return result |= ~0 << shift;
+            else
+                return result;
+        }
+    }
+}

@@ -58,10 +58,14 @@ instr_t *parse_instr(buffer_t *buf) {
     instr->next = NULL;
 
     instr->op = read_byte(buf);
-
-    // todo: fix this
+    
     switch(instr->op) {
-
+        case OP_END:
+            break;
+        
+        case OP_I32_CONST:
+            instr->c.i32 = readi64_LEB128(buf);
+            break;
     }
 
     return instr;

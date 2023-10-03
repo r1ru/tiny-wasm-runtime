@@ -20,3 +20,4 @@ buffer_t *read_buffer(buffer_t *buf, size_t size);
 uint8_t read_byte(buffer_t *buf);
 uint32_t read_u32(buffer_t *buf);
 uint64_t read_u64_leb128(buffer_t *buf);
+int64_t readi64_LEB128(buffer_t *buf);

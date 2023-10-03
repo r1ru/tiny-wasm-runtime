@@ -11,12 +11,23 @@ typedef struct {
 } functype_t;
 
 enum op {
-   OP_END = 0x0b
+   OP_END       = 0x0b,
+   OP_I32_CONST = 0x41, 
 };
+
+typedef union {
+    int32_t i32;
+} value_t;
 
 typedef struct instr {
     struct instr    *next;
     uint8_t         op;
+
+    union {
+        // const instrcutions
+        value_t c;
+    };
+    
 } instr_t;
 
 typedef struct {
