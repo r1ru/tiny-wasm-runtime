@@ -20,14 +20,14 @@ static void fatal(const char *msg) {
 static void print_func(functype_t *func) {
     printf("args: ");
 
-    VECTOR_FOR_EACH(e, func->rt1, uint8_t) {
-        printf("%#x ", *e);
+    VECTOR_FOR_EACH(valtype, func->rt1, uint8_t) {
+        printf("%#x ", *valtype);
     };
     putchar('\n');
 
     printf("returns: ");
-    VECTOR_FOR_EACH(e, func->rt2, uint8_t) {
-        printf("%#x ", *e);
+    VECTOR_FOR_EACH(valtype, func->rt2, uint8_t) {
+        printf("%#x ", *valtype);
     };
     putchar('\n');
 }
@@ -35,16 +35,16 @@ static void print_func(functype_t *func) {
 static void print_typesec(struct section *sec) {
     puts("[Type Section]");
 
-    VECTOR_FOR_EACH(elem, sec->typeidxes, functype_t) {
-        print_func(elem);
+    VECTOR_FOR_EACH(functype, sec->functypes, functype_t) {
+        print_func(functype);
     };
 }
 
 static void print_funcsec(struct section *sec) {
     puts("[Function Section]");
 
-    VECTOR_FOR_EACH(elem, sec->typeidxes, uint32_t) {
-        printf("%#x ", *elem);
+    VECTOR_FOR_EACH(typeidx, sec->typeidxes, uint32_t) {
+        printf("%#x ", *typeidx);
     };
     putchar('\n');
 }
