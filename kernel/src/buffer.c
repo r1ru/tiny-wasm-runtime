@@ -1,10 +1,10 @@
 #include "buffer.h"
 #include "memory.h"
 
-struct buffer *new_buffer(uint8_t *p, size_t size) {
-    struct buffer *buffer = malloc(sizeof(struct buffer));
+buffer_t *new_buffer(uint8_t *p, size_t size) {
+    buffer_t *buffer = malloc(sizeof(buffer_t));
     
-    *buffer = (struct buffer) {
+    *buffer = (buffer_t) {
         .p      = p,
         .end    = p + size
     };
@@ -12,24 +12,24 @@ struct buffer *new_buffer(uint8_t *p, size_t size) {
     return buffer;
 }
 
-bool eof(struct buffer *buf) {
+bool eof(buffer_t *buf) {
     return buf->p == buf->end;
 }
 
-struct buffer *read_buffer(struct buffer *buf, size_t size) {
-    struct buffer *new = new_buffer(buf->p, size);
+buffer_t *read_buffer(buffer_t *buf, size_t size) {
+    buffer_t *new = new_buffer(buf->p, size);
     buf->p += size;
     return new;
 }
 
-uint8_t read_byte(struct buffer *buf) {
+uint8_t read_byte(buffer_t *buf) {
     if(buf->p + 1 > buf->end)
         return 0;
 
     return *buf->p++;
 }
 
-uint32_t read_u32(struct buffer *buf) {
+uint32_t read_u32(buffer_t *buf) {
     if(buf->p + 4 > buf->end)
         return 0;
     
@@ -40,7 +40,7 @@ uint32_t read_u32(struct buffer *buf) {
 }
 
 // Little Endian Base 128
-uint64_t read_u64_leb128(struct buffer *buf) {
+uint64_t read_u64_leb128(buffer_t *buf) {
     uint64_t result = 0, shift = 0;
     while(1) {
         uint8_t byte = read_byte(buf); 

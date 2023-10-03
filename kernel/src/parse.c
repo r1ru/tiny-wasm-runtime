@@ -2,7 +2,7 @@
 #include "print.h"
 #include "memory.h"
 
-typedef struct section * (*parser_t) (struct buffer *buf);
+typedef section_t * (*parser_t) (buffer_t *buf);
 
 static parser_t parsers[11] = {
     [1]     = parse_typesec,
@@ -10,8 +10,8 @@ static parser_t parsers[11] = {
     [10]    = parse_codesec,
 };
 
-struct section *parse_typesec(struct buffer *buf) {
-    struct section *typesec = malloc(sizeof(struct section));
+section_t *parse_typesec(buffer_t *buf) {
+    section_t *typesec = malloc(sizeof(section_t));
 
     uint32_t n = read_u64_leb128(buf);
     VECTOR_INIT(typesec->functypes, n, functype_t);
@@ -40,8 +40,8 @@ struct section *parse_typesec(struct buffer *buf) {
     return typesec;
 }
 
-struct section *parse_funcsec(struct buffer *buf) {
-    struct section *funcsec = malloc(sizeof(struct section));
+section_t *parse_funcsec(buffer_t *buf) {
+    section_t *funcsec = malloc(sizeof(section_t));
 
     uint32_t n = read_u64_leb128(buf);
 
@@ -53,7 +53,7 @@ struct section *parse_funcsec(struct buffer *buf) {
     return funcsec;
 }
 
-instr_t *parse_instr(struct buffer *buf) {
+instr_t *parse_instr(buffer_t *buf) {
     instr_t *instr = malloc(sizeof(instr_t));
     instr->next = NULL;
 
@@ -67,8 +67,8 @@ instr_t *parse_instr(struct buffer *buf) {
     return instr;
 }
 
-struct section *parse_codesec(struct buffer *buf) {
-    struct section *codesec = malloc(sizeof(struct section));
+section_t *parse_codesec(buffer_t *buf) {
+    section_t *codesec = malloc(sizeof(section_t));
 
     uint32_t n = read_u64_leb128(buf);
     VECTOR_INIT(codesec->codes, n, code_t);
@@ -100,19 +100,19 @@ struct section *parse_codesec(struct buffer *buf) {
     return codesec;
 }
 
-struct module *parse_module(struct buffer *buf) {
+module_t *parse_module(buffer_t *buf) {
     uint32_t magic      = read_u32(buf);
     uint32_t version    = read_u32(buf);
 
     INFO("magic = %#x, version = %#x", magic, version);
 
-    struct module *mod = malloc(sizeof(struct module));
+    module_t *mod = malloc(sizeof(module_t));
 
     while(!eof(buf)) {
         uint8_t id = read_byte(buf);
         uint32_t size = read_u64_leb128(buf);
         
-        struct buffer *sec = read_buffer(buf, size);
+        buffer_t *sec = read_buffer(buf, size);
 
         INFO("section id = %#x, size = %#x", id, size);
 

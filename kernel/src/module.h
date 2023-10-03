@@ -34,7 +34,7 @@ typedef struct {
     func_t      func;
 } code_t;
 
-struct section {
+typedef struct {
     union {
         // typesec
         vector_t functypes;
@@ -45,8 +45,8 @@ struct section {
         // codesec
         vector_t codes;
     };
-};
+} section_t ;
 
-struct module {
-    struct section *known_sections[12];
-};
+typedef struct {
+    section_t *known_sections[12];
+} module_t;

@@ -32,7 +32,7 @@ static void print_func(functype_t *func) {
     putchar('\n');
 }
 
-static void print_typesec(struct section *sec) {
+static void print_typesec(section_t *sec) {
     puts("[Type Section]");
 
     VECTOR_FOR_EACH(functype, sec->functypes, functype_t) {
@@ -40,7 +40,7 @@ static void print_typesec(struct section *sec) {
     };
 }
 
-static void print_funcsec(struct section *sec) {
+static void print_funcsec(section_t *sec) {
     puts("[Function Section]");
 
     VECTOR_FOR_EACH(typeidx, sec->typeidxes, uint32_t) {
@@ -73,7 +73,7 @@ static void print_code(code_t *code) {
     }
 }
 
-static void print_codesec(struct section *sec) {
+static void print_codesec(section_t *sec) {
     puts("[Code Section]");
     VECTOR_FOR_EACH(code, sec->codes, code_t) {
         print_code(code);
@@ -103,8 +103,8 @@ int main(int argc, char *argv[]) {
     );
     if(head == MAP_FAILED) fatal("mmap");
     
-    struct buffer *buf = new_buffer(head, fsize);
-    struct module *mod = parse_module(buf);
+    buffer_t *buf = new_buffer(head, fsize);
+    module_t *mod = parse_module(buf);
 
     if(mod->known_sections[1])
         print_typesec(mod->known_sections[1]);
