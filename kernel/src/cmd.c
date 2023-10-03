@@ -66,6 +66,26 @@ static void print_instr(instr_t *instr) {
         case OP_I32_CONST:
             printf("i32.const %#x\n", instr->c.i32);
             break;
+        
+        case OP_I32_EQZ:
+            puts("i32.eqz");
+            break;
+        
+        case OP_I32_LT_S:
+            puts("i32.lt_s");
+            break;
+        
+        case OP_I32_GE_S:
+            puts("i32.ge_s");
+            break;
+        
+        case OP_I32_ADD:
+            puts("i32.add");
+            break;
+
+        case OP_I32_REM_S:
+            puts("i32.rem_s");
+            break;
     }
 }
 

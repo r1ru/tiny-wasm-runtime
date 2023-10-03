@@ -74,6 +74,13 @@ instr_t *parse_instr(buffer_t *buf) {
         case OP_I32_CONST:
             instr->c.i32 = readi64_LEB128(buf);
             break;
+        
+        case OP_I32_EQZ:
+        case OP_I32_LT_S:
+        case OP_I32_GE_S:  
+        case OP_I32_ADD:
+        case OP_I32_REM_S:
+            break;
     }
 
     return instr;
