@@ -7,6 +7,7 @@ typedef section_t * (*parser_t) (buffer_t *buf);
 static parser_t parsers[11] = {
     [1]     = parse_typesec,
     [3]     = parse_funcsec,
+    [7]     = parse_exportsec,
     [10]    = parse_codesec,
 };
 
@@ -51,6 +52,21 @@ section_t *parse_funcsec(buffer_t *buf) {
     };
 
     return funcsec;
+}
+
+section_t *parse_exportsec(buffer_t *buf) {
+    section_t *exportsec = malloc(sizeof(section_t));
+
+    uint32_t n = read_u64_leb128(buf);
+
+    VECTOR_INIT(exportsec->exports, n, export_t);
+    VECTOR_FOR_EACH(export, exportsec->exports, export_t) {
+        export->name            = read_bytes(buf);
+        export->exportdesc.kind = read_byte(buf);
+        export->exportdesc.idx  = read_u64_leb128(buf);
+    };
+
+    return exportsec;
 }
 
 instr_t *parse_instr(buffer_t *buf) {
@@ -137,6 +153,8 @@ module_t *parse_module(buffer_t *buf) {
 
         if(id <= 11 && parsers[id])
             mod->known_sections[id] = parsers[id](sec);
+        else 
+             mod->known_sections[id] = NULL;
     }
 
     return mod;

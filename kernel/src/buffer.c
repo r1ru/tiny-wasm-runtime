@@ -29,6 +29,19 @@ uint8_t read_byte(buffer_t *buf) {
     return *buf->p++;
 }
 
+// read vec(byte)
+uint8_t *read_bytes(buffer_t *buf) {
+    uint32_t n = read_u64_leb128(buf);
+    
+    uint8_t *str = calloc(sizeof(uint8_t), (n + 1));
+    
+    for(uint32_t i = 0; i < n; i++) {
+        str[i] = read_byte(buf);
+    }
+
+    return str;
+}
+
 uint32_t read_u32(buffer_t *buf) {
     if(buf->p + 4 > buf->end)
         return 0;

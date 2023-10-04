@@ -10,6 +10,16 @@ typedef struct {
     vector_t rt2;
 } functype_t;
 
+typedef struct {
+    uint8_t     kind;
+    uint32_t    idx;
+} exportdesc_t;
+
+typedef struct {
+    const char      *name;
+    exportdesc_t    exportdesc;
+} export_t;
+
 enum op {
    OP_END       = 0x0b,
    OP_LOCAL_GET = 0x20,
@@ -59,10 +69,10 @@ typedef struct {
     union {
         // typesec
         vector_t functypes;
-        
         // funcsec
         vector_t typeidxes;
-
+        // exportsec
+        vector_t exports;
         // codesec
         vector_t codes;
     };

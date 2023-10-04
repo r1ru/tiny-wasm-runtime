@@ -49,6 +49,19 @@ static void print_funcsec(section_t *sec) {
     putchar('\n');
 }
 
+static void print_exportsec(section_t *sec) {
+    puts("[Export Section]");
+
+    VECTOR_FOR_EACH(export, sec->exports, export_t) {
+        printf(
+            "%s %#x %#x\n", 
+            export->name, 
+            export->exportdesc.kind, 
+            export->exportdesc.idx
+        );
+    }
+}
+
 static void print_instr(instr_t *instr) {
     switch(instr->op) {
         case OP_END:
@@ -112,6 +125,15 @@ static void print_codesec(section_t *sec) {
     };
 }
 
+typedef void (*printer_t) (section_t *sec);
+
+printer_t printers[11] = {
+    [1]     = print_typesec,
+    [3]     = print_funcsec,
+    [7]     = print_exportsec,
+    [10]    = print_codesec
+};
+
 int main(int argc, char *argv[]) {
     if(argc != 2) {
         puts("Usage: ./a.out <*.wasm>");
@@ -138,15 +160,11 @@ int main(int argc, char *argv[]) {
     buffer_t *buf = new_buffer(head, fsize);
     module_t *mod = parse_module(buf);
 
-    if(mod->known_sections[1])
-        print_typesec(mod->known_sections[1]);
-    
-    if(mod->known_sections[3])
-        print_funcsec(mod->known_sections[3]);
-    
-    if(mod->known_sections[10])
-        print_codesec(mod->known_sections[10]);
-    
+    for(int i = 0; i < 11; i++) {
+        if(mod->known_sections[i])
+            printers[i](mod->known_sections[i]);
+    }
+
     // cleanup
     munmap(head, fsize);
     close(fd);
