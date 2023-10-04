@@ -11,6 +11,7 @@
 #include "parse.h"
 #include "module.h"
 #include "vector.h"
+#include "error.h"
 
 static void fatal(const char *msg) {
     perror(msg);
@@ -184,8 +185,11 @@ int main(int argc, char *argv[]) {
     );
     if(head == MAP_FAILED) fatal("mmap");
     
-    buffer_t *buf = new_buffer(head, fsize);
-    module_t *mod = parse_module(buf);
+    buffer_t *buf;
+    module_t *mod;
+    
+    new_buffer(&buf, head, fsize);
+    parse_module(&mod, buf);
 
     for(int i = 0; i < 11; i++) {
         if(mod->known_sections[i])

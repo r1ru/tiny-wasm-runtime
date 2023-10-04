@@ -16,7 +16,7 @@ typedef struct {
 } exportdesc_t;
 
 typedef struct {
-    const char      *name;
+    uint8_t         *name;
     exportdesc_t    exportdesc;
 } export_t;
 

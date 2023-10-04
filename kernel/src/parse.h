@@ -2,9 +2,10 @@
 
 #include "buffer.h"
 #include "module.h"
+#include "error.h"
 
-section_t *parse_typesec(buffer_t *buf);
-section_t *parse_funcsec(buffer_t *buf);
-section_t *parse_exportsec(buffer_t *buf);
-section_t *parse_codesec(buffer_t *buf);
-module_t *parse_module(buffer_t *buf);
+error_t parse_typesec(module_t *mod, buffer_t*buf);
+error_t parse_funcsec(module_t *mod, buffer_t *buf);
+error_t parse_exportsec(module_t *mod, buffer_t *buf);
+error_t parse_codesec(module_t *mod, buffer_t *buf);
+error_t parse_module(module_t **mod, buffer_t *buf);

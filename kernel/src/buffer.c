@@ -1,80 +1,124 @@
 #include "buffer.h"
 #include "memory.h"
 
-buffer_t *new_buffer(uint8_t *p, size_t size) {
-    buffer_t *buffer = malloc(sizeof(buffer_t));
+error_t new_buffer(buffer_t **d, uint8_t *head, size_t size) {
+    buffer_t *buf = *d = malloc(sizeof(buffer_t));
     
-    *buffer = (buffer_t) {
-        .p      = p,
-        .end    = p + size
+    *buf = (buffer_t) {
+        .p      = head,
+        .end    = head + size
     };
 
-    return buffer;
+    return ERR_SUCCESS;
 }
 
 bool eof(buffer_t *buf) {
     return buf->p == buf->end;
 }
 
-buffer_t *read_buffer(buffer_t *buf, size_t size) {
-    buffer_t *new = new_buffer(buf->p, size);
+error_t read_buffer(buffer_t **d, size_t size, buffer_t *buf) {
+    new_buffer(d, buf->p, size);
     buf->p += size;
-    return new;
+    return ERR_SUCCESS;
 }
 
-uint8_t read_byte(buffer_t *buf) {
+error_t read_byte(uint8_t *d, buffer_t *buf) {
     if(buf->p + 1 > buf->end)
-        return 0;
+        return ERR_FAILED;
 
-    return *buf->p++;
+    *d = *buf->p++;
+    return ERR_SUCCESS;
 }
 
 // read vec(byte)
-uint8_t *read_bytes(buffer_t *buf) {
-    uint32_t n = read_u64_leb128(buf);
+error_t read_bytes(uint8_t **d, buffer_t *buf) {
+    uint32_t n;
+    read_u32_leb128(&n, buf);
     
-    uint8_t *str = calloc(sizeof(uint8_t), (n + 1));
+    uint8_t *str = *d =calloc(sizeof(uint8_t), (n + 1));
     
     for(uint32_t i = 0; i < n; i++) {
-        str[i] = read_byte(buf);
+        read_byte(&str[i], buf);
     }
 
-    return str;
+    return ERR_SUCCESS;
 }
 
-uint32_t read_u32(buffer_t *buf) {
+error_t read_u32(uint32_t *d, buffer_t *buf) {
     if(buf->p + 4 > buf->end)
-        return 0;
+        return ERR_FAILED;
     
-    uint32_t r = *(uint32_t *)buf->p;
+    *d = *(uint32_t *)buf->p;
     
     buf->p += 4;
-    return r;
+    return ERR_SUCCESS;
 }
 
 // Little Endian Base 128
-uint64_t read_u64_leb128(buffer_t *buf) {
-    uint64_t result = 0, shift = 0;
+error_t read_u32_leb128(uint32_t *d, buffer_t *buf) {
+    uint32_t result = 0, shift = 0;
     while(1) {
-        uint8_t byte = read_byte(buf); 
+        uint8_t byte;
+        read_byte(&byte, buf);
+
         result |= (byte & 0b1111111) << shift;
         shift += 7;
         if((0b10000000 & byte) == 0)
-            return result;
+            break;
     }
+    *d = result;
+    return ERR_SUCCESS;
 }
 
-int64_t readi64_LEB128(buffer_t *buf) {
-    int64_t result = 0, shift = 0;
+error_t read_u64_leb128(uint64_t *d, buffer_t *buf) {
+    uint64_t result = 0, shift = 0;
     while(1) {
-        uint8_t byte = read_byte(buf);
+        uint8_t byte;
+        read_byte(&byte, buf);
+
+        result |= (byte & 0b1111111) << shift;
+        shift += 7;
+        if((0b10000000 & byte) == 0)
+            break;
+    }
+    *d = result;
+    return ERR_SUCCESS;
+}
+
+error_t read_i32_leb128(int32_t *d, buffer_t *buf) {
+    int32_t result = 0, shift = 0;
+    while(1) {
+        uint8_t byte;
+        read_byte(&byte, buf);
         result |= (byte & 0b1111111) << shift;
         shift += 7;
         if((0b10000000 & byte) == 0) {
             if((byte & 0b1000000) != 0)
-                return result |= ~0 << shift;
+                result |= ~0 << shift;
             else
-                return result;
+                result;
+            break;
         }
     }
+    *d = result;
+    return ERR_SUCCESS;
+}
+
+error_t read_i64_leb128(int64_t *d, buffer_t *buf) {
+    int64_t result = 0, shift = 0;
+    while(1) {
+        uint8_t byte;
+        read_byte(&byte, buf);
+        result |= (byte & 0b1111111) << shift;
+        shift += 7;
+        if((0b10000000 & byte) == 0) {
+            if((byte & 0b1000000) != 0)
+                result |= ~0 << shift;
+            else
+                result;
+            break;
+        }
+    }
+    *d = result;
+    return ERR_SUCCESS;
 }
