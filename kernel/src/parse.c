@@ -76,17 +76,40 @@ instr_t *parse_instr(buffer_t *buf) {
     instr->op = read_byte(buf);
     
     switch(instr->op) {
+        case OP_BLOCK:
+        case OP_LOOP:
+        case OP_IF: {
+            // todo: support s33
+            instr->bt.valtype = read_byte(buf);
+
+            instr_t *i = instr->in1 = parse_instr(buf);
+            while(i->op != OP_END && i->op != OP_ELSE) {
+                i = i->next = parse_instr(buf);
+            }
+                        
+            if(i->op == OP_ELSE) {
+                i = instr->in2 = parse_instr(buf);
+                while(i->op != OP_END) {
+                    i = i->next = parse_instr(buf);
+                }
+            }
+            break;
+        }
+
         case OP_END:
             break;
         
+        case OP_BR:
+        case OP_BR_IF:
+            instr->l = readi64_LEB128(buf);
+            break;
+        
+        case OP_CALL:
         case OP_LOCAL_GET:
-            instr->localidx = readi64_LEB128(buf);
-            break;
-        
         case OP_LOCAL_SET:
-            instr->localidx = readi64_LEB128(buf);
+            instr->idx = readi64_LEB128(buf);
             break;
-        
+
         case OP_I32_CONST:
             instr->c.i32 = readi64_LEB128(buf);
             break;

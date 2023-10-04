@@ -62,18 +62,57 @@ static void print_exportsec(section_t *sec) {
     }
 }
 
+static const char *op_str[] = {
+    [OP_BLOCK]      = "block",
+    [OP_LOOP]       = "loop",
+    [OP_IF]         = "if",
+    [OP_END]        = "end",
+    [OP_BR]         = "br",
+    [OP_BR_IF]      = "br_if",
+    [OP_CALL]       = "call",
+    [OP_LOCAL_GET]  = "local.get",
+    [OP_LOCAL_SET]  = "local.set",
+    [OP_I32_CONST]  = "i32.const",
+    [OP_I32_EQZ]    = "i32.eqz",
+    [OP_I32_LT_S]   = "i32.lt_s",
+    [OP_I32_GE_S]   = "i32.ge_s",
+    [OP_I32_ADD]    = "i32.add",
+    [OP_I32_REM_S]  = "i32.rem_s",
+};
+
 static void print_instr(instr_t *instr) {
     switch(instr->op) {
+        case OP_BLOCK:
+        case OP_LOOP:
+        case OP_IF: {
+            printf("%s %#x\n",op_str[instr->op], instr->bt.valtype);
+            for(instr_t *i = instr->in1; i; i = i->next) {
+                print_instr(i);
+            }
+
+            if(instr->op == OP_IF) {
+                puts("else");
+                for(instr_t *i = instr->in2; i; i = i->next) {
+                    print_instr(i);
+                }
+            }
+
+            break;
+        }
+
         case OP_END:
-            puts("end");
+            printf("%s\n", op_str[instr->op]);
             break;
         
+        case OP_BR:
+        case OP_BR_IF:
+            printf("%s %#x\n", op_str[instr->op], instr->l);
+            break;
+        
+        case OP_CALL:
         case OP_LOCAL_GET:
-            printf("local.get %#x\n", instr->localidx);
-            break;
-        
         case OP_LOCAL_SET:
-            printf("local.set %#x\n", instr->localidx);
+            printf("%s %#x\n", op_str[instr->op], instr->idx);
             break;
         
         case OP_I32_CONST:
@@ -81,23 +120,11 @@ static void print_instr(instr_t *instr) {
             break;
         
         case OP_I32_EQZ:
-            puts("i32.eqz");
-            break;
-        
         case OP_I32_LT_S:
-            puts("i32.lt_s");
-            break;
-        
         case OP_I32_GE_S:
-            puts("i32.ge_s");
-            break;
-        
         case OP_I32_ADD:
-            puts("i32.add");
-            break;
-
         case OP_I32_REM_S:
-            puts("i32.rem_s");
+            printf("%s\n", op_str[instr->op]);
             break;
     }
 }
