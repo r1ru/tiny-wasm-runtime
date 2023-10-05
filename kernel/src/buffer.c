@@ -17,6 +17,9 @@ bool eof(buffer_t *buf) {
 }
 
 error_t read_buffer(buffer_t **d, size_t size, buffer_t *buf) {
+    if(buf->p + size > buf->end)
+        return ERR_FAILED;
+    
     new_buffer(d, buf->p, size);
     buf->p += size;
     return ERR_SUCCESS;
