@@ -17,9 +17,9 @@ error_t parse_typesec(module_t *mod, buffer_t*buf) {
     uint32_t n;
     read_u32_leb128(&n, buf);
     
-    VECTOR_INIT(typesec->functypes, n, functype_t);
+    VECTOR_INIT(&typesec->functypes, n, functype_t);
 
-    VECTOR_FOR_EACH(functype, typesec->functypes, functype_t) {
+    VECTOR_FOR_EACH(functype, &typesec->functypes, functype_t) {
         // expected to be 0x60
         uint8_t magic;
         read_byte(&magic, buf);
@@ -27,17 +27,17 @@ error_t parse_typesec(module_t *mod, buffer_t*buf) {
         // parse argment types
         read_u32_leb128(&n, buf);
 
-        VECTOR_INIT(functype->rt1, n, uint8_t);
+        VECTOR_INIT(&functype->rt1, n, uint8_t);
         
-        VECTOR_FOR_EACH(valtype, functype->rt1, uint8_t) {
+        VECTOR_FOR_EACH(valtype, &functype->rt1, uint8_t) {
             read_byte(valtype, buf);
         }
 
         // pase return types
         read_u32_leb128(&n, buf);
-        VECTOR_INIT(functype->rt2, n, uint8_t);
+        VECTOR_INIT(&functype->rt2, n, uint8_t);
 
-        VECTOR_FOR_EACH(valtype, functype->rt2, uint8_t) {
+        VECTOR_FOR_EACH(valtype, &functype->rt2, uint8_t) {
             read_byte(valtype, buf);
         }
     };
@@ -51,8 +51,8 @@ error_t parse_funcsec(module_t *mod, buffer_t *buf) {
     uint32_t n;
     read_u32_leb128(&n, buf);
 
-    VECTOR_INIT(funcsec->typeidxes, n, uint32_t);
-    VECTOR_FOR_EACH(typeidx, funcsec->typeidxes, uint32_t) {
+    VECTOR_INIT(&funcsec->typeidxes, n, uint32_t);
+    VECTOR_FOR_EACH(typeidx, &funcsec->typeidxes, uint32_t) {
         read_u32_leb128(typeidx, buf);
     };
 
@@ -65,8 +65,8 @@ error_t parse_exportsec(module_t *mod, buffer_t *buf) {
     uint32_t n;
     read_u32_leb128(&n, buf);
 
-    VECTOR_INIT(exportsec->exports, n, export_t);
-    VECTOR_FOR_EACH(export, exportsec->exports, export_t) {
+    VECTOR_INIT(&exportsec->exports, n, export_t);
+    VECTOR_FOR_EACH(export, &exportsec->exports, export_t) {
         read_bytes(&export->name, buf);
         read_byte(&export->exportdesc.kind, buf);
         read_u32_leb128(&export->exportdesc.idx, buf);
@@ -140,9 +140,9 @@ error_t parse_codesec(module_t *mod, buffer_t *buf) {
 
     uint32_t n;
     read_u32_leb128(&n, buf);
-    VECTOR_INIT(codesec->codes, n, code_t);
+    VECTOR_INIT(&codesec->codes, n, code_t);
 
-    VECTOR_FOR_EACH(code, codesec->codes, code_t) {
+    VECTOR_FOR_EACH(code, &codesec->codes, code_t) {
         read_u32_leb128(&code->size, buf);
 
         // parse func
@@ -150,9 +150,9 @@ error_t parse_codesec(module_t *mod, buffer_t *buf) {
 
         // parse locals
         read_u32_leb128(&n, buf);
-        VECTOR_INIT(func->locals, n, locals_t);
+        VECTOR_INIT(&func->locals, n, locals_t);
         
-        VECTOR_FOR_EACH(locals, func->locals, locals_t) {
+        VECTOR_FOR_EACH(locals, &func->locals, locals_t) {
             read_u32_leb128(&locals->n, buf);
             read_byte(&locals->type, buf);
         };

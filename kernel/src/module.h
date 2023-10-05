@@ -85,6 +85,11 @@ typedef struct {
     func_t      func;
 } code_t;
 
+/*
+    Since all sections are vectors at now, you might think that typedef vector_t section_t is fine. 
+    However, start section and custom sections are not vectors. 
+    Therefore, we define the type section_t again.
+*/
 typedef struct {
     union {
         // typesec

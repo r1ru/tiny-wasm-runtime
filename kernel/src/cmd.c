@@ -21,13 +21,13 @@ static void fatal(const char *msg) {
 static void print_func(functype_t *func) {
     printf("args: ");
 
-    VECTOR_FOR_EACH(valtype, func->rt1, uint8_t) {
+    VECTOR_FOR_EACH(valtype, &func->rt1, uint8_t) {
         printf("%#x ", *valtype);
     };
     putchar('\n');
 
     printf("returns: ");
-    VECTOR_FOR_EACH(valtype, func->rt2, uint8_t) {
+    VECTOR_FOR_EACH(valtype, &func->rt2, uint8_t) {
         printf("%#x ", *valtype);
     };
     putchar('\n');
@@ -36,7 +36,7 @@ static void print_func(functype_t *func) {
 static void print_typesec(section_t *sec) {
     puts("[Type Section]");
 
-    VECTOR_FOR_EACH(functype, sec->functypes, functype_t) {
+    VECTOR_FOR_EACH(functype, &sec->functypes, functype_t) {
         print_func(functype);
     };
 }
@@ -44,7 +44,7 @@ static void print_typesec(section_t *sec) {
 static void print_funcsec(section_t *sec) {
     puts("[Function Section]");
 
-    VECTOR_FOR_EACH(typeidx, sec->typeidxes, uint32_t) {
+    VECTOR_FOR_EACH(typeidx, &sec->typeidxes, uint32_t) {
         printf("%#x ", *typeidx);
     };
     putchar('\n');
@@ -53,7 +53,7 @@ static void print_funcsec(section_t *sec) {
 static void print_exportsec(section_t *sec) {
     puts("[Export Section]");
 
-    VECTOR_FOR_EACH(export, sec->exports, export_t) {
+    VECTOR_FOR_EACH(export, &sec->exports, export_t) {
         printf(
             "%s %#x %#x\n", 
             export->name, 
@@ -136,7 +136,7 @@ static void print_code(code_t *code) {
 
     func_t *func = &code->func;
 
-    VECTOR_FOR_EACH(locals, func->locals, locals_t) {
+    VECTOR_FOR_EACH(locals, &func->locals, locals_t) {
         printf("(%#x, %#x) ", locals->n, locals->type);
     }
     putchar('\n');
@@ -148,7 +148,7 @@ static void print_code(code_t *code) {
 
 static void print_codesec(section_t *sec) {
     puts("[Code Section]");
-    VECTOR_FOR_EACH(code, sec->codes, code_t) {
+    VECTOR_FOR_EACH(code, &sec->codes, code_t) {
         print_code(code);
     };
 }

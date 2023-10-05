@@ -3,18 +3,18 @@
 #include <stddef.h>
 #include "memory.h"
 
-struct vector {
+typedef struct {
     size_t  n;
     void    *p;   
-};
+} vector_t;
 
-typedef struct vector vector_t;
-
-#define VECTOR_INIT(vec, len, type)             \
-    ({                                          \
-        vec.n = (len);                          \
-        vec.p = malloc(sizeof(type) * (len));   \
+#define VECTOR_INIT(vec, len, type)                 \
+    ({                                              \
+        (vec)->n = (len);                           \
+        (vec)->p = malloc(sizeof(type) * (len));    \
     })
 
-#define VECTOR_FOR_EACH(elem, vec, type)        \
-    for(type *elem = &((type *)vec.p)[0]; elem != &((type *)vec.p)[vec.n]; elem++)
+#define VECTOR_FOR_EACH(elem, vec, type)            \
+    for(type *elem = &((type *)(vec)->p)[0];        \
+        elem != &((type *)(vec)->p)[(vec)->n];      \
+        elem++)
