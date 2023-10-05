@@ -170,7 +170,10 @@ error_t parse_codesec(module_t *mod, buffer_t *buf) {
     return ERR_SUCCESS;
 }
 
-error_t parse_module(module_t **mod, buffer_t *buf) {
+error_t parse_module(module_t **mod, uint8_t *image, size_t image_size) {
+    buffer_t *buf;
+    new_buffer(&buf, image, image_size);
+
     uint32_t magic, version;
     
     read_u32(&magic, buf);

@@ -184,12 +184,10 @@ int main(int argc, char *argv[]) {
         0
     );
     if(head == MAP_FAILED) fatal("mmap");
-    
-    buffer_t *buf;
+
     module_t *mod;
-    
-    new_buffer(&buf, head, fsize);
-    parse_module(&mod, buf);
+
+    parse_module(&mod, head, fsize);
 
     for(int i = 0; i < 11; i++) {
         if(mod->known_sections[i])
