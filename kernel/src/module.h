@@ -3,16 +3,30 @@
 // ref: https://webassembly.github.io/spec/core/
 
 #include <stdint.h>
-#include "vector.h"
+
+typedef uint8_t valtype_t;
+typedef uint32_t typeidx_t;
+typedef uint32_t funcidx_t;
+typedef uint32_t labelidx_t;
+typedef uint32_t funcidx_t;
+typedef uint32_t localidx_t;
 
 typedef struct {
-    vector_t rt1;
-    vector_t rt2;
+    uint32_t    n;
+    valtype_t   *types;
+} resulttype_t;
+
+typedef struct {
+    resulttype_t rt1;
+    resulttype_t rt2;
 } functype_t;
 
 typedef struct {
     uint8_t     kind;
-    uint32_t    idx;
+    union {
+        funcidx_t funcidx;
+        // todo: add here
+    };
 } exportdesc_t;
 
 typedef struct {
@@ -41,7 +55,7 @@ enum op {
 
 typedef union {
     // todo: support s33
-    uint8_t valtype;
+    valtype_t valtype;
 } blocktype_t;
 
 typedef union {
@@ -49,8 +63,8 @@ typedef union {
 } value_t;
 
 typedef struct instr {
-    struct instr        *next;
-    uint8_t             op;
+    struct instr            *next;
+    uint8_t                 op;
 
     union {
         // control instructions
@@ -59,47 +73,41 @@ typedef struct instr {
             struct instr    *in1;
             struct instr    *in2;
         };
-        uint32_t        l;
-        
+        labelidx_t          labelidx;
+        funcidx_t           funcidx;
         // variable instructions
-        uint32_t        idx;
-
+        localidx_t          localidx;
         // const instrcutions
-        value_t         c;        
+        value_t             c;        
     };
-    
 } instr_t;
 
 typedef struct {
     uint32_t    n;
-    uint8_t     type;
+    valtype_t   type;
 } locals_t;
 
 typedef struct {
-    vector_t    locals;
+    struct {
+        uint32_t    num_locals;
+        locals_t    *locals;
+    };
     instr_t     *expr;
 } func_t;
 
-typedef struct {
-    uint32_t    size;
-    func_t      func;
-} code_t;
+typedef func_t code_t;
 
-/*
-    Since all sections are vectors at now, you might think that typedef vector_t section_t is fine. 
-    However, start section and custom sections are not vectors. 
-    Therefore, we define the type section_t again.
-*/
 typedef struct {
+    uint32_t    n;
     union {
         // typesec
-        vector_t functypes;
+        functype_t  *functypes;
         // funcsec
-        vector_t typeidxes;
+        typeidx_t   *typeidxes;
         // exportsec
-        vector_t exports;
+        export_t    *exports;
         // codesec
-        vector_t codes;
+        code_t      *codes;
     };
 } section_t ;
 

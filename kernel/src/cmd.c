@@ -10,7 +10,6 @@
 #include "memory.h"
 #include "parse.h"
 #include "module.h"
-#include "vector.h"
 #include "error.h"
 
 static void fatal(const char *msg) {
@@ -18,47 +17,48 @@ static void fatal(const char *msg) {
     exit(EXIT_FAILURE);
 }
 
-static void print_func(functype_t *func) {
+static void print_functype(functype_t *func) {
     printf("args: ");
 
-    VECTOR_FOR_EACH(valtype, &func->rt1, uint8_t) {
-        printf("%#x ", *valtype);
-    };
+    for(uint32_t i = 0; i < func->rt1.n; i++) {
+        printf("%#x ", func->rt1.types[i]);
+    }
     putchar('\n');
 
     printf("returns: ");
-    VECTOR_FOR_EACH(valtype, &func->rt2, uint8_t) {
-        printf("%#x ", *valtype);
-    };
+    for(uint32_t i = 0; i < func->rt2.n; i++) {
+        printf("%#x ", func->rt2.types[i]);
+    }
     putchar('\n');
 }
 
 static void print_typesec(section_t *sec) {
     puts("[Type Section]");
 
-    VECTOR_FOR_EACH(functype, &sec->functypes, functype_t) {
-        print_func(functype);
-    };
+    for(uint32_t i = 0; i < sec->n; i++) {
+        print_functype(&sec->functypes[i]);
+    }
 }
 
 static void print_funcsec(section_t *sec) {
     puts("[Function Section]");
 
-    VECTOR_FOR_EACH(typeidx, &sec->typeidxes, uint32_t) {
-        printf("%#x ", *typeidx);
-    };
+    for(uint32_t i = 0; i < sec->n; i++) {
+         printf("%#x ", sec->typeidxes[i]);
+    }
     putchar('\n');
 }
 
 static void print_exportsec(section_t *sec) {
     puts("[Export Section]");
 
-    VECTOR_FOR_EACH(export, &sec->exports, export_t) {
+    for(uint32_t i = 0; i < sec->n; i++) {
+        export_t *export = &sec->exports[i];
         printf(
             "%s %#x %#x\n", 
             export->name, 
             export->exportdesc.kind, 
-            export->exportdesc.idx
+            export->exportdesc.funcidx
         );
     }
 }
@@ -107,13 +107,16 @@ static void print_instr(instr_t *instr) {
         
         case OP_BR:
         case OP_BR_IF:
-            printf("%s %#x\n", op_str[instr->op], instr->l);
+            printf("%s %#x\n", op_str[instr->op], instr->labelidx);
             break;
         
         case OP_CALL:
+            printf("%s %#x\n", op_str[instr->op], instr->funcidx);
+            break;
+        
         case OP_LOCAL_GET:
         case OP_LOCAL_SET:
-            printf("%s %#x\n", op_str[instr->op], instr->idx);
+            printf("%s %#x\n", op_str[instr->op], instr->labelidx);
             break;
         
         case OP_I32_CONST:
@@ -131,26 +134,24 @@ static void print_instr(instr_t *instr) {
 }
 
 static void print_code(code_t *code) {
-    printf("size: %#x\n", code->size);
     printf("locals: ");
 
-    func_t *func = &code->func;
-
-    VECTOR_FOR_EACH(locals, &func->locals, locals_t) {
+    for(uint32_t i = 0; i < code->num_locals; i++) {
+        locals_t *locals = &code->locals[i];
         printf("(%#x, %#x) ", locals->n, locals->type);
     }
     putchar('\n');
 
-    for(instr_t *i = func->expr; i; i = i -> next) {
+    for(instr_t *i = code->expr; i; i = i->next) {
         print_instr(i);
     }
 }
 
 static void print_codesec(section_t *sec) {
     puts("[Code Section]");
-    VECTOR_FOR_EACH(code, &sec->codes, code_t) {
-        print_code(code);
-    };
+    for(uint32_t i = 0; i < sec->n; i++) {
+        print_code(&sec->codes[i]);
+    }
 }
 
 typedef void (*printer_t) (section_t *sec);
