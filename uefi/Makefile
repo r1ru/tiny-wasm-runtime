@@ -1,8 +1,10 @@
-# Before make, gnu-efi must be built and installed.
+# Before make, qemu, edk2/OvmfPkg and gnu-efi must be built and installed.
 
 CC := gcc
 LD := ld
 OBJCOPY := objcopy
+QEMU := qemu-system-x86_64
+
 INC := /usr/local/include/
 LIB := /usr/local/lib/
 
@@ -21,6 +23,9 @@ OBJCOPYFLAGS :=	-j .text -j .sdata -j .data -j .dynamic -j .rodata -j .rel \
 	    		-j .rela -j .rel.* -j .rela.* -j .rel* -j .rela* \
 	    		-j .areloc -j .reloc --target efi-app-x86_64
 
+QEMUFLAGS := -nographic -serial mon:stdio --no-reboot -net none \
+            -bios $(HOME)/edk2/Build/OvmfX64/DEBUG_GCC5/FV/OVMF.fd
+
 TARGETS := hello.efi fread.efi
 
 .PHONY: build
@@ -34,6 +39,10 @@ build: $(TARGETS)
 
 %.efi : %.so
 	$(OBJCOPY) $(OBJCOPYFLAGS) $< $@
+
+.PHONY: run
+run: build
+	$(QEMU) $(QEMUFLAGS) -drive format=raw,file=fat:rw:.
 
 .PHONY: clean
 clean:
