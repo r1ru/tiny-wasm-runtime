@@ -1,4 +1,4 @@
-set(PARSON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/parson)
+set(PARSON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/parson)
 
 include_directories(runtest PRIVATE ${PARSON_ROOT})
 
