@@ -89,8 +89,8 @@ typedef struct {
 
 typedef struct {
     struct {
-        uint32_t    num_locals;
-        locals_t    *locals;
+        uint32_t    num_localses;
+        locals_t    *localses;
     };
     instr_t     *expr;
 } func_t;

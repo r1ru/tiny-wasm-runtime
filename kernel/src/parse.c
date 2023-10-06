@@ -161,11 +161,11 @@ error_t parse_codesec(module_t *mod, buffer_t *buf) {
         // parse locals
         uint32_t n2;
         read_u32_leb128(&n2, buf);
-        code->num_locals = n2;
-        code->locals = malloc(sizeof(locals_t) * n2);
+        code->num_localses = n2;
+        code->localses = malloc(sizeof(locals_t) * n2);
 
         for(uint32_t j = 0; j < n2; j++) {
-            locals_t *locals = &code->locals[j];
+            locals_t *locals = &code->localses[j];
             read_u32_leb128(&locals->n, buf);
             read_byte(&locals->type, buf);
         }

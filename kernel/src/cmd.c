@@ -136,8 +136,8 @@ static void print_instr(instr_t *instr) {
 static void print_code(code_t *code) {
     printf("locals: ");
 
-    for(uint32_t i = 0; i < code->num_locals; i++) {
-        locals_t *locals = &code->locals[i];
+    for(uint32_t i = 0; i < code->num_localses; i++) {
+        locals_t *locals = &code->localses[i];
         printf("(%#x, %#x) ", locals->n, locals->type);
     }
     putchar('\n');
