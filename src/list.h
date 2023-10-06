@@ -22,6 +22,12 @@ typedef struct list list_elem_t;
          &elem->field != (list);                                                \
          elem = LIST_CONTAINER(elem->field.next, container, field))
 
+#define LIST_TAIL(list, container, field)                                       \
+    ({                                                                          \
+        list_elem_t *__elem = list_tail(list);                                  \
+        (__elem) ? LIST_CONTAINER(__elem, container, field) : NULL;             \
+    })
+
 #define LIST_POP_TAIL(list, container, field)                                   \
     ({                                                                          \
         list_elem_t *__elem = list_pop_tail(list);                              \
@@ -29,4 +35,5 @@ typedef struct list list_elem_t;
     })
 
 void list_push_back(list_t *list, list_elem_t *elem);
+list_elem_t *list_tail(list_t *list);
 list_elem_t *list_pop_tail(list_t *list);

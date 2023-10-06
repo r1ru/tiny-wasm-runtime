@@ -11,6 +11,15 @@ void list_push_back(list_t *list, list_elem_t *elem) {
     list_insert(list->prev, list, elem);
 }
 
+list_elem_t *list_tail(list_t *list) {
+    list_t *tail = list->prev;
+
+    if(tail == list)
+        return NULL;
+
+    return tail;
+}
+
 list_elem_t *list_pop_tail(list_t *list) {
     list_t *tail = list->prev;
 
