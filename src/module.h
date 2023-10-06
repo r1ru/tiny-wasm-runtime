@@ -60,7 +60,7 @@ typedef union {
 
 typedef union {
     int32_t i32;
-} value_t;
+} const_t;
 
 typedef struct instr {
     struct instr            *next;
@@ -78,7 +78,7 @@ typedef struct instr {
         // variable instructions
         localidx_t          localidx;
         // const instrcutions
-        value_t             c;        
+        const_t             c;        
     };
 } instr_t;
 
