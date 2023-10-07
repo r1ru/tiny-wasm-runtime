@@ -2,20 +2,11 @@
 
 #include "module.h"
 #include "error.h"
+#include "vector.h"
 
 // ref: https://webassembly.github.io/spec/core/exec/index.html
 typedef export_t    exportinst_t;
 typedef uint32_t    funcaddr_t;
-
-// useful macro
-#define VECTOR_COPY(dst, src, type)                             \
-    do {                                                        \
-        VECTOR_INIT((dst), (src)->n, type);                     \
-        int idx = 0;                                            \
-        VECTOR_FOR_EACH(e, (dst), type){                        \
-            *e = *VECTOR_ELEM((src), idx++);                    \
-        }                                                       \
-    }while(0)
 
 // In C, accessing outside the range of an array is not an exception.
 // Therefore, VECTOR is used to have the number of elements. 

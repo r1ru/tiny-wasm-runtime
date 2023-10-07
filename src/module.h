@@ -4,6 +4,7 @@
 // ref: https://webassembly.github.io/spec/core/syntax/index.html
 
 #include <stdint.h>
+#include "vector.h"
 
 typedef uint8_t     valtype_t;
 typedef uint32_t    typeidx_t;
@@ -13,27 +14,6 @@ typedef uint32_t    funcidx_t;
 typedef uint32_t    localidx_t;
 
 // useful macros
-#define VECTOR(type)                                \
-struct {                                            \
-    uint32_t    n;                                  \
-    type        *elem;                              \
-}
-
-#define VECTOR_INIT(vec, len, type)                 \
-    ({                                              \
-        (vec)->n = (len);                           \
-        (vec)->elem = malloc(sizeof(type) * (len)); \
-    })
-
-#define VECTOR_FOR_EACH(iter, vec, type)            \
-    for(type *iter = &(vec)->elem[0];               \
-        iter != &(vec)->elem[(vec)->n];             \
-        iter++                                      \
-    )
-
-#define VECTOR_ELEM(vec, n)                         \
-    (&(vec)->elem[n])
-
 typedef VECTOR(valtype_t) resulttype_t;
 
 typedef struct {
