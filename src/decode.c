@@ -1,5 +1,4 @@
 #include "decode.h"
-#include "print.h"
 #include "memory.h"
 
 // useful macros
@@ -196,8 +195,6 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
     read_u32(&magic, buf);
     read_u32(&version, buf);
 
-    INFO("magic = %#x, version = %#x", magic, version);
-
     // init
     module_t *m = *mod = malloc(sizeof(module_t));
     VECTOR_INIT(&m->types, 0, functype_t);
@@ -212,8 +209,6 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         
         buffer_t *sec;
         read_buffer(&sec, size, buf);
-
-        INFO("section id = %#x, size = %#x", id, size);
 
         if(id <= 11 && decoders[id])
             decoders[id](m, sec);
