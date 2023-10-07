@@ -1,1 +1,1 @@
-add_executable(cmd cmd.c buffer.c parse.c)
+add_executable(cmd cmd.c buffer.c decode.c)

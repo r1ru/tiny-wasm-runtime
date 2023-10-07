@@ -1,77 +1,67 @@
-#include "parse.h"
+#include "decode.h"
 #include "print.h"
 #include "memory.h"
 
-typedef error_t (*parser_t) (module_t *mod, buffer_t *buf);
+// useful macros
+typedef error_t (*decoder_t) (module_t *mod, buffer_t *buf);
 
-static parser_t parsers[11] = {
-    [1]     = parse_typesec,
-    [3]     = parse_funcsec,
-    [7]     = parse_exportsec,
-    [10]    = parse_codesec,
+static decoder_t decoders[11] = {
+    [1]     = decode_typesec,
+    [3]     = decode_funcsec,
+    [7]     = decode_exportsec,
+    [10]    = decode_codesec,
 };
 
-error_t parse_typesec(module_t *mod, buffer_t*buf) {    
-    section_t *typesec = mod->known_sections[1] = malloc(sizeof(section_t));
-
+error_t decode_typesec(module_t *mod, buffer_t*buf) {
     uint32_t n1;
     read_u32_leb128(&n1, buf);
-    typesec->n = n1;
-    typesec->functypes = malloc(sizeof(functype_t) * n1);
 
-    for(uint32_t i = 0; i < n1; i++) {
+    VECTOR_INIT(&mod->types, n1, functype_t);
+
+    VECTOR_FOR_EACH(functype, &mod->types, functype_t) {
         // expected to be 0x60
         uint8_t magic;
         read_byte(&magic, buf);
 
-        // parse argment types
-        functype_t *functype = &typesec->functypes[i];
-
+        // decode parameter types
         uint32_t n2;
         read_u32_leb128(&n2, buf);
-        functype->rt1.n = n2;
-        functype->rt1.types = malloc(sizeof(valtype_t) * n2);
-        for(uint32_t j = 0; j < n2; j++) {
-            read_byte(&functype->rt1.types[j], buf);
+        VECTOR_INIT(&functype->rt1, n2, valtype_t);
+        VECTOR_FOR_EACH(valtype, &functype->rt1, valtype_t) {
+            read_byte(valtype, buf);
         }
 
-        // parse return types
+        // decode return types
         read_u32_leb128(&n2, buf);
-        functype->rt2.n = n2;
-        functype->rt2.types = malloc(sizeof(valtype_t) * n2);
-        for(size_t j = 0; j < n2; j++) {
-            read_byte(&functype->rt2.types[j], buf);
+        VECTOR_INIT(&functype->rt2, n2, valtype_t);
+        VECTOR_FOR_EACH(valtype, &functype->rt2, valtype_t) {
+            read_byte(valtype, buf);
         }
     }
 
     return ERR_SUCCESS;
 }
 
-error_t parse_funcsec(module_t *mod, buffer_t *buf) {
-    section_t *funcsec = mod->known_sections[3] = malloc(sizeof(section_t));
-
+error_t decode_funcsec(module_t *mod, buffer_t *buf) {
     uint32_t n;
     read_u32_leb128(&n, buf);
-    funcsec->n = n;
-    funcsec->typeidxes = malloc(sizeof(typeidx_t) * n);
 
-    for(uint32_t i = 0; i < n; i++) {
-        read_u32_leb128(&funcsec->typeidxes[i], buf);
+    VECTOR_INIT(&mod->funcs, n, func_t);
+
+    VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
+        read_u32_leb128(&func->type, buf);
     }
 
     return ERR_SUCCESS;
 }
 
-error_t parse_exportsec(module_t *mod, buffer_t *buf) {
-    section_t *exportsec = mod->known_sections[7] = malloc(sizeof(section_t));
-
+error_t decode_exportsec(module_t *mod, buffer_t *buf) {
     uint32_t n;
     read_u32_leb128(&n, buf);
-    exportsec->n = n;
-    exportsec->exports = malloc(sizeof(export_t) * n);
 
-    for(uint32_t i = 0; i < n; i++) {
-        export_t *export = &exportsec->exports[i];
+    VECTOR_INIT(&mod->exports, n, export_t);
+
+    VECTOR_FOR_EACH(export, &mod->exports, export_t) {
         read_bytes(&export->name, buf);
         read_byte(&export->exportdesc.kind, buf);
         read_u32_leb128(&export->exportdesc.funcidx, buf);
@@ -80,7 +70,8 @@ error_t parse_exportsec(module_t *mod, buffer_t *buf) {
     return ERR_SUCCESS;
 }
 
-error_t parse_instr(instr_t **instr, buffer_t *buf) {
+// todo: delete this?
+error_t decode_instr(instr_t **instr, buffer_t *buf) {
     instr_t *i = *instr = malloc(sizeof(instr_t));
     i->next = NULL;
 
@@ -93,18 +84,18 @@ error_t parse_instr(instr_t **instr, buffer_t *buf) {
             // todo: support s33
             read_byte(&i->bt.valtype, buf);
 
-            parse_instr(&i->in1, buf);
+            decode_instr(&i->in1, buf);
             instr_t *j = i->in1;
             while(j->op != OP_END && j->op != OP_ELSE) {
-                parse_instr(&j->next, buf);
+                decode_instr(&j->next, buf);
                 j = j->next;
             }
 
             if(i->op == OP_ELSE) {
-                parse_instr(&i->in2, buf);
+                decode_instr(&i->in2, buf);
                 j = i->in2;
                 while(j->op != OP_END) {
-                    parse_instr(&j->next, buf);
+                    decode_instr(&j->next, buf);
                     j = j->next;
                 }
             }
@@ -143,38 +134,52 @@ error_t parse_instr(instr_t **instr, buffer_t *buf) {
     return ERR_SUCCESS;
 }
 
-error_t parse_codesec(module_t *mod, buffer_t *buf) {
-    section_t *codesec = mod->known_sections[10] = malloc(sizeof(section_t));
-
+error_t decode_codesec(module_t *mod, buffer_t *buf) {
     uint32_t n1;
     read_u32_leb128(&n1, buf);
-    codesec->n = n1;
-    codesec->codes = malloc(sizeof(code_t) * n1);
 
-    for(uint32_t i = 0; i < n1; i++) {
+    // assert(n1 == mod->funcs.n)
+
+    VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
         // size is unused
         uint32_t size;
         read_u32_leb128(&size, buf);
 
-        code_t *code = &codesec->codes[i];
-
-        // parse locals
+        VECTOR(locals_t) localses;
         uint32_t n2;
         read_u32_leb128(&n2, buf);
-        code->num_localses = n2;
-        code->localses = malloc(sizeof(locals_t) * n2);
+        VECTOR_INIT(&localses, n2, locals_t);
+        
+        // count local variables
+        functype_t *functype = VECTOR_ELEM(&mod->types, func->type);
+        uint32_t num_locals = functype->rt1.n;
 
-        for(uint32_t j = 0; j < n2; j++) {
-            locals_t *locals = &code->localses[j];
+        VECTOR_FOR_EACH(locals, &localses, locals_t) {
             read_u32_leb128(&locals->n, buf);
+            num_locals += locals->n;
             read_byte(&locals->type, buf);
         }
 
-        // parse expr
-        parse_instr(&code->expr, buf);
-        instr_t *instr = code->expr;
+        // create vec(valtype)
+        VECTOR_INIT(&func->locals, num_locals, valtype_t);
+
+        uint32_t idx = 0;
+        for(uint32_t i = 0; i < functype->rt1.n; i++) {
+            func->locals.elem[idx++] = functype->rt1.elem[i];
+        }
+
+        VECTOR_FOR_EACH(locals, &localses, locals_t) {
+            for(uint32_t i = 0; i < locals->n; i++) {
+                func->locals.elem[idx++] = locals->type;
+            }
+        }
+        // todo: free localses.elem?
+        
+        // decode body
+        decode_instr(&func->body, buf);
+        instr_t *instr = func->body;
         while(instr->op != OP_END) {
-            parse_instr(&instr->next, buf);
+            decode_instr(&instr->next, buf);
             instr = instr->next;
         }
     }
@@ -182,7 +187,7 @@ error_t parse_codesec(module_t *mod, buffer_t *buf) {
     return ERR_SUCCESS;
 }
 
-error_t parse_module(module_t **mod, uint8_t *image, size_t image_size) {
+error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
     buffer_t *buf;
     new_buffer(&buf, image, image_size);
 
@@ -193,7 +198,11 @@ error_t parse_module(module_t **mod, uint8_t *image, size_t image_size) {
 
     INFO("magic = %#x, version = %#x", magic, version);
 
+    // init
     module_t *m = *mod = malloc(sizeof(module_t));
+    VECTOR_INIT(&m->types, 0, functype_t);
+    VECTOR_INIT(&m->funcs, 0, func_t);
+    VECTOR_INIT(&m->exports, 0, export_t);
 
     while(!eof(buf)) {
         uint8_t id;
@@ -206,10 +215,8 @@ error_t parse_module(module_t **mod, uint8_t *image, size_t image_size) {
 
         INFO("section id = %#x, size = %#x", id, size);
 
-        if(id <= 11 && parsers[id])
-            parsers[id](m, sec);
-        else 
-            m->known_sections[id] = NULL;
+        if(id <= 11 && decoders[id])
+            decoders[id](m, sec);
     }
 
     return ERR_SUCCESS;

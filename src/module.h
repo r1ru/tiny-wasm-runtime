@@ -1,20 +1,40 @@
 #pragma once
 
-// ref: https://webassembly.github.io/spec/core/
+// module.h defines the representation of abstract module defined in WASM Spec
+// ref: https://webassembly.github.io/spec/core/syntax/index.html
 
 #include <stdint.h>
 
-typedef uint8_t valtype_t;
-typedef uint32_t typeidx_t;
-typedef uint32_t funcidx_t;
-typedef uint32_t labelidx_t;
-typedef uint32_t funcidx_t;
-typedef uint32_t localidx_t;
+typedef uint8_t     valtype_t;
+typedef uint32_t    typeidx_t;
+typedef uint32_t    funcidx_t;
+typedef uint32_t    labelidx_t;
+typedef uint32_t    funcidx_t;
+typedef uint32_t    localidx_t;
 
-typedef struct {
-    uint32_t    n;
-    valtype_t   *types;
-} resulttype_t;
+// useful macros
+#define VECTOR(type)                                \
+struct {                                            \
+    uint32_t    n;                                  \
+    type        *elem;                              \
+}
+
+#define VECTOR_INIT(vec, len, type)                 \
+    ({                                              \
+        (vec)->n = (len);                           \
+        (vec)->elem = malloc(sizeof(type) * (len)); \
+    })
+
+#define VECTOR_FOR_EACH(iter, vec, type)            \
+    for(type *iter = &(vec)->elem[0];               \
+        iter != &(vec)->elem[(vec)->n];             \
+        iter++                                      \
+    )
+
+#define VECTOR_ELEM(vec, n)                         \
+    (&(vec)->elem[n])
+
+typedef VECTOR(valtype_t) resulttype_t;
 
 typedef struct {
     resulttype_t rt1;
@@ -82,35 +102,22 @@ typedef struct instr {
     };
 } instr_t;
 
+// Type used only when decoding
 typedef struct {
     uint32_t    n;
     valtype_t   type;
 } locals_t;
 
+typedef instr_t * expr_t;
+
 typedef struct {
-    struct {
-        uint32_t    num_localses;
-        locals_t    *localses;
-    };
-    instr_t     *expr;
+    typeidx_t           type;
+    VECTOR(valtype_t)   locals;
+    expr_t              body;
 } func_t;
 
-typedef func_t code_t;
-
 typedef struct {
-    uint32_t    n;
-    union {
-        // typesec
-        functype_t  *functypes;
-        // funcsec
-        typeidx_t   *typeidxes;
-        // exportsec
-        export_t    *exports;
-        // codesec
-        code_t      *codes;
-    };
-} section_t ;
-
-typedef struct {
-    section_t *known_sections[12];
+    VECTOR(functype_t)  types;
+    VECTOR(func_t)      funcs;
+    VECTOR(export_t)    exports;
 } module_t;

@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 #include "memory.h"
-#include "parse.h"
+#include "decode.h"
 #include "module.h"
 #include "error.h"
 
@@ -17,50 +17,19 @@ static void fatal(const char *msg) {
     exit(EXIT_FAILURE);
 }
 
-static void print_functype(functype_t *func) {
+static void print_type(functype_t *func) {
     printf("args: ");
 
-    for(uint32_t i = 0; i < func->rt1.n; i++) {
-        printf("%#x ", func->rt1.types[i]);
+    VECTOR_FOR_EACH(valtype, &func->rt1, valtype_t) {
+        printf("%x ", *valtype);
     }
     putchar('\n');
 
     printf("returns: ");
-    for(uint32_t i = 0; i < func->rt2.n; i++) {
-        printf("%#x ", func->rt2.types[i]);
+    VECTOR_FOR_EACH(valtype, &func->rt2, valtype_t) {
+        printf("%x ", *valtype);
     }
     putchar('\n');
-}
-
-static void print_typesec(section_t *sec) {
-    puts("[Type Section]");
-
-    for(uint32_t i = 0; i < sec->n; i++) {
-        print_functype(&sec->functypes[i]);
-    }
-}
-
-static void print_funcsec(section_t *sec) {
-    puts("[Function Section]");
-
-    for(uint32_t i = 0; i < sec->n; i++) {
-         printf("%#x ", sec->typeidxes[i]);
-    }
-    putchar('\n');
-}
-
-static void print_exportsec(section_t *sec) {
-    puts("[Export Section]");
-
-    for(uint32_t i = 0; i < sec->n; i++) {
-        export_t *export = &sec->exports[i];
-        printf(
-            "%s %#x %#x\n", 
-            export->name, 
-            export->exportdesc.kind, 
-            export->exportdesc.funcidx
-        );
-    }
 }
 
 static const char *op_str[] = {
@@ -86,7 +55,7 @@ static void print_instr(instr_t *instr) {
         case OP_BLOCK:
         case OP_LOOP:
         case OP_IF: {
-            printf("%s %#x\n",op_str[instr->op], instr->bt.valtype);
+            printf("%s\n",op_str[instr->op]);
             for(instr_t *i = instr->in1; i; i = i->next) {
                 print_instr(i);
             }
@@ -107,20 +76,20 @@ static void print_instr(instr_t *instr) {
         
         case OP_BR:
         case OP_BR_IF:
-            printf("%s %#x\n", op_str[instr->op], instr->labelidx);
+            printf("%s %d\n", op_str[instr->op], instr->labelidx);
             break;
         
         case OP_CALL:
-            printf("%s %#x\n", op_str[instr->op], instr->funcidx);
+            printf("%s %d\n", op_str[instr->op], instr->funcidx);
             break;
         
         case OP_LOCAL_GET:
         case OP_LOCAL_SET:
-            printf("%s %#x\n", op_str[instr->op], instr->labelidx);
+            printf("%s %d\n", op_str[instr->op], instr->labelidx);
             break;
         
         case OP_I32_CONST:
-            printf("i32.const %#x\n", instr->c.i32);
+            printf("i32.const %d\n", instr->c.i32);
             break;
         
         case OP_I32_EQZ:
@@ -133,35 +102,29 @@ static void print_instr(instr_t *instr) {
     }
 }
 
-static void print_code(code_t *code) {
+static void print_func(func_t *func) {
+    printf("type: %x\n", func->type);
     printf("locals: ");
 
-    for(uint32_t i = 0; i < code->num_localses; i++) {
-        locals_t *locals = &code->localses[i];
-        printf("(%#x, %#x) ", locals->n, locals->type);
+    VECTOR_FOR_EACH(valtype, &func->locals, valtype_t) {
+        printf("%x ", *valtype);
     }
     putchar('\n');
 
-    for(instr_t *i = code->expr; i; i = i->next) {
+    puts("body:");
+    for(instr_t *i = func->body; i; i = i->next) {
         print_instr(i);
     }
 }
 
-static void print_codesec(section_t *sec) {
-    puts("[Code Section]");
-    for(uint32_t i = 0; i < sec->n; i++) {
-        print_code(&sec->codes[i]);
-    }
+static void print_export(export_t *export) {
+    printf(
+        "%s %x %x\n", 
+        export->name, 
+        export->exportdesc.kind, 
+        export->exportdesc.funcidx
+    );
 }
-
-typedef void (*printer_t) (section_t *sec);
-
-printer_t printers[11] = {
-    [1]     = print_typesec,
-    [3]     = print_funcsec,
-    [7]     = print_exportsec,
-    [10]    = print_codesec
-};
 
 int main(int argc, char *argv[]) {
     if(argc != 2) {
@@ -187,13 +150,25 @@ int main(int argc, char *argv[]) {
     if(head == MAP_FAILED) fatal("mmap");
 
     module_t *mod;
-
-    parse_module(&mod, head, fsize);
-
-    for(int i = 0; i < 11; i++) {
-        if(mod->known_sections[i])
-            printers[i](mod->known_sections[i]);
+    decode_module(&mod, head, fsize);
+    
+    puts("[types]");
+    VECTOR_FOR_EACH(type, &mod->types, functype_t) {
+        print_type(type);
     }
+    putchar('\n');
+
+    puts("[funcs]");
+    VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
+        print_func(func);
+    }
+    putchar('\n');
+
+    puts("[exports]");
+    VECTOR_FOR_EACH(export, &mod->exports, export_t) {
+        print_export(export);
+    }
+    putchar('\n');
 
     // cleanup
     munmap(head, fsize);
