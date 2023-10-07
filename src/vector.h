@@ -26,9 +26,6 @@
 
 #define VECTOR_COPY(dst, src, type)                 \
     do {                                            \
-        VECTOR_INIT((dst), (src)->n, type);         \
-        int idx = 0;                                \
-        VECTOR_FOR_EACH(e, (dst), type){            \
-            *e = *VECTOR_ELEM((src), idx++);        \
-        }                                           \
-    }while(0)
+        (dst)->n = (src)->n;                        \
+        (dst)->elem = (src)->elem;                  \
+    } while(0)

@@ -23,7 +23,7 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
     // allocate moduleinst
     moduleinst_t *moduleinst = malloc(sizeof(moduleinst_t));
    
-    VECTOR_COPY(&moduleinst->types, &module->types, functype_t);
+    VECTOR_COPY(&moduleinst->types, &module->types, functype_t);    
     VECTOR_INIT(&moduleinst->fncaddrs, module->funcs.n, funcaddr_t);
 
     // allocate funcs
@@ -37,7 +37,7 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
     // allocate exports
     VECTOR_COPY(&moduleinst->exports, &module->exports, export_t);
 
-     return moduleinst;
+    return moduleinst;
 }
 
 error_t instantiate(store_t **S, module_t *module) {
