@@ -11,6 +11,7 @@
 #include "decode.h"
 #include "module.h"
 #include "error.h"
+#include "exec.h"
 
 static void fatal(const char *msg) {
     perror(msg);
@@ -170,6 +171,10 @@ int main(int argc, char *argv[]) {
     }
     putchar('\n');
 
+    store_t *S;
+    error_t error = instantiate(&S, mod);
+    printf("error = %x\n", error);
+    
     // cleanup
     munmap(head, fsize);
     close(fd);

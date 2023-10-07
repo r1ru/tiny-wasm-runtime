@@ -1,1 +1,1 @@
-add_executable(cmd cmd.c buffer.c decode.c)
+add_executable(cmd cmd.c buffer.c decode.c exec.c)
