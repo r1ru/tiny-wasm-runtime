@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(mavis C)
+project(tiny-wasm-runtime C)
 
 add_subdirectory(src)
 add_subdirectory(test)
