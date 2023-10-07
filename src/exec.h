@@ -7,10 +7,22 @@
 typedef export_t    exportinst_t;
 typedef uint32_t    funcaddr_t;
 
+// useful macro
+#define VECTOR_COPY(dst, src, type)                             \
+    do {                                                        \
+        VECTOR_INIT((dst), (src)->n, type);                     \
+        int idx = 0;                                            \
+        VECTOR_FOR_EACH(e, (dst), type){                        \
+            *e = *VECTOR_ELEM((src), idx++);                    \
+        }                                                       \
+    }while(0)
+
+// In C, accessing outside the range of an array is not an exception.
+// Therefore, VECTOR is used to have the number of elements. 
 typedef struct {
-    functype_t      *types;
-    funcaddr_t      *funcaddrs;
-    exportinst_t    *exports;
+    VECTOR(functype_t)      types;
+    VECTOR(funcaddr_t)      fncaddrs;
+    VECTOR(exportinst_t)    exports;
 } moduleinst_t;
 
 typedef struct {
@@ -20,7 +32,7 @@ typedef struct {
 } funcinst_t;
 
 typedef struct {
-    funcinst_t      *funcs;
+    VECTOR(funcinst_t)  funcs;
 } store_t;
 
 typedef union {
@@ -32,7 +44,7 @@ typedef union {
 } val_t;
 
 typedef struct {
-    val_t           *locals;
+    VECTOR(val_t)   locals;
     moduleinst_t    *module;
 } frame_t;
 
