@@ -13,20 +13,6 @@ error_t new_buffer(buffer_t **d, uint8_t *head, size_t size) {
     return ERR_SUCCESS;
 }
 
-error_t new_stack(buffer_t **d, size_t size) {
-    buffer_t *buf = *d = malloc(sizeof(buffer_t));
-
-    uint8_t *stack = malloc(size);
-    
-    *buf = (buffer_t) {
-        .head   = stack,
-        .size   = size,
-        .cursor = size
-    };
-
-    return ERR_SUCCESS;
-}
-
 bool eof(buffer_t *buf) {
     return buf->cursor == buf->size;
 }
@@ -149,16 +135,6 @@ error_t read_i64_leb128(int64_t *d, buffer_t *buf) {
         }
     }
     *d = result;
-    return ERR_SUCCESS;
-}
-
-// used for writing to stack
-error_t write_i32(int32_t d, buffer_t *buf) {
-    if(buf->cursor - 4 < 0)
-        return ERR_FAILED;
-    
-    buf->cursor -= 4;
-    *(int32_t *)&buf->head[buf->cursor] = d;
     return ERR_SUCCESS;
 }
 
