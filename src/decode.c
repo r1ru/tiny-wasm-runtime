@@ -5,32 +5,27 @@ error_t new_buffer(buffer_t **d, uint8_t *head, size_t size) {
     buffer_t *buf = *d = malloc(sizeof(buffer_t));
     
     *buf = (buffer_t) {
-        .head   = head,
-        .size   = size,
-        .cursor = 0
+        .p   = head,
+        .end = head + size
     };
 
     return ERR_SUCCESS;
 }
 
-bool eof(buffer_t *buf) {
-    return buf->cursor == buf->size;
-}
-
 error_t read_buffer(buffer_t **d, size_t size, buffer_t *buf) {
-    if(buf->cursor + size > buf->size)
+    if(buf->p + size > buf->end)
         return ERR_FAILED;
     
-    new_buffer(d, buf->head + buf->cursor, size);
-    buf->cursor += size;
+    new_buffer(d, buf->p, size);
+    buf->p += size;
     return ERR_SUCCESS;
 }
 
 error_t read_byte(uint8_t *d, buffer_t *buf) {
-    if(buf->cursor + 1 > buf->size)
+    if(buf->p + 1 > buf->end)
         return ERR_FAILED;
 
-    *d = buf->head[buf->cursor++];
+    *d = *buf->p++;
     return ERR_SUCCESS;
 }
 
@@ -50,22 +45,22 @@ error_t read_bytes(uint8_t **d, buffer_t *buf) {
 }
 
 error_t read_u32(uint32_t *d, buffer_t *buf) {
-    if(buf->cursor + 4 > buf->size)
+    if(buf->p + 4 > buf->end)
         return ERR_FAILED;
     
-    *d = *(uint32_t *)&buf->head[buf->cursor];
+    *d = *(uint32_t *)buf->p;
     
-    buf->cursor += 4;
+    buf->p += 4;
     return ERR_SUCCESS;
 }
 
 error_t read_i32(int32_t *d, buffer_t *buf) {
-    if(buf->cursor + 4 > buf->size)
+    if(buf->p + 4 > buf->end)
         return ERR_FAILED;
     
-    *d = *(int32_t *)&buf->head[buf->cursor];
+    *d = *(int32_t *)buf->p;
     
-    buf->cursor += 4;
+    buf->p += 4;
     return ERR_SUCCESS;
 }
 

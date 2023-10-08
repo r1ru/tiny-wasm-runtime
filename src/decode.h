@@ -9,13 +9,15 @@
 
 // We use buffer_t to access binary data.
 typedef struct {
-    uint8_t *head;
-    size_t  size;
-    size_t  cursor;
+    uint8_t *p;
+    uint8_t *end;
 } buffer_t;
 
+static inline bool eof(buffer_t *buf) {
+    return buf->p == buf->end;
+}
+
 error_t new_buffer(buffer_t **d, uint8_t *head, size_t size);
-bool eof(buffer_t *buf);
 error_t read_buffer(buffer_t **d, size_t size, buffer_t *buf);
 error_t read_byte(uint8_t *d, buffer_t *buf);
 error_t read_bytes(uint8_t **d, buffer_t *buf);
