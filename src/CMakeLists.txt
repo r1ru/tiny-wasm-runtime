@@ -1,1 +1,1 @@
-add_executable(cmd cmd.c decode.c exec.c)
+add_executable(cmd cmd.c decode.c exec.c list.c)

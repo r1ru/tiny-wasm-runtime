@@ -128,12 +128,14 @@ static void print_export(export_t *export) {
 }
 
 int main(int argc, char *argv[]) {
+    /*
     if(argc != 2) {
         puts("Usage: ./a.out <*.wasm>");
         exit(EXIT_FAILURE);
-    }
+    }*/
 
-    int fd = open(argv[1], O_RDWR);
+    //int fd = open(argv[1], O_RDWR);
+    int fd = open("./wasm/add.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -172,9 +174,23 @@ int main(int argc, char *argv[]) {
     putchar('\n');
 
     store_t *S;
-    error_t error = instantiate(&S, mod);
-    printf("error = %x\n", error);
-    
+    error_t err;
+
+    err = instantiate(&S, mod);
+    printf("err = %x\n", err);
+
+    args_t args;
+    VECTOR_INIT(&args, 2, val_t);
+    VECTOR_FOR_EACH(arg, &args, val_t) {
+        arg->type      = 0x7f;
+        arg->num.int32 = 1;
+    };
+
+    // invoke add(1, 1)
+    err = invoke(S, 0, &args);
+    printf("err = %x\n", err);
+    printf("result = %x\n", VECTOR_ELEM(&args, 0)->num.int32);
+
     // cleanup
     munmap(head, fsize);
     close(fd);
