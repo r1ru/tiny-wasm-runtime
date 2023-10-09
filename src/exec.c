@@ -227,6 +227,11 @@ static void exec_instrs(store_t *S) {
                 F->locals[x] = val;
                 break;
             }
+            
+            case OP_I32_CONST:
+                push_i32(ip->c.i32, S->stack);
+                break;
+            
             case OP_I32_ADD: {
                 int32_t rhs, lhs;
                 pop_i32(&rhs, S->stack);
