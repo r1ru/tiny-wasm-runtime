@@ -122,7 +122,7 @@ funcaddr_t allocfunc(store_t *S, func_t *func, moduleinst_t *moduleinst) {
     static funcaddr_t next_addr = 0;
 
     funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, next_addr);
-    functype_t *functype = VECTOR_ELEM(&moduleinst->types, func->type);
+    functype_t *functype = &moduleinst->types[func->type];
 
     funcinst->type   = functype;
     funcinst->module = moduleinst;
@@ -134,20 +134,19 @@ funcaddr_t allocfunc(store_t *S, func_t *func, moduleinst_t *moduleinst) {
 moduleinst_t *allocmodule(store_t *S, module_t *module) {
     // allocate moduleinst
     moduleinst_t *moduleinst = malloc(sizeof(moduleinst_t));
-   
-    VECTOR_COPY(&moduleinst->types, &module->types, functype_t);    
-    VECTOR_INIT(&moduleinst->fncaddrs, module->funcs.n, funcaddr_t);
+    
+    moduleinst->types = module->types.elem;
 
     // allocate funcs
     // In this implementation, the index always matches the address.
-    int idx = 0;
-    VECTOR_FOR_EACH(func, &module->funcs, func_t) {
-        // In this implementation, the index always matches the address.
-        *VECTOR_ELEM(&moduleinst->fncaddrs, idx++) = allocfunc(S, func, moduleinst);
+    uint32_t num_funcs = module->funcs.n;
+    moduleinst->funcaddrs = malloc(sizeof(funcaddr_t) * num_funcs);
+    for(uint32_t i = 0; i < num_funcs; i++) {
+        func_t *func = VECTOR_ELEM(&module->funcs, i);
+        moduleinst->funcaddrs[i] = allocfunc(S, func, moduleinst);
     }
 
-    // allocate exports
-    VECTOR_COPY(&moduleinst->exports, &module->exports, export_t);
+    moduleinst->exports = module->exports.elem;
 
     return moduleinst;
 }
@@ -217,7 +216,7 @@ static void exec_instrs(store_t *S) {
 
             case OP_LOCAL_GET: {
                 localidx_t x = ip->localidx;
-                val_t val = *VECTOR_ELEM(&F->locals, x);
+                val_t val = F->locals[x];
                 push_val(val, S->stack);
                 break;
             }
@@ -225,7 +224,7 @@ static void exec_instrs(store_t *S) {
                 localidx_t x = ip->localidx;
                 val_t val;
                 pop_val(&val, S->stack);
-                *VECTOR_ELEM(&F->locals, x) = val;
+                F->locals[x] = val;
                 break;
             }
             case OP_I32_ADD: {
@@ -250,14 +249,11 @@ void invoke_func(store_t *S, funcaddr_t funcaddr) {
     // create new frame
     frame_t frame;
     frame.module = funcinst->module;
-    VECTOR_INIT(&frame.locals, funcinst->code->locals.n, val_t);
+    frame.locals = malloc(sizeof(val_t) * funcinst->code->locals.n);
 
     // pop args
-    uint32_t num_args = functype->rt1.n;
-
-    VECTOR_FOR_EACH(local, &frame.locals, val_t) {
-        pop_val(local, S->stack);
-        if(--num_args == 0) break;
+    for(uint32_t i = 0; i < functype->rt1.n; i++) {
+        pop_val(&frame.locals[i], S->stack);
     }
 
     // push activation frame
@@ -300,7 +296,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
     // push dummy frame
     frame_t frame = {
         .arity  = 0,
-        .locals =  {.n = 0, .elem = NULL},
+        .locals = NULL,
         .module = NULL
     };
     push_frame(frame, S->stack);

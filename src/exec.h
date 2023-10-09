@@ -10,12 +10,10 @@
 typedef export_t    exportinst_t;
 typedef uint32_t    funcaddr_t;
 
-// In C, accessing outside the range of an array is not an exception.
-// Therefore, VECTOR is used to have the number of elements. 
 typedef struct {
-    VECTOR(functype_t)      types;
-    VECTOR(funcaddr_t)      fncaddrs;
-    VECTOR(exportinst_t)    exports;
+    functype_t      *types;
+    funcaddr_t      *funcaddrs;
+    exportinst_t    *exports;
 } moduleinst_t;
 
 typedef struct {
@@ -31,7 +29,7 @@ typedef union {
 typedef struct {
     valtype_t       type;
     union {
-        num_t           num;
+        num_t       num;
     };
 } val_t;
 
@@ -46,7 +44,7 @@ typedef struct {
     instr_t         *ret;
 
     uint32_t        arity;
-    VECTOR(val_t)   locals;
+    val_t           *locals;
     moduleinst_t    *module;
 } frame_t;
 
@@ -61,17 +59,17 @@ typedef struct {
 } obj_t;
 
 typedef struct {
-    size_t      num_vals;
-    size_t      num_labels;
-    size_t      num_frames;
-    list_t      frames;
-    size_t      idx;
-    obj_t       *pool;
+    size_t          num_vals;
+    size_t          num_labels;
+    size_t          num_frames;
+    list_t          frames;
+    size_t          idx;
+    obj_t           *pool;
 } stack_t;
 
 typedef struct {
-    stack_t             *stack;
-    instr_t             *ip;
+    stack_t         *stack;
+    instr_t         *ip;
 
     VECTOR(funcinst_t)  funcs;
 } store_t;
