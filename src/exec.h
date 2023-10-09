@@ -49,6 +49,10 @@ typedef struct {
 } frame_t;
 
 // stack
+#define TYPE_VAL    0
+#define TYPE_LABEL  1
+#define TYPE_FRAME  2
+
 typedef struct {
     uint32_t        type; // identifier
     union {

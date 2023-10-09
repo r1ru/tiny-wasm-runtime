@@ -24,7 +24,7 @@ void push_val(val_t val, stack_t *stack) {
         PANIC("stack is full");
     
     stack->pool[++stack->idx] = (obj_t) {
-        .type   = 0,
+        .type   = TYPE_VAL,
         .val    = val 
     };
     stack->num_vals++;
@@ -41,7 +41,7 @@ void push_label(label_t label, stack_t *stack) {
         PANIC("stack is full");
     
     stack->pool[++stack->idx] = (obj_t) {
-        .type   = 1,
+        .type   = TYPE_LABEL,
         .label  = label 
     };
     stack->num_labels++;
@@ -54,7 +54,7 @@ void push_frame(frame_t frame, stack_t *stack) {
     obj_t *obj = &stack->pool[++stack->idx];
 
     *obj = (obj_t) {
-        .type   = 2,
+        .type   = TYPE_FRAME,
         .frame  = frame 
     };
 
@@ -73,7 +73,7 @@ void pop_vals(vals_t *vals, stack_t *stack) {
     // count values
     size_t num_vals = 0;
     size_t i = stack->idx;
-    while(stack->pool[i].type == 0) {
+    while(stack->pool[i].type == TYPE_VAL) {
         num_vals++;
         i--;
     }
@@ -96,7 +96,7 @@ void pop_label(label_t *label, stack_t *stack) {
 error_t try_pop_label(label_t *label, stack_t *stack) { 
     obj_t obj = stack->pool[stack->idx];
 
-    if(obj.type != 1)
+    if(obj.type != TYPE_LABEL)
         return ERR_FAILED;
     
     *label = obj.label;
