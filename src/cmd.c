@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
     args_t args;
     VECTOR_INIT(&args, 2, val_t);
     VECTOR_FOR_EACH(arg, &args, val_t) {
-        arg->type      = 0x7f;
+        arg->type      = TYPE_NUM_I32;
         arg->num.int32 = 1;
     };
 

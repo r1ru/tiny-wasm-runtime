@@ -96,7 +96,7 @@ void pop_label(label_t *label, stack_t *stack);
 void pop_frame(frame_t *frame, stack_t *stack);
 
 static inline void push_i32(int32_t val, stack_t *stack) {
-    val_t v = {.type = 0x7f, .num.int32 = val};
+    val_t v = {.type = TYPE_NUM_I32, .num.int32 = val};
     push_val(v, stack);
 }
 
