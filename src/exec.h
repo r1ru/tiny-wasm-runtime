@@ -83,23 +83,30 @@ static inline bool full(stack_t *s) {
     return s->idx == NUM_STACK_ENT;
 }
 
-static inline bool empty(stack_t *s) {
-    return s->idx < 0;
+void new_stack(stack_t **d);
+void push_val(val_t val, stack_t *stack);
+void push_label(label_t label, stack_t *stack);
+void push_frame(frame_t frame, stack_t *stack);
+void pop_val(val_t *val, stack_t *stack);
+typedef VECTOR(val_t) vals_t;
+void pop_vals(vals_t *vals, stack_t *stack);
+void pop_label(label_t *label, stack_t *stack);
+void pop_frame(frame_t *frame, stack_t *stack);
+
+static inline void push_i32(int32_t val, stack_t *stack) {
+    val_t v = {.type = 0x7f, .num.int32 = val};
+    push_val(v, stack);
 }
 
-error_t new_stack(stack_t **d);
-error_t push_val(val_t val, stack_t *stack);
-error_t push_label(label_t label, stack_t *stack);
-error_t push_frame(frame_t frame, stack_t *stack);
-error_t pop_val(val_t *val, stack_t *stack);
-typedef VECTOR(val_t) vals_t;
-error_t pop_vals(vals_t *vals, stack_t *stack);
-error_t pop_label(label_t *label, stack_t *stack);
-error_t pop_frame(frame_t *frame, stack_t *stack);
+static inline void pop_i32(int32_t *val, stack_t *stack) {
+    val_t v;
+    pop_val(&v, stack);
+    *val = v.num.int32;
+}
 
 funcaddr_t  allocfunc(store_t *S, func_t *func, moduleinst_t *mod);
 moduleinst_t *allocmodule(store_t *S, module_t *module);
 error_t instantiate(store_t **store, module_t *module);
-error_t invoke_func(store_t *S, funcaddr_t funcaddr);
+void invoke_func(store_t *S, funcaddr_t funcaddr);
 typedef VECTOR(val_t) args_t;
 error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args);

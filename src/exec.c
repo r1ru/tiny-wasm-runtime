@@ -1,8 +1,12 @@
 #include "exec.h"
+#include "print.h"
 
 // stack
-error_t new_stack(stack_t **d) {
+void new_stack(stack_t **d) {
     stack_t *stack = *d = malloc(sizeof(stack_t));
+    
+    if(!stack)
+        PANIC("out of memory");
     
     *stack = (stack_t) {
         .idx        = -1,
@@ -13,55 +17,39 @@ error_t new_stack(stack_t **d) {
     };
 
     LIST_INIT(&stack->frames);
-
-    return ERR_SUCCESS;
 }
 
-error_t push_val(val_t val, stack_t *stack) {
+void push_val(val_t val, stack_t *stack) {
     if(full(stack))
-        return ERR_FAILED;
+        PANIC("stack is full");
     
     stack->pool[++stack->idx] = (obj_t) {
         .type   = 0,
         .val    = val 
     };
     stack->num_vals++;
-
-    return ERR_SUCCESS;
 }
 
-error_t push_vals(vals_t vals, stack_t *stack) {
+void push_vals(vals_t vals, stack_t *stack) {
     VECTOR_FOR_EACH(val, &vals, val_t) {
         push_val(*val, stack);
     }
-
-    return ERR_SUCCESS;
 }
 
-static inline error_t push_i32(int32_t val, stack_t *stack) {
-    val_t v = {.type = 0x7f, .num.int32 = val};
-
-    push_val(v, stack);
-
-    return ERR_SUCCESS;
-}
-
-error_t push_label(label_t label, stack_t *stack) {
+void push_label(label_t label, stack_t *stack) {
     if(full(stack))
-        return ERR_FAILED;
+        PANIC("stack is full");
     
     stack->pool[++stack->idx] = (obj_t) {
         .type   = 1,
         .label  = label 
     };
     stack->num_labels++;
-
-    return ERR_SUCCESS;
 }
 
-error_t push_frame(frame_t frame, stack_t *stack) {
+void push_frame(frame_t frame, stack_t *stack) {
     if(full(stack))
-        return ERR_FAILED;
+        PANIC("stack is full");
     
     obj_t *obj = &stack->pool[++stack->idx];
 
@@ -72,25 +60,16 @@ error_t push_frame(frame_t frame, stack_t *stack) {
 
     stack->num_frames++;
     list_push_back(&stack->frames, &obj->frame.link);
-
-    return ERR_SUCCESS;
 }
 
-error_t pop_val(val_t *val, stack_t *stack) {
-    if(empty(stack))
-        return ERR_FAILED;
-    
-    obj_t obj = stack->pool[stack->idx];
-    
-    *val = obj.val;
+void pop_val(val_t *val, stack_t *stack) {    
+    *val = stack->pool[stack->idx].val;
     stack->idx--;
     stack->num_vals--;
-
-    return ERR_SUCCESS;
 }
 
 // pop all values from the stack top
-error_t pop_vals(vals_t *vals, stack_t *stack) {
+void pop_vals(vals_t *vals, stack_t *stack) {
     // count values
     size_t num_vals = 0;
     size_t i = stack->idx;
@@ -106,35 +85,15 @@ error_t pop_vals(vals_t *vals, stack_t *stack) {
     VECTOR_FOR_EACH(val, vals, val_t) {
         pop_val(val, stack);
     }
-
-    return ERR_SUCCESS;
 }
 
-static inline error_t pop_i32(int32_t *val, stack_t *stack) {
-    val_t v;
-
-    pop_val(&v, stack);
-    *val = v.num.int32;
-    return ERR_SUCCESS;
-}
-
-error_t pop_label(label_t *label, stack_t *stack) {
-    if(empty(stack))
-        return ERR_FAILED;
-    
-    obj_t obj = stack->pool[stack->idx];
-    
-    *label = obj.label;
+void pop_label(label_t *label, stack_t *stack) {
+    *label = stack->pool[stack->idx].label;
     stack->idx--;
     stack->num_labels--;
-
-    return ERR_SUCCESS;
 }
 
-error_t try_pop_label(label_t *label, stack_t *stack) {
-    if(empty(stack))
-        return ERR_FAILED;
-    
+error_t try_pop_label(label_t *label, stack_t *stack) { 
     obj_t obj = stack->pool[stack->idx];
 
     if(obj.type != 1)
@@ -147,15 +106,10 @@ error_t try_pop_label(label_t *label, stack_t *stack) {
     return ERR_SUCCESS;
 }
 
-error_t pop_frame(frame_t *frame, stack_t *stack) {
-    if(empty(stack))
-        return ERR_FAILED;
-    
+void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
     stack->num_frames--;
-
-    return ERR_SUCCESS;
 }
 
 // There is no need to use append when instantiating, since everything we need (functions, imports, etc.) is known to us.
@@ -219,7 +173,7 @@ error_t instantiate(store_t **S, module_t *module) {
 }
 
 // execute a sequence of instructions
-static error_t exec_instrs(store_t *S) {
+static void exec_instrs(store_t *S) {
     // current ip
     instr_t *ip = S->ip;
 
@@ -286,12 +240,10 @@ static error_t exec_instrs(store_t *S) {
         // update ip
         ip = S->ip = next_ip;
     }
-
-    return ERR_SUCCESS;
 }
 
 // ref: https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
-error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
+void invoke_func(store_t *S, funcaddr_t funcaddr) {
     funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, funcaddr);
     functype_t *functype = funcinst->type;
 
@@ -324,8 +276,6 @@ error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
     // set ip and execute
     S->ip = funcinst->code->body;
     exec_instrs(S);
-
-    return ERR_SUCCESS;
 }
 
 // The args is a reference to args_t. 
