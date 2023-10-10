@@ -40,9 +40,7 @@ typedef struct {
 
 typedef struct {
     list_elem_t     link;
-    // Used when a function is called by a call instruction.
-    instr_t         *ret;
-
+    
     uint32_t        arity;
     val_t           *locals;
     moduleinst_t    *module;

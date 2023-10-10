@@ -51,7 +51,7 @@ static const char *op_str[] = {
     [OP_I32_REM_S]  = "i32.rem_s",
 };
 
-static void print_instr(instr_t *instr) {
+void print_instr(instr_t *instr) {
     switch(instr->op) {
         case OP_BLOCK:
         case OP_LOOP:
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./wasm/add.wasm", O_RDONLY);
+    int fd = open("./wasm/call.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -180,14 +180,14 @@ int main(int argc, char *argv[]) {
     printf("err = %x\n", err);
 
     args_t args;
-    VECTOR_INIT(&args, 2, val_t);
+    VECTOR_INIT(&args, 1, val_t);
     VECTOR_FOR_EACH(arg, &args, val_t) {
         arg->type      = TYPE_NUM_I32;
-        arg->num.int32 = 1;
+        arg->num.int32 = 10;
     };
 
-    // invoke add(1, 1)
-    err = invoke(S, 0, &args);
+    // invoke add42(10)
+    err = invoke(S, 1, &args);
     printf("err = %x\n", err);
     printf("result = %x\n", VECTOR_ELEM(&args, 0)->num.int32);
 
