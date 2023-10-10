@@ -10,9 +10,6 @@ void new_stack(stack_t **d) {
     
     *stack = (stack_t) {
         .idx        = -1,
-        .num_vals   = 0,
-        .num_labels = 0,
-        .num_frames = 0,
         .pool       = malloc(STACK_SIZE)
     };
 
@@ -27,8 +24,6 @@ void push_val(val_t val, stack_t *stack) {
         .type   = TYPE_VAL,
         .val    = val 
     };
-    stack->num_vals++;
-    printf("push val %x %x\n", val.type, val.num.int32);
 }
 
 void push_vals(vals_t vals, stack_t *stack) {
@@ -45,8 +40,6 @@ void push_label(label_t label, stack_t *stack) {
         .type   = TYPE_LABEL,
         .label  = label 
     };
-    stack->num_labels++;
-    puts("push label");
 }
 
 void push_frame(frame_t frame, stack_t *stack) {
@@ -60,16 +53,12 @@ void push_frame(frame_t frame, stack_t *stack) {
         .frame  = frame 
     };
 
-    stack->num_frames++;
     list_push_back(&stack->frames, &obj->frame.link);
-    puts("push frame");
 }
 
 void pop_val(val_t *val, stack_t *stack) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
-    stack->num_vals--;
-    printf("pop val %x %x\n", val->type, val->num.int32);
 }
 
 // pop all values from the stack top
@@ -94,8 +83,6 @@ void pop_vals(vals_t *vals, stack_t *stack) {
 void pop_label(label_t *label, stack_t *stack) {
     *label = stack->pool[stack->idx].label;
     stack->idx--;
-    stack->num_labels--;
-    puts("pop label");
 }
 
 error_t try_pop_label(label_t *label, stack_t *stack) { 
@@ -106,7 +93,6 @@ error_t try_pop_label(label_t *label, stack_t *stack) {
     
     *label = obj.label;
     stack->idx--;
-    stack->num_labels--;
 
     return ERR_SUCCESS;
 }
@@ -114,8 +100,6 @@ error_t try_pop_label(label_t *label, stack_t *stack) {
 void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
-    stack->num_frames--;
-    puts("pop frame");
 }
 
 // There is no need to use append when instantiating, since everything we need (functions, imports, etc.) is known to us.
@@ -177,15 +161,6 @@ error_t instantiate(store_t **S, module_t *module) {
     return ERR_SUCCESS;
 }
 
-static void dump_stack(stack_t *stack) {
-    printf(
-        "vals: %lx labels: %lx frames: %lx idx: %lx\n",
-        stack->num_vals,
-        stack->num_labels,
-        stack->num_frames,
-        stack->idx
-    );
-}
 // execute a sequence of instructions
 static void exec_instrs(store_t *S) {
     // current ip
@@ -212,14 +187,12 @@ static void exec_instrs(store_t *S) {
 
                 switch(err) {
                     case ERR_SUCCESS:
-                        puts("end label");
                         // exit instr* with label L
                         push_vals(vals, S->stack);
                         next_ip = L.continuation;
                         break;
                     
                     default: {
-                        puts("end func");
                         // return from function
                         frame_t frame;
                         pop_frame(&frame, S->stack);
@@ -250,7 +223,6 @@ static void exec_instrs(store_t *S) {
             
             case OP_I32_CONST:
                 push_i32(ip->c.i32, S->stack);
-                dump_stack(S->stack);
                 break;
             
             case OP_I32_ADD: {
@@ -339,8 +311,6 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
     VECTOR_FOR_EACH(ret, args, val_t) {
         pop_val(ret, S->stack);
     }
-    
-    dump_stack(S->stack);
 
     return ERR_SUCCESS;
 }

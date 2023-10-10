@@ -61,9 +61,6 @@ typedef struct {
 } obj_t;
 
 typedef struct {
-    size_t          num_vals;
-    size_t          num_labels;
-    size_t          num_frames;
     list_t          frames;
     size_t          idx;
     obj_t           *pool;
