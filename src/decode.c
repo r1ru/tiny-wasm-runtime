@@ -222,7 +222,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 j = j->next;
             }
 
-            if(i->op == OP_ELSE) {
+            if(j->op == OP_ELSE) {
                 decode_instr(&i->in2, buf);
                 j = i->in2;
                 while(j->op != OP_END) {
@@ -230,6 +230,10 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                     j = j->next;
                 }
             }
+            else {
+                i->in2 = NULL;
+            }
+
             break;
         }
 
