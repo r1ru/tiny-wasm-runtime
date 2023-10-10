@@ -24,6 +24,7 @@ void push_val(val_t val, stack_t *stack) {
         .type   = TYPE_VAL,
         .val    = val 
     };
+    printf("push val %x %x\n", val.type, val.num.int32);
 }
 
 void push_vals(vals_t vals, stack_t *stack) {
@@ -40,6 +41,7 @@ void push_label(label_t label, stack_t *stack) {
         .type   = TYPE_LABEL,
         .label  = label 
     };
+    puts("push label");
 }
 
 void push_frame(frame_t frame, stack_t *stack) {
@@ -52,13 +54,14 @@ void push_frame(frame_t frame, stack_t *stack) {
         .type   = TYPE_FRAME,
         .frame  = frame 
     };
-
     list_push_back(&stack->frames, &obj->frame.link);
+    puts("push frame");
 }
 
 void pop_val(val_t *val, stack_t *stack) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
+    printf("pop val %x %x\n", val->type, val->num.int32);
 }
 
 // pop all values from the stack top
@@ -83,6 +86,7 @@ void pop_vals(vals_t *vals, stack_t *stack) {
 void pop_label(label_t *label, stack_t *stack) {
     *label = stack->pool[stack->idx].label;
     stack->idx--;
+    puts("pop label");
 }
 
 error_t try_pop_label(label_t *label, stack_t *stack) { 
@@ -93,13 +97,14 @@ error_t try_pop_label(label_t *label, stack_t *stack) {
     
     *label = obj.label;
     stack->idx--;
-
+    puts("pop label");
     return ERR_SUCCESS;
 }
 
 void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
+    puts("pop frame");
 }
 
 // There is no need to use append when instantiating, since everything we need (functions, imports, etc.) is known to us.
@@ -145,9 +150,6 @@ error_t instantiate(store_t **S, module_t *module) {
     // allocate store
     store_t *store = *S = malloc(sizeof(store_t));
     
-    // init ip
-    store->ip = NULL; 
-
     // allocate stack
     new_stack(&store->stack);
 
@@ -162,9 +164,8 @@ error_t instantiate(store_t **S, module_t *module) {
 }
 
 // execute a sequence of instructions
-static void exec_instrs(store_t *S) {
-    // current ip
-    instr_t *ip = S->ip;
+static void exec_instrs(instr_t * ent, store_t *S) {
+    instr_t *ip = ent;
 
     // current frame
     frame_t *F = LIST_TAIL(&S->stack->frames, frame_t, link);
@@ -173,8 +174,28 @@ static void exec_instrs(store_t *S) {
         instr_t *next_ip = ip->next;
 
         switch(ip->op) {
+            // todo: consider the case where blocktype is typeidx.
+            case OP_IF: {
+                int32_t c;
+                pop_i32(&c, S->stack);
+
+                // enter instr* with label L 
+                label_t L = {.arity = 1, .continuation = ip->next};
+                push_label(L, S->stack);
+
+                if(c) {
+                    next_ip = ip->in1;
+                } 
+                else {
+                    next_ip = ip->in2;
+                }
+                break;
+            }
+
             // ref: https://webassembly.github.io/spec/core/exec/instructions.html#returning-from-a-function
             // ref: https://webassembly.github.io/spec/core/exec/instructions.html#exiting-xref-syntax-instructions-syntax-instr-mathit-instr-ast-with-label-l
+            // The else instruction is treated as an exit from the instruction sequence with a label
+            case OP_ELSE:
             case OP_END: {
                 // pop all values from stack
                 vals_t vals;
@@ -225,6 +246,14 @@ static void exec_instrs(store_t *S) {
                 push_i32(ip->c.i32, S->stack);
                 break;
             
+            case OP_I32_GE_S: {
+                int32_t rhs, lhs;
+                pop_i32(&rhs, S->stack);
+                pop_i32(&lhs, S->stack);
+                push_i32(lhs >= rhs, S->stack);
+                break;
+            }
+
             case OP_I32_ADD: {
                 int32_t rhs, lhs;
                 pop_i32(&rhs, S->stack);
@@ -235,7 +264,7 @@ static void exec_instrs(store_t *S) {
         }
         
         // update ip
-        ip = S->ip = next_ip;
+        ip = next_ip;
     }
 }
 
@@ -265,9 +294,8 @@ void invoke_func(store_t *S, funcaddr_t funcaddr) {
     // enter instr* with label L
     push_label(L, S->stack);
 
-    // set ip and execute
-    S->ip = funcinst->code->body;
-    exec_instrs(S);
+    // execute
+    exec_instrs(funcinst->code->body ,S);
 }
 
 // The args is a reference to args_t. 

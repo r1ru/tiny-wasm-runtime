@@ -68,8 +68,6 @@ typedef struct {
 
 typedef struct {
     stack_t         *stack;
-    instr_t         *ip;
-
     VECTOR(funcinst_t)  funcs;
 } store_t;
 

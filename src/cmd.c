@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./wasm/call.wasm", O_RDONLY);
+    int fd = open("./wasm/if.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -186,8 +186,8 @@ int main(int argc, char *argv[]) {
         arg->num.int32 = 10;
     };
 
-    // invoke add42(10)
-    err = invoke(S, 1, &args);
+    // invoke ge10(10)
+    err = invoke(S, 0, &args);
     printf("err = %x\n", err);
     printf("result = %x\n", VECTOR_ELEM(&args, 0)->num.int32);
 
