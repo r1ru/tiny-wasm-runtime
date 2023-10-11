@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./wasm/loop.wasm", O_RDONLY);
+    int fd = open("./sample/loop.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
