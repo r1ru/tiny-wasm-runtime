@@ -104,6 +104,7 @@ error_t try_pop_label(label_t *label, stack_t *stack) {
 void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
+    list_pop_tail(&stack->frames);
     puts("pop frame");
 }
 
@@ -175,6 +176,26 @@ static void exec_instrs(instr_t * ent, store_t *S) {
 
         switch(ip->op) {
             // todo: consider the case where blocktype is typeidx.
+            case OP_BLOCK: {
+                label_t L = {
+                    .arity = ip->bt.valtype == 0x40 ? 0 : 1,
+                    .continuation = ip->next,
+                };
+                push_label(L, S->stack);
+                next_ip = ip->in1;
+                break;
+            }
+
+            case OP_LOOP: {
+               label_t L = {
+                    .arity = 0,
+                    .continuation = ip,
+                };
+                push_label(L, S->stack);
+                next_ip = ip->in1;
+                break; 
+            }
+
             case OP_IF: {
                 int32_t c;
                 pop_i32(&c, S->stack);
@@ -224,6 +245,29 @@ static void exec_instrs(instr_t * ent, store_t *S) {
                 break;
             }
 
+            case OP_BR_IF: {
+                int32_t c;
+                pop_i32(&c, S->stack);
+
+                if(c == 0) {
+                    break;
+                }
+            }
+            
+            case OP_BR: {
+                vals_t vals;
+                pop_vals(&vals, S->stack);
+                label_t L;
+                for(int i = 0; i <= ip->labelidx; i++) {
+                    vals_t tmp;
+                    pop_vals(&tmp, S->stack);
+                    pop_label(&L, S->stack);
+                }
+                push_vals(vals, S->stack);
+                next_ip = L.continuation;
+                break;
+            }
+
             case OP_CALL:
                 invoke_func(S, F->module->funcaddrs[ip->funcidx]);
                 break;
@@ -234,6 +278,7 @@ static void exec_instrs(instr_t * ent, store_t *S) {
                 push_val(val, S->stack);
                 break;
             }
+
             case OP_LOCAL_SET: {
                 localidx_t x = ip->localidx;
                 val_t val;

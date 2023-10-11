@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./wasm/if.wasm", O_RDONLY);
+    int fd = open("./wasm/loop.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -179,14 +179,9 @@ int main(int argc, char *argv[]) {
     err = instantiate(&S, mod);
     printf("err = %x\n", err);
 
-    args_t args;
-    VECTOR_INIT(&args, 1, val_t);
-    VECTOR_FOR_EACH(arg, &args, val_t) {
-        arg->type      = TYPE_NUM_I32;
-        arg->num.int32 = 10;
-    };
+    args_t args = {.n = 0, .elem = NULL};
 
-    // invoke ge10(10)
+    // invoke loop()
     err = invoke(S, 0, &args);
     printf("err = %x\n", err);
     printf("result = %x\n", VECTOR_ELEM(&args, 0)->num.int32);
