@@ -23,7 +23,7 @@ typedef struct {
 } funcinst_t;
 
 typedef union {
-    int32_t         int32;
+    int32_t         i32;
 } num_t;
 
 typedef struct {
@@ -89,14 +89,14 @@ void pop_label(label_t *label, stack_t *stack);
 void pop_frame(frame_t *frame, stack_t *stack);
 
 static inline void push_i32(int32_t val, stack_t *stack) {
-    val_t v = {.type = TYPE_NUM_I32, .num.int32 = val};
+    val_t v = {.type = TYPE_NUM_I32, .num.i32 = val};
     push_val(v, stack);
 }
 
 static inline void pop_i32(int32_t *val, stack_t *stack) {
     val_t v;
     pop_val(&v, stack);
-    *val = v.num.int32;
+    *val = v.num.i32;
 }
 
 funcaddr_t  allocfunc(store_t *S, func_t *func, moduleinst_t *mod);

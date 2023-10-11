@@ -24,7 +24,7 @@ void push_val(val_t val, stack_t *stack) {
         .type   = TYPE_VAL,
         .val    = val 
     };
-    printf("push val %x %x\n", val.type, val.num.int32);
+    printf("push val %x %x\n", val.type, val.num.i32);
 }
 
 void push_vals(vals_t vals, stack_t *stack) {
@@ -61,7 +61,7 @@ void push_frame(frame_t frame, stack_t *stack) {
 void pop_val(val_t *val, stack_t *stack) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
-    printf("pop val %x %x\n", val->type, val->num.int32);
+    printf("pop val %x %x\n", val->type, val->num.i32);
 }
 
 // pop all values from the stack top
