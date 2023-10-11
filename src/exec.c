@@ -346,11 +346,10 @@ void invoke_func(store_t *S, funcaddr_t funcaddr) {
 // The args is a reference to args_t. 
 // This is because args is also used to return results.
 error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
-    if(funcaddr < 0 || (S->funcs.n - 1) < funcaddr) {
-        return ERR_FAILED;
-    }
-
     funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, funcaddr);
+    if(!funcinst)
+        return ERR_FAILED;
+
     functype_t *functype = funcinst->type;
 
     if(args->n != functype->rt1.n)

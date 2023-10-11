@@ -15,7 +15,6 @@ typedef uint32_t    localidx_t;
 
 #define TYPE_NUM_I32 0x7f
 
-// useful macros
 typedef VECTOR(valtype_t) resulttype_t;
 
 typedef struct {
