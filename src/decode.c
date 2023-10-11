@@ -284,31 +284,22 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
         uint32_t n2;
         read_u32_leb128(&n2, buf);
         VECTOR_INIT(&localses, n2, locals_t);
-        
-        // count local variables
-        functype_t *functype = VECTOR_ELEM(&mod->types, func->type);
-        uint32_t num_locals = functype->rt1.n;
 
+        // count local variables
+        uint32_t num_locals = 0;
         VECTOR_FOR_EACH(locals, &localses, locals_t) {
             read_u32_leb128(&locals->n, buf);
-            num_locals += locals->n;
             read_byte(&locals->type, buf);
+            num_locals += locals->n;
         }
 
         // create vec(valtype)
         VECTOR_INIT(&func->locals, num_locals, valtype_t);
-
-        uint32_t idx = 0;
-        for(uint32_t i = 0; i < functype->rt1.n; i++) {
-            func->locals.elem[idx++] = functype->rt1.elem[i];
-        }
-
         VECTOR_FOR_EACH(locals, &localses, locals_t) {
             for(uint32_t i = 0; i < locals->n; i++) {
-                func->locals.elem[idx++] = locals->type;
+                func->locals.elem[i] = locals->type;
             }
         }
-        // todo: free localses.elem?
         
         // decode body
         decode_instr(&func->body, buf);

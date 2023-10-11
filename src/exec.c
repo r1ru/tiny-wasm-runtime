@@ -320,8 +320,9 @@ void invoke_func(store_t *S, funcaddr_t funcaddr) {
 
     // create new frame
     frame_t frame;
+    uint32_t num_locals = functype->rt1.n + funcinst->code->locals.n;
     frame.module = funcinst->module;
-    frame.locals = malloc(sizeof(val_t) * funcinst->code->locals.n);
+    frame.locals = malloc(sizeof(val_t) * num_locals);
 
     // pop args
     for(uint32_t i = 0; i < functype->rt1.n; i++) {
