@@ -39,3 +39,9 @@
         memcpy((dst)->elem, (src1)->elem, sizeof(type) * (src1)->n);            \
         memcpy(&(dst)->elem[(src1)->n], (src2)->elem, sizeof(type) * (src2)->n);\
     } while(0)
+
+#define VECTOR_DESTORY(vec)                                                     \
+    do {                                                                        \
+        (vec)->n = 0;                                                           \
+        free((vec)->elem);                                                      \
+    } while(0)

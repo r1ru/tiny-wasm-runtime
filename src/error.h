@@ -2,6 +2,8 @@
 
 typedef int error_t;
 
+#define ERROR(err) ((err) < 0)
+
 #define ERR_CODE(c) (-c)
 
 #define ERR_SUCCESS     0

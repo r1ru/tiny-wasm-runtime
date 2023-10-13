@@ -34,6 +34,13 @@ typedef struct list list_elem_t;
         (__elem) ? LIST_CONTAINER(__elem, container, field) : NULL;             \
     })
 
+#define LIST_GET_ELEM(list, container, field, idx)                              \
+    ({                                                                          \
+        list_elem_t *__elem = list_get_elem(list, idx);                         \
+        (__elem) ? LIST_CONTAINER(__elem, container, field) : NULL;             \
+    })
+
 void list_push_back(list_t *list, list_elem_t *elem);
 list_elem_t *list_tail(list_t *list);
 list_elem_t *list_pop_tail(list_t *list);
+list_elem_t *list_get_elem(list_t *list, size_t idx);

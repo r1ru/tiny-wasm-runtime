@@ -32,3 +32,15 @@ list_elem_t *list_pop_tail(list_t *list) {
 
     return tail;
 }
+
+list_elem_t *list_get_elem(list_t *list, size_t idx) {
+    list_elem_t *e = list;
+
+    do {
+        e = e->prev;
+        if(e == list)
+            return NULL;
+    } while(idx--);
+    
+    return e;
+}

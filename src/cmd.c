@@ -10,6 +10,7 @@
 #include "memory.h"
 #include "decode.h"
 #include "module.h"
+#include "validate.h"
 #include "error.h"
 #include "exec.h"
 
@@ -18,7 +19,7 @@ static void fatal(const char *msg) {
     exit(EXIT_FAILURE);
 }
 
-static void print_type(functype_t *func) {
+void print_type(functype_t *func) {
     printf("args: ");
 
     VECTOR_FOR_EACH(valtype, &func->rt1, valtype_t) {
@@ -103,7 +104,7 @@ void print_instr(instr_t *instr) {
     }
 }
 
-static void print_func(func_t *func) {
+void print_func(func_t *func) {
     printf("type: %x\n", func->type);
     printf("locals: ");
 
@@ -173,9 +174,11 @@ int main(int argc, char *argv[]) {
     }
     putchar('\n');
 
-    store_t *S;
     error_t err;
+    err = validate_module(mod);
+    printf("err = %x\n", err);
 
+    store_t *S;
     err = instantiate(&S, mod);
     printf("err = %x\n", err);
 
