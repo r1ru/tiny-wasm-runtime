@@ -16,6 +16,10 @@ void new_stack(stack_t **d) {
     LIST_INIT(&stack->frames);
 }
 
+static inline bool full(stack_t *s) {
+    return s->idx == NUM_STACK_ENT;
+}
+
 void push_val(val_t val, stack_t *stack) {
     if(full(stack))
         PANIC("stack is full");
@@ -24,7 +28,12 @@ void push_val(val_t val, stack_t *stack) {
         .type   = TYPE_VAL,
         .val    = val 
     };
-    printf("push val %x %x\n", val.type, val.num.i32);
+    printf("push val %x \n", val.num.i32);
+}
+
+static inline void push_i32(int32_t val, stack_t *stack) {
+    val_t v = {.num.i32 = val};
+    push_val(v, stack);
 }
 
 void push_vals(vals_t vals, stack_t *stack) {
@@ -61,7 +70,13 @@ void push_frame(frame_t frame, stack_t *stack) {
 void pop_val(val_t *val, stack_t *stack) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
-    printf("pop val %x %x\n", val->type, val->num.i32);
+    printf("pop val %x\n", val->num.i32);
+}
+
+static inline void pop_i32(int32_t *val, stack_t *stack) {
+    val_t v;
+    pop_val(&v, stack);
+    *val = v.num.i32;
 }
 
 // pop all values from the stack top
@@ -357,8 +372,8 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         return ERR_FAILED;
    
     int idx = 0;
-    VECTOR_FOR_EACH(val, args, val_t) {
-        if(val->type != *VECTOR_ELEM(&functype->rt1, idx++))
+    VECTOR_FOR_EACH(arg, args, arg_t) {
+        if(arg->type != *VECTOR_ELEM(&functype->rt1, idx++))
             return ERR_FAILED;
     }
 
@@ -371,8 +386,8 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
     push_frame(frame, S->stack);
     
     // push args
-    VECTOR_FOR_EACH(val, args, val_t) {
-        push_val(*val, S->stack);
+    VECTOR_FOR_EACH(arg, args, arg_t) {
+        push_val(arg->val, S->stack);
     }
 
     // invoke func
@@ -380,9 +395,9 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
 
     // reuse args to return results since it is no longer used.
     //free(args->elem);
-    VECTOR_INIT(args, functype->rt2.n, val_t);
-    VECTOR_FOR_EACH(ret, args, val_t) {
-        pop_val(ret, S->stack);
+    VECTOR_INIT(args, functype->rt2.n, arg_t);
+    VECTOR_FOR_EACH(ret, args, arg_t) {
+        pop_val(&ret->val, S->stack);
     }
 
     return ERR_SUCCESS;

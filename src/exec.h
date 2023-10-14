@@ -26,12 +26,11 @@ typedef union {
     int32_t         i32;
 } num_t;
 
-typedef struct {
-    valtype_t       type;
-    union {
-        num_t       num;
-    };
+typedef union {
+    num_t       num;
 } val_t;
+
+typedef VECTOR(val_t) vals_t;
 
 typedef struct {
     uint32_t        arity;
@@ -47,10 +46,6 @@ typedef struct {
 } frame_t;
 
 // stack
-#define TYPE_VAL    0
-#define TYPE_LABEL  1
-#define TYPE_FRAME  2
-
 typedef struct {
     uint32_t        type; // identifier
     union {
@@ -59,6 +54,13 @@ typedef struct {
         frame_t     frame;
     };
 } obj_t;
+
+#define TYPE_VAL        0
+#define TYPE_LABEL      1
+#define TYPE_FRAME      2
+
+#define STACK_SIZE      (4096)
+#define NUM_STACK_ENT   (STACK_SIZE / sizeof(obj_t))
 
 typedef struct {
     list_t          frames;
@@ -71,37 +73,24 @@ typedef struct {
     VECTOR(funcinst_t)  funcs;
 } store_t;
 
-#define STACK_SIZE              (4096)
-#define NUM_STACK_ENT           (STACK_SIZE / sizeof(obj_t))
+typedef struct {
+    valtype_t   type;
+    val_t       val;
+} arg_t;
 
-static inline bool full(stack_t *s) {
-    return s->idx == NUM_STACK_ENT;
-}
+typedef VECTOR(arg_t) args_t;
 
 void new_stack(stack_t **d);
 void push_val(val_t val, stack_t *stack);
 void push_label(label_t label, stack_t *stack);
 void push_frame(frame_t frame, stack_t *stack);
 void pop_val(val_t *val, stack_t *stack);
-typedef VECTOR(val_t) vals_t;
 void pop_vals(vals_t *vals, stack_t *stack);
 void pop_label(label_t *label, stack_t *stack);
 void pop_frame(frame_t *frame, stack_t *stack);
-
-static inline void push_i32(int32_t val, stack_t *stack) {
-    val_t v = {.type = TYPE_NUM_I32, .num.i32 = val};
-    push_val(v, stack);
-}
-
-static inline void pop_i32(int32_t *val, stack_t *stack) {
-    val_t v;
-    pop_val(&v, stack);
-    *val = v.num.i32;
-}
 
 funcaddr_t  allocfunc(store_t *S, func_t *func, moduleinst_t *mod);
 moduleinst_t *allocmodule(store_t *S, module_t *module);
 error_t instantiate(store_t **store, module_t *module);
 void invoke_func(store_t *S, funcaddr_t funcaddr);
-typedef VECTOR(val_t) args_t;
 error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args);

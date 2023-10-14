@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
     // invoke loop()
     err = invoke(S, 0, &args);
     printf("err = %x\n", err);
-    printf("result = %x\n", VECTOR_ELEM(&args, 0)->num.i32);
+    printf("result = %x\n", VECTOR_ELEM(&args, 0)->val.num);
 
     // cleanup
     munmap(head, fsize);
