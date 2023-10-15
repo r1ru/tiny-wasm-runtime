@@ -185,9 +185,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
 
 // validate instructiin sequence
 error_t validate_instrs(context_t *C, instr_t *start, type_stack *stack) {
-    instr_t *ip = start;
-
     __try {
+        instr_t *ip = start;
         instr_t *next_ip;
         while(ip) {
             next_ip = ip->next;
@@ -200,9 +199,8 @@ error_t validate_instrs(context_t *C, instr_t *start, type_stack *stack) {
 }
 
 error_t validate_expr(context_t *C, instr_t *start, resulttype_t *expect) {
-    type_stack stack = {.idx = -1, .polymorphic = false};
-
     __try {
+        type_stack stack = {.idx = -1, .polymorphic = false};
         __throwif(ERR_FAILED, IS_ERROR(validate_instrs(C, start, &stack)));
         
         // compare witch expected type
@@ -240,14 +238,14 @@ error_t validate_func(context_t *C, func_t *func, functype_t *actual) {
 }
 
 error_t validate_module(module_t *mod) {
-    // create context
-    context_t C;
-
-    VECTOR_COPY(&C.types, &mod->types, functype_t);
-    VECTOR_INIT(&C.funcs, mod->funcs.n, functype_t);
-    LIST_INIT(&C.labels);
-
     __try {
+        // create context
+        context_t C;
+
+        VECTOR_COPY(&C.types, &mod->types, functype_t);
+        VECTOR_INIT(&C.funcs, mod->funcs.n, functype_t);
+        LIST_INIT(&C.labels);
+
         size_t idx = 0;
         VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
             __throwif(ERR_FAILED, validate_func(&C, func, VECTOR_ELEM(&C.funcs, idx++)));
