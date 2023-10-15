@@ -170,13 +170,51 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(TYPE_NUM_I32, stack);
                 break;
             
-            // binop
-            case OP_I32_ADD:
+            // testop and unop
+            case OP_I32_EQZ:
+            case OP_I32_CLZ:
+            case OP_I32_CTZ:
+            case OP_I32_POPCNT:
+            case OP_I32_EXTEND8_S:
+            case OP_I32_EXTEND16_S:
+                __throwif(ERR_FAILED, IS_ERROR(try_pop(TYPE_NUM_I32, stack)));
+                push(TYPE_NUM_I32, stack);
+                break;
+            
+            // relop and binop
+            case OP_I32_EQ:
+            case OP_I32_NE:
+            case OP_I32_LT_S:
+            case OP_I32_LT_U:
+            case OP_I32_GT_S:
+            case OP_I32_GT_U:
+            case OP_I32_LE_S:
+            case OP_I32_LE_U:
             case OP_I32_GE_S:
+            case OP_I32_GE_U:
+            case OP_I32_ADD:
+            case OP_I32_SUB:
+            case OP_I32_MUL:
+            case OP_I32_DIV_S:
+            case OP_I32_DIV_U:
+            case OP_I32_REM_S:
+            case OP_I32_REM_U:
+            case OP_I32_AND:
+            case OP_I32_OR:
+            case OP_I32_XOR:
+            case OP_I32_SHL:
+            case OP_I32_SHR_S:
+            case OP_I32_SHR_U:
+            case OP_I32_ROTL:
+            case OP_I32_ROTR:
                 __throwif(ERR_FAILED, IS_ERROR(try_pop(TYPE_NUM_I32, stack)));
                 __throwif(ERR_FAILED, IS_ERROR(try_pop(TYPE_NUM_I32, stack)));
                 push(TYPE_NUM_I32, stack);
                 break;
+            
+            default:
+                ERROR("unsupported opcode: %x\n", ip->op);
+                __throw(ERR_FAILED);
         }       
     } 
     __catch:

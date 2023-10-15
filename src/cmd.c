@@ -233,11 +233,12 @@ int main(int argc, char *argv[]) {
     }
     putchar('\n');
 
-    /*
+
     err = validate_module(mod);
     if(IS_ERROR(err))
         PANIC("validation failed");
 
+    /*
     store_t *S;
     err = instantiate(&S, mod);
     if(IS_ERROR(err))
