@@ -36,21 +36,47 @@ void print_type(functype_t *func) {
 }
 
 static const char *op_str[] = {
-    [OP_BLOCK]      = "block",
-    [OP_LOOP]       = "loop",
-    [OP_IF]         = "if",
-    [OP_END]        = "end",
-    [OP_BR]         = "br",
-    [OP_BR_IF]      = "br_if",
-    [OP_CALL]       = "call",
-    [OP_LOCAL_GET]  = "local.get",
-    [OP_LOCAL_SET]  = "local.set",
-    [OP_I32_CONST]  = "i32.const",
-    [OP_I32_EQZ]    = "i32.eqz",
-    [OP_I32_LT_S]   = "i32.lt_s",
-    [OP_I32_GE_S]   = "i32.ge_s",
-    [OP_I32_ADD]    = "i32.add",
-    [OP_I32_REM_S]  = "i32.rem_s",
+    [OP_BLOCK]          = "block",
+    [OP_LOOP]           = "loop",
+    [OP_IF]             = "if",
+    [OP_END]            = "end",
+    [OP_BR]             = "br",
+    [OP_BR_IF]          = "br_if",
+    [OP_CALL]           = "call",
+    [OP_LOCAL_GET]      = "local.get",
+    [OP_LOCAL_SET]      = "local.set",
+    [OP_I32_CONST]      = "i32.const",
+    [OP_I32_EQZ]        = "i32.eqz",
+    [OP_I32_EQ]         = "i32.eq",
+    [OP_I32_NE]         = "i32.ne",
+    [OP_I32_LT_S]       = "i32.lt_s",
+    [OP_I32_LT_U]       = "i32.lt_u",
+    [OP_I32_GT_S]       = "i32.gt_s",
+    [OP_I32_GT_U]       = "i32.gt_u",
+    [OP_I32_LE_S]       = "i32.le_s",
+    [OP_I32_LE_U]       = "i32.le_u",
+    [OP_I32_GE_S]       = "i32.ge_s",
+    [OP_I32_GE_U]       = "i32.ge_u",
+    [OP_I32_CLZ]        = "i32.clz",
+    [OP_I32_CTZ]        = "i32.ctz",
+    [OP_I32_POPCNT]     = "i32.popcnt",
+    [OP_I32_ADD]        = "i32.add",
+    [OP_I32_SUB]        = "i32.sub",
+    [OP_I32_MUL]        = "i32.mul",
+    [OP_I32_DIV_S]      = "i32.div_s",
+    [OP_I32_DIV_U]      = "i32.div_u",
+    [OP_I32_REM_S]      = "i32.rem_s",
+    [OP_I32_REM_U]      = "i32.rem_u",
+    [OP_I32_AND]        = "i32.and",
+    [OP_I32_OR]         = "i32.or",
+    [OP_I32_XOR]        = "i32.xor",
+    [OP_I32_SHL]        = "i32.shl",
+    [OP_I32_SHR_S]      = "i32.shr_s",
+    [OP_I32_SHR_U]      = "i32.shr_u",
+    [OP_I32_ROTL]       = "i32.rotl",
+    [OP_I32_ROTR]       = "i32.rotr",
+    [OP_I32_EXTEND8_S]  = "i32.extend8_s",
+    [OP_I32_EXTEND16_S] = "i32.extend16_s",
 };
 
 void print_instr(instr_t *instr) {
@@ -96,10 +122,38 @@ void print_instr(instr_t *instr) {
             break;
         
         case OP_I32_EQZ:
+        case OP_I32_EQ:
+        case OP_I32_NE:
         case OP_I32_LT_S:
+        case OP_I32_LT_U:
+        case OP_I32_GT_S:
+        case OP_I32_GT_U:
+        case OP_I32_LE_S:
+        case OP_I32_LE_U:
         case OP_I32_GE_S:
+        case OP_I32_GE_U:
+
+        case OP_I32_CLZ:
+        case OP_I32_CTZ:
+        case OP_I32_POPCNT:
         case OP_I32_ADD:
+        case OP_I32_SUB:
+        case OP_I32_MUL:
+        case OP_I32_DIV_S:
+        case OP_I32_DIV_U:
         case OP_I32_REM_S:
+        case OP_I32_REM_U:
+        case OP_I32_AND:
+        case OP_I32_OR:
+        case OP_I32_XOR:
+        case OP_I32_SHL:
+        case OP_I32_SHR_S:
+        case OP_I32_SHR_U:
+        case OP_I32_ROTL:
+        case OP_I32_ROTR:
+
+        case OP_I32_EXTEND8_S:
+        case OP_I32_EXTEND16_S:
             printf("%s\n", op_str[instr->op]);
             break;
     }
@@ -137,7 +191,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./sample/loop.wasm", O_RDONLY);
+    int fd = open("./_out/i32.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -179,6 +233,7 @@ int main(int argc, char *argv[]) {
     }
     putchar('\n');
 
+    /*
     err = validate_module(mod);
     if(IS_ERROR(err))
         PANIC("validation failed");
@@ -194,6 +249,7 @@ int main(int argc, char *argv[]) {
     err = invoke(S, 0, &args);
     printf("err = %x\n", err);
     printf("result = %x\n", VECTOR_ELEM(&args, 0)->val.num);
+    */
 
     // cleanup
     munmap(head, fsize);
