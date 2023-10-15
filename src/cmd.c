@@ -13,6 +13,7 @@
 #include "validate.h"
 #include "error.h"
 #include "exec.h"
+#include "print.h"
 
 static void fatal(const char *msg) {
     perror(msg);
@@ -154,7 +155,11 @@ int main(int argc, char *argv[]) {
     if(head == MAP_FAILED) fatal("mmap");
 
     module_t *mod;
-    decode_module(&mod, head, fsize);
+    error_t err;
+
+    err = decode_module(&mod, head, fsize);
+    if(IS_ERROR(err))
+        PANIC("decoding failed");
     
     puts("[types]");
     VECTOR_FOR_EACH(type, &mod->types, functype_t) {
@@ -174,13 +179,14 @@ int main(int argc, char *argv[]) {
     }
     putchar('\n');
 
-    error_t err;
     err = validate_module(mod);
-    printf("err = %x\n", err);
+    if(IS_ERROR(err))
+        PANIC("validation failed");
 
     store_t *S;
     err = instantiate(&S, mod);
-    printf("err = %x\n", err);
+    if(IS_ERROR(err))
+        PANIC("insntiation failed");
 
     args_t args = {.n = 0, .elem = NULL};
 
