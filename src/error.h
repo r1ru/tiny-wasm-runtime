@@ -2,7 +2,7 @@
 
 typedef int error_t;
 
-#define ERROR(err) ((err) < 0)
+#define IS_ERROR(err) ((err) < 0)
 
 #define ERR_CODE(c) (-c)
 

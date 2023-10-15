@@ -18,3 +18,11 @@ void exit(int status);
         );                                                  \
         exit(1);                                            \
     }while(0)
+
+#define ERROR(fmt, ...)                                     \
+     do {                                                   \
+        printf(                                             \
+            SGR_ERR "ERROR %s:%d " fmt SGR_RESET PRINT_NL,  \
+            __FILE__, __LINE__, ##__VA_ARGS__               \
+        );                                                  \
+    }while(0)
