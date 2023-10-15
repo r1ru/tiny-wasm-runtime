@@ -179,6 +179,185 @@ error_t instantiate(store_t **S, module_t *module) {
     return ERR_SUCCESS;
 }
 
+static int32_t i32_eqz(int32_t c) {
+    return c == 0;
+}
+
+// ref: https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
+static int32_t i32_clz(int32_t c) {
+    return __builtin_clz(c);
+}
+
+static int32_t i32_ctz(int32_t c) {
+    return __builtin_ctz(c);
+}
+
+static int32_t i32_popcnt(int32_t c) {
+    return __builtin_popcount(c);
+}
+
+static int32_t i32_extend8_s(int32_t c) {
+    return (int32_t)(int8_t)c;
+}
+
+static int32_t i32_extend16_s(int32_t c) {
+    return (int32_t)(int16_t)c;
+}
+
+typedef int32_t (*unop_t) (int32_t);
+
+static unop_t i32_unop[] = {
+    [OP_I32_EQZ]        = i32_eqz,
+    [OP_I32_CLZ]        = i32_clz,
+    [OP_I32_CTZ]        = i32_ctz,
+    [OP_I32_POPCNT]     = i32_popcnt,
+    [OP_I32_EXTEND8_S]  = i32_extend8_s,
+    [OP_I32_EXTEND16_S] = i32_extend16_s,
+};
+
+static int32_t i32_eq(int32_t lhs, int32_t rhs) {
+    return lhs == rhs;
+}
+
+static int32_t i32_ne(int32_t lhs, int32_t rhs) {
+    return lhs != rhs;
+}
+
+static int32_t i32_lt_s(int32_t lhs, int32_t rhs) {
+    return lhs < rhs;
+}
+
+static int32_t i32_lt_u(int32_t lhs, int32_t rhs) {
+    uint32_t lhs_u = lhs, rhs_u = rhs;
+    return lhs_u < rhs_u;
+}
+
+static int32_t i32_gt_s(int32_t lhs, int32_t rhs) {
+    return lhs > rhs;
+}
+
+static int32_t i32_gt_u(int32_t lhs, int32_t rhs) {
+    uint32_t lhs_u = lhs, rhs_u = rhs;
+    return lhs_u > rhs_u;
+}
+
+static int32_t i32_le_s(int32_t lhs, int32_t rhs) {
+    return lhs <= rhs;
+}
+
+static int32_t i32_le_u(int32_t lhs, int32_t rhs) {
+    uint32_t lhs_u = lhs, rhs_u = rhs;
+    return lhs_u <= rhs_u;
+}
+
+static int32_t i32_ge_s(int32_t lhs, int32_t rhs) {
+    return lhs >= rhs;
+}
+
+static int32_t i32_ge_u(int32_t lhs, int32_t rhs) {
+    uint32_t lhs_u = lhs, rhs_u = rhs;
+    return lhs_u >= rhs_u;
+}
+
+static int32_t i32_add(int32_t lhs, int32_t rhs) {
+    return lhs + rhs;
+}
+
+static int32_t i32_sub(int32_t lhs, int32_t rhs) {
+    return lhs - rhs;
+}
+
+static int32_t i32_mul(int32_t lhs, int32_t rhs) {
+    return lhs * rhs;
+}
+
+// todo: panic if rhs == 0?
+static int32_t i32_div_s(int32_t lhs, int32_t rhs) {
+    return lhs / rhs;
+}
+
+static int32_t i32_div_u(int32_t lhs, int32_t rhs) {
+    uint32_t lhs_u = lhs, rhs_u = rhs;
+    return lhs_u / rhs_u;
+}
+
+static int32_t i32_rem_s(int32_t lhs, int32_t rhs) {
+    return lhs % rhs;
+}
+
+static int32_t i32_rem_u(int32_t lhs, int32_t rhs) {
+    uint32_t lhs_u = lhs, rhs_u = rhs;
+    return lhs_u % rhs_u;
+}
+
+static int32_t i32_and(int32_t lhs, int32_t rhs) {
+    return lhs & rhs;
+}
+
+static int32_t i32_or(int32_t lhs, int32_t rhs) {
+    return lhs | rhs;
+}
+
+static int32_t i32_xor(int32_t lhs, int32_t rhs) {
+    return lhs ^ rhs;
+}
+
+static int32_t i32_shl(int32_t lhs, int32_t rhs) {
+    return lhs << rhs;
+}
+
+static int32_t i32_shr_s(int32_t lhs, int32_t rhs) {
+    uint32_t lhs_u = lhs, rhs_u = rhs;
+    return lhs_u >> rhs_u;
+}
+
+static int32_t i32_shr_u(int32_t lhs, int32_t rhs) {
+    return lhs >> rhs;
+}
+
+// ref: https://en.wikipedia.org/wiki/Circular_shift
+static int32_t i32_rotl(int32_t lhs, int32_t rhs) {
+    uint32_t lhs_u = lhs, rhs_u = rhs;
+    rhs_u &= 31;
+    return (lhs_u << rhs_u) | (lhs_u >> ((-rhs_u) & 31));
+}
+
+static int32_t i32_rotr(int32_t lhs, int32_t rhs) {
+    uint32_t lhs_u = lhs, rhs_u = rhs;
+    rhs_u &= 31;
+    return (lhs_u >> rhs_u) | (lhs_u << ((-rhs_u) & 31));
+}
+
+typedef int32_t (*binop_t) (int32_t, int32_t);
+
+static binop_t i32_binop[] = {
+    [OP_I32_EQ]     = i32_eq,
+    [OP_I32_NE]     = i32_ne,
+    [OP_I32_LT_S]   = i32_lt_s,
+    [OP_I32_LT_U]   = i32_lt_u,
+    [OP_I32_GT_S]   = i32_gt_s,
+    [OP_I32_GT_U]   = i32_gt_u,
+    [OP_I32_LE_S]   = i32_le_s,
+    [OP_I32_LE_U]   = i32_le_u,
+    [OP_I32_GE_S]   = i32_ge_s,
+    [OP_I32_GE_U]   = i32_ge_u,
+    [OP_I32_ADD]    = i32_add,
+    [OP_I32_SUB]    = i32_sub,
+    [OP_I32_MUL]    = i32_mul,
+    [OP_I32_DIV_S]  = i32_div_s,
+    [OP_I32_DIV_U]  = i32_div_u,
+    [OP_I32_REM_S]  = i32_rem_s,
+    [OP_I32_REM_U]  = i32_rem_u,
+    [OP_I32_AND]    = i32_and,
+    [OP_I32_OR]     = i32_or,
+    [OP_I32_XOR]    = i32_xor,
+    [OP_I32_SHL]    = i32_shl,
+    [OP_I32_SHR_S]  = i32_shr_s,
+    [OP_I32_SHR_U]  = i32_shr_u,
+    [OP_I32_ROTL]   = i32_rotl,
+    [OP_I32_ROTR]   = i32_rotr,
+};
+
 // execute a sequence of instructions
 static void exec_instrs(instr_t * ent, store_t *S) {
     instr_t *ip = ent;
@@ -306,21 +485,52 @@ static void exec_instrs(instr_t * ent, store_t *S) {
                 push_i32(ip->c.i32, S->stack);
                 break;
             
-            case OP_I32_GE_S: {
+            case OP_I32_EQZ:
+            case OP_I32_CLZ:
+            case OP_I32_CTZ:
+            case OP_I32_POPCNT:
+            case OP_I32_EXTEND8_S:
+            case OP_I32_EXTEND16_S: {
+                int32_t c;
+                pop_i32(&c, S->stack);
+                push_i32(i32_unop[ip->op](c), S->stack);
+                break;
+            }
+            
+            case OP_I32_EQ:
+            case OP_I32_NE:
+            case OP_I32_LT_S:
+            case OP_I32_LT_U:
+            case OP_I32_GT_S:
+            case OP_I32_GT_U:
+            case OP_I32_LE_S:
+            case OP_I32_LE_U:
+            case OP_I32_GE_S:
+            case OP_I32_GE_U:
+            case OP_I32_ADD:
+            case OP_I32_SUB:
+            case OP_I32_MUL: 
+            case OP_I32_DIV_S:
+            case OP_I32_DIV_U: 
+            case OP_I32_REM_S: 
+            case OP_I32_REM_U:
+            case OP_I32_AND:
+            case OP_I32_OR:
+            case OP_I32_XOR:
+            case OP_I32_SHL:
+            case OP_I32_SHR_S:
+            case OP_I32_SHR_U:
+            case OP_I32_ROTL:
+            case OP_I32_ROTR: {
                 int32_t rhs, lhs;
                 pop_i32(&rhs, S->stack);
                 pop_i32(&lhs, S->stack);
-                push_i32(lhs >= rhs, S->stack);
+                push_i32(i32_binop[ip->op](lhs, rhs), S->stack);
                 break;
             }
 
-            case OP_I32_ADD: {
-                int32_t rhs, lhs;
-                pop_i32(&rhs, S->stack);
-                pop_i32(&lhs, S->stack);
-                push_i32(lhs + rhs, S->stack);
-                break;
-            }
+            default:
+                PANIC("unsupported opcode: %x\n", ip->op);
         }
         
         // update ip
@@ -340,7 +550,7 @@ void invoke_func(store_t *S, funcaddr_t funcaddr) {
     frame.locals = malloc(sizeof(val_t) * num_locals);
 
     // pop args
-    for(uint32_t i = 0; i < functype->rt1.n; i++) {
+    for(int32_t i = (functype->rt1.n - 1); 0 <= i; i--) {
         pop_val(&frame.locals[i], S->stack);
     }
 

@@ -238,19 +238,26 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("validation failed");
 
-    /*
     store_t *S;
     err = instantiate(&S, mod);
     if(IS_ERROR(err))
         PANIC("insntiation failed");
 
-    args_t args = {.n = 0, .elem = NULL};
+    args_t args;
+    VECTOR_INIT(&args, 2, arg_t);
 
-    // invoke loop()
-    err = invoke(S, 0, &args);
-    printf("err = %x\n", err);
-    printf("result = %x\n", VECTOR_ELEM(&args, 0)->val.num);
-    */
+    int idx = 0;
+    VECTOR_FOR_EACH(arg, &args, arg_t) {
+        arg->type = TYPE_NUM_I32;
+        arg->val.num.i32 = idx++ == 0 ? 1 : 1;
+    };
+
+    // invoke ge_u(1,1)
+    err = invoke(S, 30, &args);
+    if(IS_ERROR(err))
+        PANIC("invocation failed");
+    
+    printf("result = %x\n", VECTOR_ELEM(&args, 0)->val.num.i32);
 
     // cleanup
     munmap(head, fsize);
