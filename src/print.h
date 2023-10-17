@@ -25,3 +25,10 @@ void exit(int status);
             SGR_ERR fmt SGR_RESET PRINT_NL, ##__VA_ARGS__   \
         );                                                  \
     }while(0)
+
+#define INFO(fmt, ...)                                      \
+    do {                                                    \
+        printf(                                             \
+            SGR_INFO fmt SGR_RESET PRINT_NL, ##__VA_ARGS__  \
+        );                                                  \
+    }while(0)
