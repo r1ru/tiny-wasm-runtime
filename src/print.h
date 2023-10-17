@@ -20,9 +20,8 @@ void exit(int status);
     }while(0)
 
 #define ERROR(fmt, ...)                                     \
-     do {                                                   \
+    do {                                                    \
         printf(                                             \
-            SGR_ERR "ERROR %s:%d " fmt SGR_RESET PRINT_NL,  \
-            __FILE__, __LINE__, ##__VA_ARGS__               \
+            SGR_ERR fmt SGR_RESET PRINT_NL, ##__VA_ARGS__   \
         );                                                  \
     }while(0)
