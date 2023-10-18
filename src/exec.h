@@ -92,5 +92,4 @@ void pop_frame(frame_t *frame, stack_t *stack);
 funcaddr_t  allocfunc(store_t *S, func_t *func, moduleinst_t *mod);
 moduleinst_t *allocmodule(store_t *S, module_t *module);
 error_t instantiate(store_t **store, module_t *module);
-void invoke_func(store_t *S, funcaddr_t funcaddr);
 error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args);

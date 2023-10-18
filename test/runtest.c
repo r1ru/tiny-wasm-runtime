@@ -109,7 +109,7 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
             const char *fpath = json_object_get_string(command, "filename");
             __throwif(ERR_FAILED, create_test_ctx(ctx, fpath));
         }
-        else if(strcmp(type, "assert_return") == 0) {
+        else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0) {
             JSON_Object *action = json_object_get_object(command, "action");
             const char *action_type = json_object_get_string(action, "type");
 
@@ -127,17 +127,21 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                 args_t args;
                 convert_to_args(&args, json_object_get_array(action, "args"));
 
-                __throwif(ERR_FAILED, IS_ERROR(invoke(ctx->store, addr, &args)));
+                if(strcmp(type, "assert_return") == 0) {
+                    __throwif(ERR_FAILED, IS_ERROR(invoke(ctx->store, addr, &args)));
 
-                args_t expects;
-                convert_to_args(&expects, json_object_get_array(command, "expected"));
-                
-                size_t idx = 0;
-                VECTOR_FOR_EACH(expect, &expects, arg_t) {
-                    // todo: validate type?
-                    arg_t *ret = VECTOR_ELEM(&args, idx++);
-                    // todo: consider the case whrere type != i32
-                    __throwif(ERR_FAILED, ret->val.num.i32 != expect->val.num.i32);
+                    args_t expects;
+                    convert_to_args(&expects, json_object_get_array(command, "expected"));
+                    
+                    size_t idx = 0;
+                    VECTOR_FOR_EACH(expect, &expects, arg_t) {
+                        // todo: validate type?
+                        arg_t *ret = VECTOR_ELEM(&args, idx++);
+                        // todo: consider the case whrere type != i32
+                        __throwif(ERR_FAILED, ret->val.num.i32 != expect->val.num.i32);
+                    }
+                } else {
+                    __throwif(ERR_FAILED, !IS_ERROR(invoke(ctx->store, addr, &args)));
                 }
             }
         }
@@ -160,6 +164,7 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                 line
             );
         }
+        return err;
 }
 
 int main(int argc, char *argv[]) {
