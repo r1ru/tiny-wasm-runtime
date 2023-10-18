@@ -191,7 +191,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./_out/i32.0.wasm", O_RDONLY);
+    int fd = open("./_test/i32.1.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;

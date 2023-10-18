@@ -28,7 +28,7 @@ void push_val(val_t val, stack_t *stack) {
         .type   = TYPE_VAL,
         .val    = val 
     };
-    printf("push val %x \n", val.num.i32);
+    //printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
 }
 
 static inline void push_i32(int32_t val, stack_t *stack) {
@@ -50,7 +50,7 @@ void push_label(label_t label, stack_t *stack) {
         .type   = TYPE_LABEL,
         .label  = label 
     };
-    puts("push label");
+    //printf("push label idx: %ld\n", stack->idx);
 }
 
 void push_frame(frame_t frame, stack_t *stack) {
@@ -64,13 +64,13 @@ void push_frame(frame_t frame, stack_t *stack) {
         .frame  = frame 
     };
     list_push_back(&stack->frames, &obj->frame.link);
-    puts("push frame");
+    //printf("push frame idx: %ld\n", stack->idx);
 }
 
 void pop_val(val_t *val, stack_t *stack) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
-    printf("pop val %x\n", val->num.i32);
+    //printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
 }
 
 static inline void pop_i32(int32_t *val, stack_t *stack) {
@@ -101,7 +101,7 @@ void pop_vals(vals_t *vals, stack_t *stack) {
 void pop_label(label_t *label, stack_t *stack) {
     *label = stack->pool[stack->idx].label;
     stack->idx--;
-    puts("pop label");
+    //printf("pop label idx: %ld\n", stack->idx);
 }
 
 error_t try_pop_label(label_t *label, stack_t *stack) { 
@@ -112,7 +112,7 @@ error_t try_pop_label(label_t *label, stack_t *stack) {
     
     *label = obj.label;
     stack->idx--;
-    puts("pop label");
+    //printf("pop label idx: %ld\n", stack->idx);
     return ERR_SUCCESS;
 }
 
@@ -120,7 +120,7 @@ void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
     list_pop_tail(&stack->frames);
-    puts("pop frame");
+    //printf("pop frame idx: %ld\n", stack->idx);
 }
 
 // There is no need to use append when instantiating, since everything we need (functions, imports, etc.) is known to us.
@@ -185,7 +185,10 @@ static int32_t i32_eqz(int32_t c) {
 
 // ref: https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
 static int32_t i32_clz(int32_t c) {
-    return __builtin_clz(c);
+    if(c == 0)
+        return 32;
+    else 
+        return __builtin_clz(c);
 }
 
 static int32_t i32_ctz(int32_t c) {
@@ -281,8 +284,14 @@ static int32_t i32_div_u(int32_t lhs, int32_t rhs) {
     return lhs_u / rhs_u;
 }
 
+// ref: https://github.com/wasm3/wasm3/blob/main/source/m3_exec.h
+// ref: https://github.com/wasm3/wasm3/blob/main/source/m3_math_utils.h
 static int32_t i32_rem_s(int32_t lhs, int32_t rhs) {
-    return lhs % rhs;
+    // todo: trap if rhs == 0
+    if(lhs == INT32_MIN && rhs == -1)
+        return 0;
+    else
+        return lhs % rhs;
 }
 
 static int32_t i32_rem_u(int32_t lhs, int32_t rhs) {
@@ -307,12 +316,12 @@ static int32_t i32_shl(int32_t lhs, int32_t rhs) {
 }
 
 static int32_t i32_shr_s(int32_t lhs, int32_t rhs) {
-    uint32_t lhs_u = lhs, rhs_u = rhs;
-    return lhs_u >> rhs_u;
+    return lhs >> rhs;
 }
 
 static int32_t i32_shr_u(int32_t lhs, int32_t rhs) {
-    return lhs >> rhs;
+    uint32_t lhs_u = lhs, rhs_u = rhs;
+    return lhs_u >> rhs_u;
 }
 
 // ref: https://en.wikipedia.org/wiki/Circular_shift
@@ -559,7 +568,7 @@ void invoke_func(store_t *S, funcaddr_t funcaddr) {
     push_frame(frame, S->stack);
 
     // create label L
-    static instr_t end = {.op = OP_END};
+    static instr_t end = {.op = OP_END, .next = NULL};
     label_t L = {.arity = functype->rt2.n, .continuation = &end};
 
     // enter instr* with label L
@@ -581,19 +590,14 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
     if(args->n != functype->rt1.n)
         return ERR_FAILED;
    
-    int idx = 0;
+    size_t idx = 0;
     VECTOR_FOR_EACH(arg, args, arg_t) {
         if(arg->type != *VECTOR_ELEM(&functype->rt1, idx++))
             return ERR_FAILED;
     }
 
-    // push dummy frame
-    frame_t frame = {
-        .arity  = 0,
-        .locals = NULL,
-        .module = NULL
-    };
-    push_frame(frame, S->stack);
+    // Omit the process of pushing the dummy frame onto the stack.
+    // ref: https://github.com/WebAssembly/spec/issues/1690
     
     // push args
     VECTOR_FOR_EACH(arg, args, arg_t) {
