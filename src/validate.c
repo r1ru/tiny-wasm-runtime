@@ -21,16 +21,26 @@ static inline void push(valtype_t ty, type_stack *stack) {
     stack->pool[++stack->idx] = ty;
 }
 
+// Type is not verified if expect is 0.
 static inline error_t try_pop(valtype_t expect, type_stack *stack) {
     __try {
         if(empty(stack)) {
-            __throwif(ERR_FAILED, !stack->polymorphic);
-            __throw(ERR_SUCCESS);
+            if(!stack->polymorphic) {
+                ERROR("type mismatch");
+                __throw(ERR_FAILED);
+            }
+            else
+                __throw(ERR_SUCCESS);
         }
         else {
             valtype_t ty;
             ty = stack->pool[stack->idx--];
-            __throwif(ERR_FAILED, ty != expect);
+            if(expect) {
+                if(ty != expect) {
+                    ERROR("type mismatch");
+                    __throw(ERR_FAILED);
+                }
+            }
         }
     } 
     __catch:
@@ -152,6 +162,10 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             }
 
+            case OP_DROP:
+                __throwif(ERR_FAILED, IS_ERROR(try_pop(0, stack)));
+                break;
+            
             case OP_LOCAL_GET: {
                 valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
                 __throwif(ERR_FAILED, !t);

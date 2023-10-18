@@ -309,6 +309,12 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     invoke_func(S, F->module->funcaddrs[ip->funcidx]);
                     break;
 
+                case OP_DROP: {
+                    val_t val;
+                    pop_val(&val, S->stack);
+                    break;
+                }
+
                 case OP_LOCAL_GET: {
                     localidx_t x = ip->localidx;
                     val_t val = F->locals[x];

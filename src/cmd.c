@@ -111,6 +111,10 @@ void print_instr(instr_t *instr) {
         case OP_CALL:
             printf("%s %d\n", op_str[instr->op], instr->funcidx);
             break;
+
+        case OP_DROP:
+            printf("drop\n");
+            break;
         
         case OP_LOCAL_GET:
         case OP_LOCAL_SET:
@@ -191,7 +195,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./_test/i32.1.wasm", O_RDONLY);
+    int fd = open("./build/test/i32.1.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -243,6 +247,7 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("insntiation failed");
 
+    /*
     args_t args;
     VECTOR_INIT(&args, 2, arg_t);
 
@@ -257,7 +262,7 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("invocation failed");
     
-    printf("result = %x\n", VECTOR_ELEM(&args, 0)->val.num.i32);
+    printf("result = %x\n", VECTOR_ELEM(&args, 0)->val.num.i32); */
 
     // cleanup
     munmap(head, fsize);

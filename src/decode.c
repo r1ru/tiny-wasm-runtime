@@ -283,6 +283,9 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->funcidx, buf)));
                 break;
             
+            case OP_DROP:
+                break;
+            
             case OP_LOCAL_GET:
             case OP_LOCAL_SET:
                 __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->localidx, buf)));   

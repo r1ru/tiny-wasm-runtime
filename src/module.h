@@ -44,6 +44,7 @@ enum op {
     OP_BR               = 0x0c,
     OP_BR_IF            = 0x0d,
     OP_CALL             = 0x10,
+    OP_DROP             = 0x1a,
     OP_LOCAL_GET        = 0x20,
     OP_LOCAL_SET        = 0x21,
     OP_I32_CONST        = 0x41,
