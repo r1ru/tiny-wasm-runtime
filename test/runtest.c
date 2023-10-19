@@ -35,10 +35,10 @@ error_t lookup_func_by_name(funcaddr_t *addr, const char *name, module_t *mod) {
     return ERR_FAILED;
 }
 
-error_t create_test_ctx(test_ctx_t *ctx, const char *name) {
+error_t map_file(test_ctx_t *ctx, const char *fpath) {
     __try {
         // open and map file
-        ctx->fd = open(name, O_RDONLY);
+        ctx->fd = open(fpath, O_RDONLY);
         __throwif(ERR_FAILED, ctx->fd == -1);
         struct stat s;
         __throwif(ERR_FAILED, fstat(ctx->fd, &s) == -1);
@@ -52,21 +52,6 @@ error_t create_test_ctx(test_ctx_t *ctx, const char *name) {
             0
         );
         __throwif(ERR_FAILED, ctx->map == MAP_FAILED);
-
-        // decode
-        __throwif(
-            ERR_FAILED, IS_ERROR(
-                decode_module(
-                    &ctx->mod, ctx->map, ctx->size
-                )
-            )
-        );
-
-        // validate
-        __throwif(ERR_FAILED, IS_ERROR(validate_module(ctx->mod)));
-
-        // instantiate
-        __throwif(ERR_FAILED, IS_ERROR(instantiate(&ctx->store, ctx->mod)));
     }
     __catch:
         return err;
@@ -107,7 +92,22 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
         if(strcmp(type, "module") == 0) {
             // *.wasm files expected in the same directory as the json.
             const char *fpath = json_object_get_string(command, "filename");
-            __throwif(ERR_FAILED, create_test_ctx(ctx, fpath));
+            __throwif(ERR_FAILED, map_file(ctx, fpath));
+            
+            // decode
+            __throwif(
+                ERR_FAILED, IS_ERROR(
+                    decode_module(
+                        &ctx->mod, ctx->map, ctx->size
+                    )
+                )
+            );
+
+            // validate
+            __throwif(ERR_FAILED, IS_ERROR(validate_module(ctx->mod)));
+
+            // instantiate
+            __throwif(ERR_FAILED, IS_ERROR(instantiate(&ctx->store, ctx->mod)));
         }
         else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0) {
             JSON_Object *action = json_object_get_object(command, "action");
@@ -144,6 +144,23 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                     __throwif(ERR_FAILED, !IS_ERROR(invoke(ctx->store, addr, &args)));
                 }
             }
+        }
+
+        else if(strcmp(type, "assert_invalid") == 0) {
+            const char *fpath = json_object_get_string(command, "filename");
+            __throwif(ERR_FAILED, map_file(ctx, fpath));
+            
+            // decode
+            __throwif(
+                ERR_FAILED, IS_ERROR(
+                    decode_module(
+                        &ctx->mod, ctx->map, ctx->size
+                    )
+                )
+            );
+
+            // check that validation fails
+            __throwif(ERR_FAILED, !IS_ERROR(validate_module(ctx->mod)));
         }
         // todo: add here
         else {
