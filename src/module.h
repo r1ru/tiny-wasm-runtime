@@ -53,6 +53,8 @@ enum op {
     OP_LOCAL_GET        = 0x20,
     OP_LOCAL_SET        = 0x21,
     OP_LOCAL_TEE        = 0x22,
+    OP_GLOBAL_GET       = 0x23,
+    OP_GLOBAL_SET       = 0x24,
     OP_I32_CONST        = 0x41,
     OP_I32_EQZ          = 0x45,
     OP_I32_EQ           = 0x46,
@@ -117,6 +119,7 @@ typedef struct instr {
             typeidx_t           y;
             tableidx_t          x;
         };
+        labelidx_t              globalidx;
         labelidx_t              labelidx;
         funcidx_t               funcidx;
         // variable instructions

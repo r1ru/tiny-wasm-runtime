@@ -312,6 +312,11 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_LOCAL_TEE:
                 __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->localidx, buf)));   
                 break;
+            
+            case OP_GLOBAL_GET:
+            case OP_GLOBAL_SET:
+                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->globalidx, buf)));   
+                break;
 
             case OP_I32_CONST:
                 __throwif(ERR_FAILED, IS_ERROR(read_i32_leb128(&i->c.i32, buf)));

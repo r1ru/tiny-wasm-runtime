@@ -45,6 +45,8 @@ static const char *op_str[] = {
     [OP_CALL]           = "call",
     [OP_LOCAL_GET]      = "local.get",
     [OP_LOCAL_SET]      = "local.set",
+    [OP_GLOBAL_GET]     = "global.get",
+    [OP_GLOBAL_SET]     = "global.set",
     [OP_LOCAL_TEE]      = "local.tee",
     [OP_I32_CONST]      = "i32.const",
     [OP_I32_EQZ]        = "i32.eqz",
@@ -140,7 +142,12 @@ void print_instr(instr_t *instr) {
         case OP_LOCAL_GET:
         case OP_LOCAL_SET:
         case OP_LOCAL_TEE:
-            printf("%s %d\n", op_str[instr->op], instr->labelidx);
+            printf("%s %d\n", op_str[instr->op], instr->localidx);
+            break;
+
+        case OP_GLOBAL_GET:
+        case OP_GLOBAL_SET:
+            printf("%s %d\n", op_str[instr->op], instr->globalidx);
             break;
         
         case OP_I32_CONST:
@@ -217,7 +224,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/i32.14.wasm", O_RDONLY);
+    int fd = open("./build/test/i32.15.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
