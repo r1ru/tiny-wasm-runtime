@@ -26,6 +26,13 @@ void exit(int status);
         );                                                  \
     }while(0)
 
+#define WARN(fmt, ...)                                      \
+    do {                                                    \
+        printf(                                             \
+            SGR_WARN fmt SGR_RESET PRINT_NL, ##__VA_ARGS__  \
+        );                                                  \
+    }while(0)
+
 #define INFO(fmt, ...)                                      \
     do {                                                    \
         printf(                                             \
