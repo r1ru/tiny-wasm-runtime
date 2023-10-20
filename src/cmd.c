@@ -165,6 +165,14 @@ void print_instr(instr_t *instr) {
             printf("i32.const %d\n", instr->c.i32);
             break;
         
+        case OP_I64_CONST:
+            printf("i64.const %ld\n", instr->c.i64);
+            break;
+        
+        case OP_F32_CONST:
+            printf("i32.const %f\n", instr->c.f32);
+            break;
+        
         case OP_I32_EQZ:
         case OP_I32_EQ:
         case OP_I32_NE:
@@ -235,7 +243,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/i32.18.wasm", O_RDONLY);
+    int fd = open("./build/test/i32.55.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;

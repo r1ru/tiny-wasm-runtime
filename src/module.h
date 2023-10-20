@@ -59,6 +59,8 @@ enum op {
     OP_I32_STORE        = 0x36,
     OP_MEMORY_GROW      = 0x40,
     OP_I32_CONST        = 0x41,
+    OP_I64_CONST        = 0x42,
+    OP_F32_CONST        = 0x43,
     OP_I32_EQZ          = 0x45,
     OP_I32_EQ           = 0x46,
     OP_I32_NE           = 0x47,
@@ -99,6 +101,8 @@ typedef union {
 
 typedef union {
     int32_t     i32;
+    int64_t     i64;
+    float       f32;
 } const_t;
 
 typedef struct {

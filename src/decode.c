@@ -158,6 +158,16 @@ error_t read_i64_leb128(int64_t *d, buffer_t *buf) {
         return err;
 }
 
+error_t read_f32(float *d, buffer_t *buf) {
+    __try {
+        __throwif(ERR_FAILED, buf->p + 4 > buf->end);
+         *d = *(float *)buf->p;
+        buf->p += 4;
+    }
+    __catch:
+        return err;
+}
+
 // useful macros
 typedef error_t (*decoder_t) (module_t *mod, buffer_t *buf);
 
@@ -333,6 +343,14 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
 
             case OP_I32_CONST:
                 __throwif(ERR_FAILED, IS_ERROR(read_i32_leb128(&i->c.i32, buf)));
+                break;
+
+            case OP_I64_CONST:
+                __throwif(ERR_FAILED, IS_ERROR(read_i64_leb128(&i->c.i64, buf)));
+                break;
+            
+            case OP_F32_CONST:
+                __throwif(ERR_FAILED, IS_ERROR(read_f32(&i->c.f32, buf)));
                 break;
             
             case OP_I32_EQZ:
