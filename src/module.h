@@ -52,6 +52,7 @@ enum op {
     OP_SELECT           = 0x1B,
     OP_LOCAL_GET        = 0x20,
     OP_LOCAL_SET        = 0x21,
+    OP_LOCAL_TEE        = 0x22,
     OP_I32_CONST        = 0x41,
     OP_I32_EQZ          = 0x45,
     OP_I32_EQ           = 0x46,
