@@ -12,6 +12,7 @@ typedef uint32_t    funcidx_t;
 typedef uint32_t    labelidx_t;
 typedef uint32_t    funcidx_t;
 typedef uint32_t    localidx_t;
+typedef uint32_t    tableidx_t;
 
 #define TYPE_NUM_I32 0x7f
 
@@ -46,6 +47,7 @@ enum op {
     OP_BR_TABLE         = 0x0E,
     OP_RETURN           = 0x0F,
     OP_CALL             = 0x10,
+    OP_CALL_INDIRECT    = 0x11,
     OP_DROP             = 0x1A,
     OP_SELECT           = 0x1B,
     OP_LOCAL_GET        = 0x20,
@@ -108,6 +110,11 @@ typedef struct instr {
         struct {
             VECTOR(labelidx_t)  labels;
             labelidx_t          default_label;
+        };
+        // call_indirect
+        struct {
+            typeidx_t           y;
+            tableidx_t          x;
         };
         labelidx_t              labelidx;
         funcidx_t               funcidx;

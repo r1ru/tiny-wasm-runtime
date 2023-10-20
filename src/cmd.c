@@ -116,12 +116,24 @@ void print_instr(instr_t *instr) {
             printf(" %x\n", instr->default_label);
             break;
         
+        case OP_RETURN:
+            printf("return\n");
+            break;
+        
         case OP_CALL:
             printf("%s %d\n", op_str[instr->op], instr->funcidx);
+            break;
+        
+        case OP_CALL_INDIRECT:
+            printf("call_indirect %x %x\n",instr->x, instr->y);
             break;
 
         case OP_DROP:
             printf("drop\n");
+            break;
+        
+        case OP_SELECT:
+            printf("select\n");
             break;
         
         case OP_LOCAL_GET:
@@ -203,7 +215,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/i32.8.wasm", O_RDONLY);
+    int fd = open("./build/test/i32.12.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;

@@ -293,9 +293,14 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
 
             case OP_RETURN:
                 break;
-            
+           
             case OP_CALL:
                 __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->funcidx, buf)));
+                break;
+            
+            case OP_CALL_INDIRECT:
+                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->y, buf)));
+                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->x, buf)));
                 break;
             
             case OP_DROP:
