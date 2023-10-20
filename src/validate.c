@@ -184,6 +184,14 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(TYPE_NUM_I32, stack);
                 break;
             
+            case OP_I64_CONST:
+                push(TYPE_NUM_I64, stack);
+                break;
+            
+            case OP_F32_CONST:
+                push(TYPE_NUM_F32, stack);
+                break;
+             
             // testop and unop
             case OP_I32_EQZ:
             case OP_I32_CLZ:

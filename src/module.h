@@ -14,7 +14,9 @@ typedef uint32_t    funcidx_t;
 typedef uint32_t    localidx_t;
 typedef uint32_t    tableidx_t;
 
-#define TYPE_NUM_I32 0x7f
+#define TYPE_NUM_I32 0x7F
+#define TYPE_NUM_I64 0x7E
+#define TYPE_NUM_F32 0x7D
 
 typedef VECTOR(valtype_t) resulttype_t;
 
