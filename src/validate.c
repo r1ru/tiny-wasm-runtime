@@ -25,22 +25,13 @@ static inline void push(valtype_t ty, type_stack *stack) {
 static inline error_t try_pop(valtype_t expect, type_stack *stack) {
     __try {
         if(empty(stack)) {
-            if(!stack->polymorphic) {
-                ERROR("type mismatch");
-                __throw(ERR_FAILED);
-            }
-            else
-                __throw(ERR_SUCCESS);
+            __throwif(ERR_TYPE_MISMATCH, !stack->polymorphic);
+            __throw(ERR_SUCCESS);
         }
         else {
             valtype_t ty;
             ty = stack->pool[stack->idx--];
-            if(expect) {
-                if(ty != expect) {
-                    ERROR("type mismatch");
-                    __throw(ERR_FAILED);
-                }
-            }
+            __throwif(ERR_TYPE_MISMATCH, ty != expect);
         }
     } 
     __catch:
@@ -54,13 +45,13 @@ error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
         switch(bt.valtype) {
             case 0x40:
                 ty->rt2 = (resulttype_t){.n = 0, .elem = NULL};
-                return ERR_SUCCESS;
+                break;
 
             case TYPE_NUM_I32:
                 ty->rt1 = (resulttype_t){.n = 0, .elem = NULL};
                 VECTOR_INIT(&ty->rt2, 1, valtype_t);
                 *VECTOR_ELEM(&ty->rt2, 0) = TYPE_NUM_I32;
-                return ERR_SUCCESS;
+                break;
 
             default:
                 __throw(ERR_FAILED);
@@ -78,13 +69,13 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_BLOCK:
             case OP_LOOP: {
                 functype_t ty;
-                __throwif(ERR_FAILED, IS_ERROR(validate_blocktype(C, ip->bt, &ty)));
+                __throwiferr(validate_blocktype(C, ip->bt, &ty));
 
                 // push label
                 labeltype_t l = {.ty = ty.rt2};
                 list_push_back(&C->labels, &l.link);
 
-                __throwif(ERR_FAILED, IS_ERROR(validate_expr(C, ip->in1, &ty.rt2)));
+                __throwiferr(validate_expr(C, ip->in1, &ty.rt2));
 
                 VECTOR_FOR_EACH(t ,&ty.rt2, valtype_t) {
                     push(*t, stack);
@@ -103,11 +94,11 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 // push label
                 labeltype_t l = {.ty = ty.rt2};
                 list_push_back(&C->labels, &l.link);
+                
+                __throwiferr(validate_expr(C, ip->in1, &ty.rt2));
+                __throwiferr(validate_expr(C, ip->in2, &ty.rt2));
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
 
-                __throwif(ERR_FAILED, IS_ERROR(validate_expr(C, ip->in1, &ty.rt2)));
-                __throwif(ERR_FAILED, IS_ERROR(validate_expr(C, ip->in2, &ty.rt2)));
-
-                __throwif(ERR_FAILED, IS_ERROR(try_pop(TYPE_NUM_I32, stack)));
                 VECTOR_FOR_EACH(t ,&ty.rt2, valtype_t) {
                     push(*t, stack);
                 }
@@ -127,7 +118,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->labelidx);
                 __throwif(ERR_FAILED, !l);
                 VECTOR_FOR_EACH(t, &l->ty, valtype_t) {
-                    __throwif(ERR_FAILED, IS_ERROR(try_pop(*t, stack)));
+                    __throwiferr(try_pop(*t, stack));
                 }
                 // empty the stack
                 stack->idx = -1;
@@ -138,9 +129,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_BR_IF: {
                 labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->labelidx);
                 __throwif(ERR_FAILED, !l);
-                __throwif(ERR_FAILED, IS_ERROR(try_pop(TYPE_NUM_I32, stack)));
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 VECTOR_FOR_EACH(t, &l->ty, valtype_t) {
-                    __throwif(ERR_FAILED, IS_ERROR(try_pop(*t, stack)));
+                    __throwiferr(try_pop(*t, stack));
                 }
                 VECTOR_FOR_EACH(t, &l->ty, valtype_t) {
                     push(*t, stack);
@@ -153,7 +144,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 __throwif(ERR_FAILED, !ty);
 
                 VECTOR_FOR_EACH(t, &ty->rt1, valtype_t) {
-                    __throwif(ERR_FAILED, IS_ERROR(try_pop(*t, stack)));
+                    __throwiferr(try_pop(*t, stack));
                 }
 
                 VECTOR_FOR_EACH(t, &ty->rt2, valtype_t) {
@@ -163,7 +154,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             }
 
             case OP_DROP:
-                __throwif(ERR_FAILED, IS_ERROR(try_pop(0, stack)));
+                __throwiferr(try_pop(0, stack));
                 break;
             
             case OP_LOCAL_GET: {
@@ -176,7 +167,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_LOCAL_SET: {
                 valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
                 __throwif(ERR_FAILED, !t);
-                __throwif(ERR_FAILED, IS_ERROR(try_pop(*t, stack)));
+                __throwiferr(try_pop(*t, stack));
                 break;
             }
             
@@ -199,7 +190,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I32_POPCNT:
             case OP_I32_EXTEND8_S:
             case OP_I32_EXTEND16_S:
-                __throwif(ERR_FAILED, IS_ERROR(try_pop(TYPE_NUM_I32, stack)));
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 push(TYPE_NUM_I32, stack);
                 break;
             
@@ -229,8 +220,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I32_SHR_U:
             case OP_I32_ROTL:
             case OP_I32_ROTR:
-                __throwif(ERR_FAILED, IS_ERROR(try_pop(TYPE_NUM_I32, stack)));
-                __throwif(ERR_FAILED, IS_ERROR(try_pop(TYPE_NUM_I32, stack)));
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 push(TYPE_NUM_I32, stack);
                 break;
             
@@ -250,7 +241,7 @@ error_t validate_instrs(context_t *C, instr_t *start, type_stack *stack) {
         instr_t *next_ip;
         while(ip) {
             next_ip = ip->next;
-            __throwif(ERR_FAILED, IS_ERROR(validate_instr(C, ip, stack)));
+            __throwiferr(validate_instr(C, ip, stack));
             ip = next_ip;
         }
     }
@@ -261,11 +252,11 @@ error_t validate_instrs(context_t *C, instr_t *start, type_stack *stack) {
 error_t validate_expr(context_t *C, instr_t *start, resulttype_t *expect) {
     __try {
         type_stack stack = {.idx = -1, .polymorphic = false};
-        __throwif(ERR_FAILED, IS_ERROR(validate_instrs(C, start, &stack)));
+        __throwiferr(validate_instrs(C, start, &stack));
         
         // compare witch expected type
         VECTOR_FOR_EACH(e, expect, valtype_t) {
-            __throwif(ERR_FAILED,IS_ERROR(try_pop(*e, &stack)));
+            __throwiferr(try_pop(*e, &stack));
         }
     }
     __catch:
@@ -286,7 +277,7 @@ error_t validate_func(context_t *C, func_t *func, functype_t *actual) {
         ctx.ret = &expect->rt2;
 
         // validate expr
-        __throwif(ERR_FAILED, IS_ERROR(validate_expr(&ctx, func->body, &expect->rt2)));
+        __throwiferr(validate_expr(&ctx, func->body, &expect->rt2));
 
         VECTOR_COPY(&actual->rt1, &expect->rt1, valtype_t);
         
@@ -308,7 +299,7 @@ error_t validate_module(module_t *mod) {
 
         size_t idx = 0;
         VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
-            __throwif(ERR_FAILED, validate_func(&C, func, VECTOR_ELEM(&C.funcs, idx++)));
+            __throwiferr(validate_func(&C, func, VECTOR_ELEM(&C.funcs, idx++)));
         }
     }
     __catch:

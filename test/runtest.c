@@ -23,6 +23,14 @@ typedef struct {
     store_t     *store;
 } test_ctx_t;
 
+static const char *error_msg[] = {
+    [-ERR_SUCCESS]  = "",
+    [-ERR_FAILED]   = "",
+    [-ERR_TYPE_MISMATCH] = "type mismatch",
+    [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO] = "integer divide by zero",
+    [-ERR_TRAP_INTERGET_OVERFLOW] = "integer overflow"
+};
+
 // helpers
 // todo: consider the case where funcidx != funcaddr
 error_t lookup_func_by_name(funcaddr_t *addr, const char *name, module_t *mod) {
@@ -141,11 +149,21 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                         __throwif(ERR_FAILED, ret->val.num.i32 != expect->val.num.i32);
                     }
                 } else {
-                    __throwif(ERR_FAILED, !IS_ERROR(invoke(ctx->store, addr, &args)));
+                    error_t err = invoke(ctx->store, addr, &args);
+                    // check that invocation fails
+                    __throwif(ERR_FAILED, !IS_ERROR(err));
+
+                    // check that error messagees match
+                    __throwif(
+                        ERR_FAILED, 
+                        strcmp(
+                            error_msg[-err], 
+                            json_object_get_string(command, "text")
+                        ) != 0
+                    );
                 }
             }
         }
-
         else if(strcmp(type, "assert_invalid") == 0) {
             const char *fpath = json_object_get_string(command, "filename");
             __throwif(ERR_FAILED, map_file(ctx, fpath));
@@ -160,26 +178,28 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
             );
 
             // check that validation fails
-            __throwif(ERR_FAILED, !IS_ERROR(validate_module(ctx->mod)));
+            error_t err = validate_module(ctx->mod);
+            __throwif(ERR_FAILED, !IS_ERROR(err));
+
+            // check that error messagees match
+            __throwif(
+                ERR_FAILED, 
+                strcmp(
+                    error_msg[-err], 
+                    json_object_get_string(command, "text")
+                ) != 0
+            );
         }
         // todo: add here
         else {
-            __throw(ERR_FAILED);
+            WARN("Skip: type: %s, line: %0.f", type, line);
         }
     }
     __catch:
         if(IS_ERROR(err)) {
-            ERROR(
-                "Faild: type: %s, line: %0.f",
-                type,
-                line
-            );
+            ERROR("Faild: type: %s, line: %0.f", type, line);
         } else {
-            INFO(
-                "Pass: type: %s, line: %0.f",
-                type,
-                line
-            );
+            INFO("Pass: type: %s, line: %0.f", type, line);
         }
         return err;
 }

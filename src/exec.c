@@ -306,7 +306,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 }
 
                 case OP_CALL:
-                    invoke_func(S, F->module->funcaddrs[ip->funcidx]);
+                    __throwiferr(invoke_func(S, F->module->funcaddrs[ip->funcidx]));
                     break;
 
                 case OP_DROP: {
@@ -414,30 +414,18 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     break;
                 
                 case OP_I32_DIV_S:
-                    if(rhs == 0) {
-                        ERROR("integer divide by zero");
-                        __throw(ERR_FAILED);
-                    }
-                    if(lhs == INT32_MIN && rhs == -1) {
-                        ERROR("integer overflow");
-                        __throw(ERR_FAILED);
-                    }
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs == 0);
+                    __throwif(ERR_TRAP_INTERGET_OVERFLOW, lhs == INT32_MIN && rhs == -1);
                     push_i32(lhs / rhs, S->stack);
                     break;
                 
                 case OP_I32_DIV_U:
-                    if(rhs == 0) {
-                        ERROR("integer divide by zero");
-                        __throw(ERR_FAILED);
-                    }
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs == 0);
                     push_i32((uint32_t)lhs / (uint32_t)rhs, S->stack);
                     break;
                 
                 case OP_I32_REM_S:
-                    if(rhs == 0) {
-                        ERROR("integer divide by zero");
-                        __throw(ERR_FAILED);
-                    }
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs == 0);
                     if(lhs == INT32_MIN && rhs == -1) {
                         push_i32(0, S->stack);
                     }
@@ -447,10 +435,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     break;
                 
                 case OP_I32_REM_U:
-                    if(rhs == 0) {
-                        ERROR("integer divide by zero");
-                        __throw(ERR_FAILED);
-                    }
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs == 0);
                     push_i32((uint32_t)lhs % (uint32_t)rhs, S->stack);
                     break;
                 
@@ -563,7 +548,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         }
 
         // invoke func
-        __throwif(ERR_FAILED, IS_ERROR(invoke_func(S, funcaddr)));
+        __throwiferr(invoke_func(S, funcaddr));
 
         // reuse args to return results since it is no longer used.
         //free(args->elem);
