@@ -55,6 +55,7 @@ enum op {
     OP_LOCAL_TEE        = 0x22,
     OP_GLOBAL_GET       = 0x23,
     OP_GLOBAL_SET       = 0x24,
+    OP_I32_LOAD         = 0x28,
     OP_MEMORY_GROW      = 0x40,
     OP_I32_CONST        = 0x41,
     OP_I32_EQZ          = 0x45,
@@ -92,12 +93,17 @@ enum op {
 
 typedef union {
     // todo: support s33
-    valtype_t valtype;
+    valtype_t   valtype;
 } blocktype_t;
 
 typedef union {
-    int32_t i32;
+    int32_t     i32;
 } const_t;
+
+typedef struct {
+    uint32_t    align;
+    uint32_t    offset;
+} memarg_t;
 
 typedef struct instr {
     struct instr                *next;
@@ -120,6 +126,7 @@ typedef struct instr {
             typeidx_t           y;
             tableidx_t          x;
         };
+        memarg_t                m;
         labelidx_t              globalidx;
         labelidx_t              labelidx;
         funcidx_t               funcidx;
