@@ -108,6 +108,14 @@ void print_instr(instr_t *instr) {
             printf("%s %d\n", op_str[instr->op], instr->labelidx);
             break;
         
+        case OP_BR_TABLE:
+            printf("br_table");
+            VECTOR_FOR_EACH(l, &instr->labels, labelidx_t) {
+                printf(" %x", *l);
+            }
+            printf(" %x\n", instr->default_label);
+            break;
+        
         case OP_CALL:
             printf("%s %d\n", op_str[instr->op], instr->funcidx);
             break;
@@ -195,7 +203,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/i32.1.wasm", O_RDONLY);
+    int fd = open("./build/test/i32.8.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;

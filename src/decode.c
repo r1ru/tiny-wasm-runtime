@@ -271,6 +271,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 break;
             }
 
+            case OP_ELSE:
             case OP_END:
                 break;
             
@@ -279,6 +280,17 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->labelidx, buf)));
                 break;
             
+            case OP_BR_TABLE: {
+                uint32_t n;
+                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n, buf)));
+                VECTOR_INIT(&i->labels, n, labelidx_t);
+                VECTOR_FOR_EACH(l, &i->labels, labelidx_t) {
+                    __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(l, buf)));
+                }
+                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->default_label, buf)));
+                break;
+            }
+
             case OP_CALL:
                 __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->funcidx, buf)));
                 break;

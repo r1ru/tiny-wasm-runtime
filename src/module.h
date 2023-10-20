@@ -40,9 +40,10 @@ enum op {
     OP_LOOP             = 0x03,
     OP_IF               = 0x04,
     OP_ELSE             = 0x05,
-    OP_END              = 0x0b,
-    OP_BR               = 0x0c,
-    OP_BR_IF            = 0x0d,
+    OP_END              = 0x0B,
+    OP_BR               = 0x0C,
+    OP_BR_IF            = 0x0D,
+    OP_BR_TABLE         = 0x0E,
     OP_CALL             = 0x10,
     OP_DROP             = 0x1a,
     OP_LOCAL_GET        = 0x20,
@@ -91,22 +92,27 @@ typedef union {
 } const_t;
 
 typedef struct instr {
-    struct instr            *next;
-    uint8_t                 op;
+    struct instr                *next;
+    uint8_t                     op;
 
     union {
         // control instructions
         struct {
-            blocktype_t     bt;
-            struct instr    *in1;
-            struct instr    *in2;
+            blocktype_t         bt;
+            struct instr        *in1;
+            struct instr        *in2;
         };
-        labelidx_t          labelidx;
-        funcidx_t           funcidx;
+        // br_table
+        struct {
+            VECTOR(labelidx_t)  labels;
+            labelidx_t          default_label;
+        };
+        labelidx_t              labelidx;
+        funcidx_t               funcidx;
         // variable instructions
-        localidx_t          localidx;
+        localidx_t              localidx;
         // const instrcutions
-        const_t             c;        
+        const_t                 c;        
     };
 } instr_t;
 
