@@ -55,6 +55,7 @@ enum op {
     OP_LOCAL_TEE        = 0x22,
     OP_GLOBAL_GET       = 0x23,
     OP_GLOBAL_SET       = 0x24,
+    OP_MEMORY_GROW      = 0x40,
     OP_I32_CONST        = 0x41,
     OP_I32_EQZ          = 0x45,
     OP_I32_EQ           = 0x46,

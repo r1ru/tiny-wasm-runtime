@@ -317,6 +317,13 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_GLOBAL_SET:
                 __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->globalidx, buf)));   
                 break;
+            
+            case OP_MEMORY_GROW: {
+                uint32_t zero;
+                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&zero, buf)));
+                __throwif(ERR_FAILED, zero != 0);
+                break;
+            }
 
             case OP_I32_CONST:
                 __throwif(ERR_FAILED, IS_ERROR(read_i32_leb128(&i->c.i32, buf)));
