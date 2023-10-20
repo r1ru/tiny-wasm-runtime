@@ -299,6 +299,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 break;
             
             case OP_DROP:
+            case OP_SELECT:
                 break;
             
             case OP_LOCAL_GET:
