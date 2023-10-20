@@ -319,6 +319,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 break;
             
             case OP_I32_LOAD:
+            case OP_I32_STORE:
                 __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->m.align, buf)));
                 __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->m.offset, buf)));   
                 break;

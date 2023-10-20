@@ -49,6 +49,7 @@ static const char *op_str[] = {
     [OP_GLOBAL_GET]     = "global.get",
     [OP_GLOBAL_SET]     = "global.set",
     [OP_I32_LOAD]       = "i32.load",
+    [OP_I32_STORE]      = "i32.store",
     [OP_I32_CONST]      = "i32.const",
     [OP_I32_EQZ]        = "i32.eqz",
     [OP_I32_EQ]         = "i32.eq",
@@ -152,6 +153,7 @@ void print_instr(instr_t *instr) {
             break;
         
         case OP_I32_LOAD:
+        case OP_I32_STORE:
             printf("%s %x %x\n", op_str[instr->op], instr->m.align, instr->m.offset);
             break;
         
@@ -233,7 +235,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/i32.17.wasm", O_RDONLY);
+    int fd = open("./build/test/i32.18.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;

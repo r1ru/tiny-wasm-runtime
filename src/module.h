@@ -56,6 +56,7 @@ enum op {
     OP_GLOBAL_GET       = 0x23,
     OP_GLOBAL_SET       = 0x24,
     OP_I32_LOAD         = 0x28,
+    OP_I32_STORE        = 0x36,
     OP_MEMORY_GROW      = 0x40,
     OP_I32_CONST        = 0x41,
     OP_I32_EQZ          = 0x45,
