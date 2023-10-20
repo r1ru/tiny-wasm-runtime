@@ -21,7 +21,7 @@ error_t new_buffer(buffer_t **d, uint8_t *head, size_t size) {
 error_t read_buffer(buffer_t **d, size_t size, buffer_t *buf) {
     __try {
         __throwif(ERR_FAILED, buf->p + size > buf->end);
-        __throwif(ERR_FAILED, IS_ERROR(new_buffer(d, buf->p, size)));
+        __throwiferr(new_buffer(d, buf->p, size));
         buf->p += size;
     }
     __catch:
@@ -41,13 +41,13 @@ error_t read_byte(uint8_t *d, buffer_t *buf) {
 error_t read_bytes(uint8_t **d, buffer_t *buf) {
     __try {
         uint32_t n;
-        __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n, buf)));
+        __throwiferr(read_u32_leb128(&n, buf));
         
         uint8_t *str = malloc(sizeof(uint8_t) * (n + 1));
         __throwif(ERR_FAILED, !str);
 
         for(uint32_t i = 0; i < n; i++) {
-            __throwif(ERR_FAILED, IS_ERROR(read_byte(&str[i], buf)));
+            __throwiferr(read_byte(&str[i], buf));
         }
         str[n] = '\0';
         *d = str;
@@ -82,7 +82,7 @@ error_t read_u32_leb128(uint32_t *d, buffer_t *buf) {
         uint32_t result = 0, shift = 0;
         while(1) {
             uint8_t byte;
-            __throwif(ERR_FAILED, IS_ERROR(read_byte(&byte, buf)));
+            __throwiferr(read_byte(&byte, buf));
 
             result |= (byte & 0b1111111) << shift;
             shift += 7;
@@ -100,7 +100,7 @@ error_t read_u64_leb128(uint64_t *d, buffer_t *buf) {
         uint64_t result = 0, shift = 0;
         while(1) {
             uint8_t byte;
-            __throwif(ERR_FAILED, IS_ERROR(read_byte(&byte, buf)));
+            __throwiferr(read_byte(&byte, buf));
 
             result |= (byte & 0b1111111) << shift;
             shift += 7;
@@ -118,7 +118,8 @@ error_t read_i32_leb128(int32_t *d, buffer_t *buf) {
         int32_t result = 0, shift = 0;
         while(1) {
             uint8_t byte;
-            __throwif(ERR_FAILED, IS_ERROR(read_byte(&byte, buf)));
+            __throwiferr(read_byte(&byte, buf));
+
             result |= (byte & 0b1111111) << shift;
             shift += 7;
             if((0b10000000 & byte) == 0) {
@@ -140,7 +141,7 @@ error_t read_i64_leb128(int64_t *d, buffer_t *buf) {
         int64_t result = 0, shift = 0;
         while(1) {
             uint8_t byte;
-            __throwif(ERR_FAILED, IS_ERROR(read_byte(&byte, buf)));
+            __throwiferr(read_byte(&byte, buf));
 
             result |= (byte & 0b1111111) << shift;
             shift += 7;
@@ -181,29 +182,29 @@ static decoder_t decoders[11] = {
 error_t decode_typesec(module_t *mod, buffer_t*buf) {
     __try {
         uint32_t n1;
-        __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n1, buf)));
+        __throwiferr(read_u32_leb128(&n1, buf));
 
         VECTOR_INIT(&mod->types, n1, functype_t);
 
         VECTOR_FOR_EACH(functype, &mod->types, functype_t) {
             // expected to be 0x60
             uint8_t magic;
-            __throwif(ERR_FAILED, IS_ERROR(read_byte(&magic, buf)));
+            __throwiferr(read_byte(&magic, buf));
             __throwif(ERR_FAILED, magic != 0x60);
 
             // decode parameter types
             uint32_t n2;
-            __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n2, buf)));
+            __throwiferr(read_u32_leb128(&n2, buf));
             VECTOR_INIT(&functype->rt1, n2, valtype_t);
             VECTOR_FOR_EACH(valtype, &functype->rt1, valtype_t) {
-                __throwif(ERR_FAILED, IS_ERROR(read_byte(valtype, buf)));
+                __throwiferr(read_byte(valtype, buf));
             }
 
             // decode return types
-            __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n2, buf)));
+            __throwiferr(read_u32_leb128(&n2, buf));
             VECTOR_INIT(&functype->rt2, n2, valtype_t);
             VECTOR_FOR_EACH(valtype, &functype->rt2, valtype_t) {
-                __throwif(ERR_FAILED, IS_ERROR(read_byte(valtype, buf)));
+                __throwiferr(read_byte(valtype, buf));
             }
         }
     }
@@ -214,12 +215,12 @@ error_t decode_typesec(module_t *mod, buffer_t*buf) {
 error_t decode_funcsec(module_t *mod, buffer_t *buf) {
     __try {
         uint32_t n;
-        __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n, buf)));
+        __throwiferr(read_u32_leb128(&n, buf));
 
         VECTOR_INIT(&mod->funcs, n, func_t);
 
         VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
-            __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&func->type, buf)));
+            __throwiferr(read_u32_leb128(&func->type, buf));
         }
     }
     __catch:
@@ -229,13 +230,13 @@ error_t decode_funcsec(module_t *mod, buffer_t *buf) {
 error_t decode_exportsec(module_t *mod, buffer_t *buf) {
     __try {
         uint32_t n;
-        __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n, buf)));
+        __throwiferr(read_u32_leb128(&n, buf));
         VECTOR_INIT(&mod->exports, n, export_t);
 
         VECTOR_FOR_EACH(export, &mod->exports, export_t) {
-            __throwif(ERR_FAILED, IS_ERROR(read_bytes(&export->name, buf)));
-            __throwif(ERR_FAILED, IS_ERROR(read_byte(&export->exportdesc.kind, buf)));
-            __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&export->exportdesc.funcidx, buf)));
+            __throwiferr(read_bytes(&export->name, buf));
+            __throwiferr(read_byte(&export->exportdesc.kind, buf));
+            __throwiferr(read_u32_leb128(&export->exportdesc.funcidx, buf));
         }
     }
     __catch:
@@ -250,27 +251,27 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
 
         i->next = NULL;
 
-        __throwif(ERR_FAILED, IS_ERROR(read_byte(&i->op, buf)));
+        __throwiferr(read_byte(&i->op, buf));
         
         switch(i->op) {
             case OP_BLOCK:
             case OP_LOOP:
             case OP_IF: {
                 // todo: support s33
-                __throwif(ERR_FAILED, IS_ERROR(read_byte(&i->bt.valtype, buf)));
+                __throwiferr(read_byte(&i->bt.valtype, buf));
 
-                __throwif(ERR_FAILED, IS_ERROR(decode_instr(&i->in1, buf)));
+                __throwiferr(decode_instr(&i->in1, buf));
                 instr_t *j = i->in1;
                 while(j->op != OP_END && j->op != OP_ELSE) {
-                    __throwif(ERR_FAILED, IS_ERROR(decode_instr(&j->next, buf)));
+                    __throwiferr(decode_instr(&j->next, buf));
                     j = j->next;
                 }
 
                 if(j->op == OP_ELSE) {
-                    __throwif(ERR_FAILED, IS_ERROR(decode_instr(&i->in2, buf)));
+                    __throwiferr(decode_instr(&i->in2, buf));
                     j = i->in2;
                     while(j->op != OP_END) {
-                        __throwif(ERR_FAILED, IS_ERROR(decode_instr(&j->next, buf)));
+                        __throwiferr(decode_instr(&j->next, buf));
                         j = j->next;
                     }
                 }
@@ -287,17 +288,17 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             
             case OP_BR:
             case OP_BR_IF:
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->labelidx, buf)));
+                __throwiferr(read_u32_leb128(&i->labelidx, buf));
                 break;
             
             case OP_BR_TABLE: {
                 uint32_t n;
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n, buf)));
+                __throwiferr(read_u32_leb128(&n, buf));
                 VECTOR_INIT(&i->labels, n, labelidx_t);
                 VECTOR_FOR_EACH(l, &i->labels, labelidx_t) {
-                    __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(l, buf)));
+                    __throwiferr(read_u32_leb128(l, buf));
                 }
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->default_label, buf)));
+                __throwiferr(read_u32_leb128(&i->default_label, buf));
                 break;
             }
 
@@ -305,12 +306,12 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 break;
            
             case OP_CALL:
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->funcidx, buf)));
+                __throwiferr(read_u32_leb128(&i->funcidx, buf));
                 break;
             
             case OP_CALL_INDIRECT:
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->y, buf)));
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->x, buf)));
+                __throwiferr(read_u32_leb128(&i->y, buf));
+                __throwiferr(read_u32_leb128(&i->x, buf));
                 break;
             
             case OP_DROP:
@@ -320,37 +321,37 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_LOCAL_GET:
             case OP_LOCAL_SET:
             case OP_LOCAL_TEE:
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->localidx, buf)));   
+                __throwiferr(read_u32_leb128(&i->localidx, buf)); 
                 break;
             
             case OP_GLOBAL_GET:
             case OP_GLOBAL_SET:
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->globalidx, buf)));   
+                __throwiferr(read_u32_leb128(&i->globalidx, buf));
                 break;
             
             case OP_I32_LOAD:
             case OP_I32_STORE:
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->m.align, buf)));
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&i->m.offset, buf)));   
+                __throwiferr(read_u32_leb128(&i->m.align, buf));
+                __throwiferr(read_u32_leb128(&i->m.offset, buf));
                 break;
             
             case OP_MEMORY_GROW: {
                 uint32_t zero;
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&zero, buf)));
+                __throwiferr(read_u32_leb128(&zero, buf));
                 __throwif(ERR_FAILED, zero != 0);
                 break;
             }
 
             case OP_I32_CONST:
-                __throwif(ERR_FAILED, IS_ERROR(read_i32_leb128(&i->c.i32, buf)));
+                __throwiferr(read_i32_leb128(&i->c.i32, buf));
                 break;
 
             case OP_I64_CONST:
-                __throwif(ERR_FAILED, IS_ERROR(read_i64_leb128(&i->c.i64, buf)));
+                __throwiferr(read_i64_leb128(&i->c.i64, buf));
                 break;
             
             case OP_F32_CONST:
-                __throwif(ERR_FAILED, IS_ERROR(read_f32(&i->c.f32, buf)));
+                __throwiferr(read_f32(&i->c.f32, buf));
                 break;
             
             case OP_I32_EQZ:
@@ -409,18 +410,19 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
         VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
             // size is unused
             uint32_t size;
-            __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&size, buf)));
+            __throwiferr(read_u32_leb128(&size, buf));
 
             VECTOR(locals_t) localses;
             uint32_t n2;
-            __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n2, buf)));
+
+            __throwiferr(read_u32_leb128(&n2, buf));
             VECTOR_INIT(&localses, n2, locals_t);
 
             // count local variables
             uint32_t num_locals = 0;
             VECTOR_FOR_EACH(locals, &localses, locals_t) {
-                __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&locals->n, buf)));
-                __throwif(ERR_FAILED, IS_ERROR(read_byte(&locals->type, buf)));
+                __throwiferr(read_u32_leb128(&locals->n, buf));
+                __throwiferr(read_byte(&locals->type, buf));
                 num_locals += locals->n;
             }
 
@@ -433,10 +435,10 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
             }
             
             // decode body
-            __throwif(ERR_FAILED, IS_ERROR(decode_instr(&func->body, buf)));
+            __throwiferr(decode_instr(&func->body, buf));
             instr_t *instr = func->body;
             while(instr->op != OP_END) {
-                __throwif(ERR_FAILED, IS_ERROR(decode_instr(&instr->next, buf)));
+                __throwiferr(decode_instr(&instr->next, buf));
                 instr = instr->next;
             }
         }
@@ -448,11 +450,11 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
 error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
     __try {    
         buffer_t *buf;
-        __throwif(ERR_FAILED, IS_ERROR(new_buffer(&buf, image, image_size)));
+        __throwiferr(new_buffer(&buf, image, image_size));
 
         uint32_t magic, version;
-        __throwif(ERR_FAILED, IS_ERROR(read_u32(&magic, buf)));
-        __throwif(ERR_FAILED, IS_ERROR(read_u32(&version, buf)))
+        __throwiferr(read_u32(&magic, buf));
+        __throwiferr(read_u32(&version, buf));
 
         // init
         module_t *m = *mod = malloc(sizeof(module_t));
@@ -463,14 +465,14 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         while(!eof(buf)) {
             uint8_t id;
             uint32_t size;
-            __throwif(ERR_FAILED, IS_ERROR(read_byte(&id, buf)));
-            __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&size, buf)));
+            __throwiferr(read_byte(&id, buf));
+            __throwiferr(read_u32_leb128(&size, buf));
             
             buffer_t *sec;
-            __throwif(ERR_FAILED, IS_ERROR(read_buffer(&sec, size, buf)));
+            __throwiferr(read_buffer(&sec, size, buf));
 
             if(id <= 11 && decoders[id])
-               __throwif(ERR_FAILED, IS_ERROR(decoders[id](m, sec)));
+                __throwiferr(decoders[id](m, sec));
         }
     }
     __catch:
