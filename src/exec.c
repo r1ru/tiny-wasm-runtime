@@ -482,7 +482,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 }
 
                 default:
-                    PANIC("unsupported opcode: %x\n", ip->op);
+                    PANIC("Exec: unsupported opcode: %x\n", ip->op);
             }
             
             // update ip

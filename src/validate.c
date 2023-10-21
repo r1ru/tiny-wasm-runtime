@@ -226,7 +226,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             
             default:
-                ERROR("unsupported opcode: %x\n", ip->op);
+                ERROR("Validation: unsupported opcode: %x\n", ip->op);
                 __throw(ERR_FAILED);
         }       
     } 

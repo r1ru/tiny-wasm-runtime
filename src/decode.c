@@ -365,7 +365,18 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_I32_LE_U:
             case OP_I32_GE_S:
             case OP_I32_GE_U:
-    
+            case OP_I64_EQZ:
+            case OP_I64_EQ:
+            case OP_I64_NE:
+            case OP_I64_LT_S:
+            case OP_I64_LT_U:
+            case OP_I64_GT_S:
+            case OP_I64_GT_U:
+            case OP_I64_LE_S:
+            case OP_I64_LE_U:
+            case OP_I64_GE_S:
+            case OP_I64_GE_U:
+
             case OP_I32_CLZ:
             case OP_I32_CTZ:
             case OP_I32_POPCNT:
@@ -384,13 +395,34 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_I32_SHR_U:
             case OP_I32_ROTL:
             case OP_I32_ROTR:
+            case OP_I64_CLZ:
+            case OP_I64_CTZ:
+            case OP_I64_POPCNT:
+            case OP_I64_ADD:
+            case OP_I64_SUB:
+            case OP_I64_MUL:
+            case OP_I64_DIV_S:
+            case OP_I64_DIV_U:
+            case OP_I64_REM_S:
+            case OP_I64_REM_U:
+            case OP_I64_AND:
+            case OP_I64_OR:
+            case OP_I64_XOR:
+            case OP_I64_SHL:
+            case OP_I64_SHR_S:
+            case OP_I64_SHR_U:
+            case OP_I64_ROTL:
+            case OP_I64_ROTR:
 
             case OP_I32_EXTEND8_S:
             case OP_I32_EXTEND16_S:
+            case OP_I64_EXTEND8_S:
+            case OP_I64_EXTEND16_S:
+            case OP_I64_EXTEND32_S:
                 break;
             
             default:
-                ERROR("unsupported opcode: %x", i->op);
+                ERROR("Decode: unsupported opcode: %x", i->op);
                 __throw(ERR_FAILED);
         }
         
