@@ -194,6 +194,21 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(TYPE_NUM_I32, stack);
                 break;
             
+            case OP_I64_EQZ:
+                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                push(TYPE_NUM_I32, stack);
+                break;
+            
+            case OP_I64_CLZ:
+            case OP_I64_CTZ:
+            case OP_I64_POPCNT:
+            case OP_I64_EXTEND8_S:
+            case OP_I64_EXTEND16_S:
+            case OP_I64_EXTEND32_S:
+                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                push(TYPE_NUM_I64, stack);
+                break;
+            
             // relop and binop
             case OP_I32_EQ:
             case OP_I32_NE:
@@ -223,6 +238,41 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 push(TYPE_NUM_I32, stack);
+                break;
+            
+            case OP_I64_EQ:
+            case OP_I64_NE:
+            case OP_I64_LT_S:
+            case OP_I64_LT_U:
+            case OP_I64_GT_S:
+            case OP_I64_GT_U:
+            case OP_I64_LE_S:
+            case OP_I64_LE_U:
+            case OP_I64_GE_S:
+            case OP_I64_GE_U:
+                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                push(TYPE_NUM_I32, stack);
+                break;
+            
+            case OP_I64_ADD:
+            case OP_I64_SUB:
+            case OP_I64_MUL:
+            case OP_I64_DIV_S:
+            case OP_I64_DIV_U:
+            case OP_I64_REM_S:
+            case OP_I64_REM_U:
+            case OP_I64_AND:
+            case OP_I64_OR:
+            case OP_I64_XOR:
+            case OP_I64_SHL:
+            case OP_I64_SHR_S:
+            case OP_I64_SHR_U:
+            case OP_I64_ROTL:
+            case OP_I64_ROTR:
+                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                push(TYPE_NUM_I64, stack);
                 break;
             
             default:
