@@ -16,7 +16,13 @@ add_custom_target(
 )
 
 add_test(
-  NAME i32
-  COMMAND runtest i32
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    NAME i32
+    COMMAND runtest i32
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME i64
+    COMMAND runtest i64
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

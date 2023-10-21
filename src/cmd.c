@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/i32.55.wasm", O_RDONLY);
+    int fd = open("./build/test/i64.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -288,7 +288,7 @@ int main(int argc, char *argv[]) {
 
     err = validate_module(mod);
     if(IS_ERROR(err))
-        PANIC("validation failed");
+        PANIC("validation failed: %d", err);
 
     store_t *S;
     err = instantiate(&S, mod);

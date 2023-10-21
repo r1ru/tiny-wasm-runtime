@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -79,7 +80,11 @@ static void convert_to_arg(arg_t *arg, JSON_Object *obj) {
 
     if(strcmp(ty, "i32") == 0) {
         arg->type           = TYPE_NUM_I32;
-        arg->val.num.i32    = atoi(val);
+        arg->val.num.i32    = strtoimax(val, NULL, 0);
+    }
+    else if(strcmp(ty, "i64") == 0) {
+        arg->type = TYPE_NUM_I64;
+        arg->val.num.i64 = strtoumax(val, NULL, 0);
     }
     // todo: add here
 }
@@ -145,8 +150,16 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                     VECTOR_FOR_EACH(expect, &expects, arg_t) {
                         // todo: validate type?
                         arg_t *ret = VECTOR_ELEM(&args, idx++);
-                        // todo: consider the case whrere type != i32
-                        __throwif(ERR_FAILED, ret->val.num.i32 != expect->val.num.i32);
+
+                        switch(expect->type) {
+                            case TYPE_NUM_I32:
+                                __throwif(ERR_FAILED, ret->val.num.i32 != expect->val.num.i32);
+                                break;
+                            case TYPE_NUM_I64:
+                                __throwif(ERR_FAILED, ret->val.num.i64 != expect->val.num.i64);
+                                break;
+                            // todo: add here
+                        }
                     }
                 } else {
                     error_t err = invoke(ctx->store, addr, &args);

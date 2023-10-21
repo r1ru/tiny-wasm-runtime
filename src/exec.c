@@ -37,6 +37,11 @@ static inline void push_i32(int32_t val, stack_t *stack) {
     push_val(v, stack);
 }
 
+static inline void push_i64(int64_t val, stack_t *stack) {
+    val_t v = {.num.i64 = val};
+    push_val(v, stack);
+}
+
 void push_vals(vals_t vals, stack_t *stack) {
     VECTOR_FOR_EACH(val, &vals, val_t) {
         push_val(*val, stack);
@@ -78,6 +83,12 @@ static inline void pop_i32(int32_t *val, stack_t *stack) {
     val_t v;
     pop_val(&v, stack);
     *val = v.num.i32;
+}
+
+static inline void pop_i64(int64_t *val, stack_t *stack) {
+    val_t v;
+    pop_val(&v, stack);
+    *val = v.num.i64;
 }
 
 // pop all values from the stack top
@@ -197,18 +208,29 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
         while(ip) {
             instr_t *next_ip = ip->next;
 
-            int32_t rhs, lhs;
+            int32_t rhs_i32, lhs_i32;
+            int64_t rhs_i64, lhs_i64;
+
             // unary operator
             if(ip->op == OP_I32_EQZ || OP_I32_CLZ <= ip->op && ip->op <= OP_I32_POPCNT ||
                OP_I32_EXTEND8_S <= ip->op && ip->op <= OP_I32_EXTEND16_S) {
-                pop_i32(&lhs, S->stack);
+                pop_i32(&lhs_i32, S->stack);
+            }
+            if(ip->op == OP_I64_EQZ || OP_I64_CLZ <= ip->op && ip->op <= OP_I64_POPCNT ||
+               OP_I64_EXTEND8_S <= ip->op && ip->op <= OP_I64_EXTEND32_S) {
+                pop_i64(&lhs_i64, S->stack);
             }
             
             // binary operator
             if(OP_I32_EQ <= ip->op && ip->op <= OP_I32_GE_U || 
                OP_I32_ADD <= ip->op && ip->op <= OP_I32_ROTR) {
-                pop_i32(&rhs, S->stack);
-                pop_i32(&lhs, S->stack);
+                pop_i32(&rhs_i32, S->stack);
+                pop_i32(&lhs_i32, S->stack);
+            }
+            if(OP_I64_EQ <= ip->op && ip->op <= OP_I64_GE_U || 
+               OP_I64_ADD <= ip->op && ip->op <= OP_I64_ROTR) {
+                pop_i64(&rhs_i64, S->stack);
+                pop_i64(&lhs_i64, S->stack);
             }
 
             switch(ip->op) {
@@ -334,152 +356,307 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     push_i32(ip->c.i32, S->stack);
                     break;
                 
+                case OP_I64_CONST:
+                    push_i64(ip->c.i64, S->stack);
+                    break;
+                
                 case OP_I32_EQZ:
-                    push_i32(lhs == 0, S->stack);
+                    push_i32(lhs_i32 == 0, S->stack);
                     break;
-                
-                case OP_I32_CLZ:
-                    if(lhs == 0)
-                        push_i32(32, S->stack);
-                    else
-                        push_i32(__builtin_clz(lhs), S->stack);
-                    break;
-                    
-                case OP_I32_CTZ:
-                    push_i32(__builtin_ctz(lhs), S->stack);
-                    break;
-                
-                case OP_I32_POPCNT:
-                    push_i32(__builtin_popcount(lhs), S->stack);
-                    break;
-                
-                case OP_I32_EXTEND8_S:
-                    push_i32((int32_t)(int8_t)lhs, S->stack);
-                    break;
-                
-                case OP_I32_EXTEND16_S: 
-                    push_i32((int32_t)(int16_t)lhs, S->stack);
-                    break;
-                                
+                                    
                 case OP_I32_EQ:
-                    push_i32(lhs == rhs, S->stack);
+                    push_i32(lhs_i32 == rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_NE:
-                    push_i32(lhs != rhs, S->stack);
+                    push_i32(lhs_i32 != rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_LT_S:
-                    push_i32(lhs < rhs, S->stack);
+                    push_i32(lhs_i32 < rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_LT_U:
-                    push_i32((uint32_t)lhs < (uint32_t)rhs, S->stack);
+                    push_i32((uint32_t)lhs_i32 < (uint32_t)rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_GT_S:
-                    push_i32(lhs > rhs, S->stack);
+                    push_i32(lhs_i32 > rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_GT_U:
-                    push_i32((uint32_t)lhs > (uint32_t)rhs, S->stack);
+                    push_i32((uint32_t)lhs_i32 > (uint32_t)rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_LE_S:
-                    push_i32(lhs <= rhs, S->stack);
+                    push_i32(lhs_i32 <= rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_LE_U:
-                    push_i32((uint32_t)lhs <= (uint32_t)rhs, S->stack);
+                    push_i32((uint32_t)lhs_i32 <= (uint32_t)rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_GE_S:
-                    push_i32(lhs >= rhs, S->stack);
+                    push_i32(lhs_i32 >= rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_GE_U:
-                    push_i32((uint32_t)lhs >= (uint32_t)rhs, S->stack);
+                    push_i32((uint32_t)lhs_i32 >= (uint32_t)rhs_i32, S->stack);
+                    break;
+                
+                case OP_I64_EQZ:
+                    push_i32(lhs_i64 == 0, S->stack);
+                    break;
+                                    
+                case OP_I64_EQ:
+                    push_i32(lhs_i64 == rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_NE:
+                    push_i32(lhs_i64 != rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_LT_S:
+                    push_i32(lhs_i64 < rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_LT_U:
+                    push_i32((uint64_t)lhs_i64 < (uint64_t)rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_GT_S:
+                    push_i32(lhs_i64 > rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_GT_U:
+                    push_i32((uint64_t)lhs_i64 > (uint64_t)rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_LE_S:
+                    push_i32(lhs_i64 <= rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_LE_U:
+                    push_i32((uint64_t)lhs_i64 <= (uint64_t)rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_GE_S:
+                    push_i32(lhs_i64 >= rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_GE_U:
+                    push_i32((uint64_t)lhs_i64 >= (uint64_t)rhs_i64, S->stack);
+                    break;
+                
+                case OP_I32_CLZ:
+                    if(lhs_i32 == 0)
+                        push_i32(32, S->stack);
+                    else
+                        push_i32(__builtin_clz(lhs_i32), S->stack);
+                    break;
+                    
+                case OP_I32_CTZ:
+                    push_i32(__builtin_ctz(lhs_i32), S->stack);
+                    break;
+                
+                case OP_I32_POPCNT:
+                    push_i32(__builtin_popcount(lhs_i32), S->stack);
                     break;
                 
                 case OP_I32_ADD:
-                    push_i32(lhs + rhs, S->stack);
+                    push_i32(lhs_i32 + rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_SUB:
-                    push_i32(lhs - rhs, S->stack);
+                    push_i32(lhs_i32 - rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_MUL:
-                    push_i32(lhs * rhs, S->stack);
+                    push_i32(lhs_i32 * rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_DIV_S:
-                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs == 0);
-                    __throwif(ERR_TRAP_INTERGET_OVERFLOW, lhs == INT32_MIN && rhs == -1);
-                    push_i32(lhs / rhs, S->stack);
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
+                    __throwif(ERR_TRAP_INTERGET_OVERFLOW, lhs_i32 == INT32_MIN && rhs_i32 == -1);
+                    push_i32(lhs_i32 / rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_DIV_U:
-                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs == 0);
-                    push_i32((uint32_t)lhs / (uint32_t)rhs, S->stack);
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
+                    push_i32((uint32_t)lhs_i32 / (uint32_t)rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_REM_S:
-                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs == 0);
-                    if(lhs == INT32_MIN && rhs == -1) {
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
+                    if(lhs_i32 == INT32_MIN && rhs_i32 == -1) {
                         push_i32(0, S->stack);
                     }
                     else {
-                        push_i32(lhs % rhs, S->stack);
+                        push_i32(lhs_i32 % rhs_i32, S->stack);
                     }
                     break;
                 
                 case OP_I32_REM_U:
-                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs == 0);
-                    push_i32((uint32_t)lhs % (uint32_t)rhs, S->stack);
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
+                    push_i32((uint32_t)lhs_i32 % (uint32_t)rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_AND:
-                    push_i32(lhs & rhs, S->stack);
+                    push_i32(lhs_i32 & rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_OR:
-                    push_i32(lhs | rhs, S->stack);
+                    push_i32(lhs_i32 | rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_XOR:
-                    push_i32(lhs ^ rhs, S->stack);
+                    push_i32(lhs_i32 ^ rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_SHL:
-                    push_i32(lhs << rhs, S->stack);
+                    push_i32(lhs_i32 << rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_SHR_S:
-                    push_i32(lhs >> rhs, S->stack);
+                    push_i32(lhs_i32 >> rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_SHR_U:
-                    push_i32((uint32_t)lhs >> (uint32_t)rhs, S->stack);
+                    push_i32((uint32_t)lhs_i32 >> (uint32_t)rhs_i32, S->stack);
                     break;
                 
                 case OP_I32_ROTL: {
-                    uint32_t n = rhs & 31;
+                    uint32_t n = rhs_i32 & 31;
                     push_i32(
-                        ((uint32_t)lhs << n) | ((uint32_t)lhs >> ((-n) & 31)), 
+                        ((uint32_t)lhs_i32 << n) | ((uint32_t)lhs_i32 >> ((-n) & 31)), 
                         S->stack
                     );
                     break;
                 }
 
                 case OP_I32_ROTR: {
-                    uint32_t n = rhs & 31;
+                    uint32_t n = rhs_i32 & 31;
                     push_i32(
-                        ((uint32_t)lhs >> n) | ((uint32_t)lhs << ((-n) & 31)), 
+                        ((uint32_t)lhs_i32 >> n) | ((uint32_t)lhs_i32 << ((-n) & 31)), 
                         S->stack
                     );
                     break;
                 }
+
+                case OP_I64_CLZ:
+                    if(lhs_i64 == 0)
+                        push_i64(64, S->stack);
+                    else
+                        push_i64(__builtin_clzl(lhs_i64), S->stack);
+                    break;
+                    
+                case OP_I64_CTZ:
+                    push_i64(__builtin_ctzl(lhs_i64), S->stack);
+                    break;
+                
+                case OP_I64_POPCNT:
+                    push_i64(__builtin_popcountl(lhs_i64), S->stack);
+                    break;
+                
+                case OP_I64_ADD:
+                    push_i64(lhs_i64 + rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_SUB:
+                    push_i64(lhs_i64 - rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_MUL:
+                    push_i64(lhs_i64 * rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_DIV_S:
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
+                    __throwif(ERR_TRAP_INTERGET_OVERFLOW, lhs_i64 == INT64_MIN && rhs_i64 == -1);
+                    push_i64(lhs_i64 / rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_DIV_U:
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
+                    push_i64((uint64_t)lhs_i64 / (uint64_t)rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_REM_S:
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
+                    if(lhs_i64 == INT64_MIN && rhs_i64 == -1) {
+                        push_i64(0, S->stack);
+                    }
+                    else {
+                        push_i64(lhs_i64 % rhs_i64, S->stack);
+                    }
+                    break;
+                
+                case OP_I64_REM_U:
+                    __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
+                    push_i64((uint64_t)lhs_i64 % (uint64_t)rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_AND:
+                    push_i64(lhs_i64 & rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_OR:
+                    push_i64(lhs_i64 | rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_XOR:
+                    push_i64(lhs_i64 ^ rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_SHL:
+                    push_i64(lhs_i64 << rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_SHR_S:
+                    push_i64(lhs_i64 >> rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_SHR_U:
+                    push_i64((uint64_t)lhs_i64 >> (uint64_t)rhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_ROTL: {
+                    uint64_t n = rhs_i64 & 63;
+                    push_i64(
+                        ((uint64_t)lhs_i64 << n) | ((uint64_t)lhs_i64 >> ((-n) & 63)), 
+                        S->stack
+                    );
+                    break;
+                }
+
+                case OP_I64_ROTR: {
+                    uint64_t n = rhs_i64 & 63;
+                    push_i64(
+                        ((uint64_t)lhs_i64 >> n) | ((uint64_t)lhs_i64 << ((-n) & 63)), 
+                        S->stack
+                    );
+                    break;
+                }
+
+                case OP_I32_EXTEND8_S:
+                    push_i32((int32_t)(int8_t)lhs_i32, S->stack);
+                    break;
+                
+                case OP_I32_EXTEND16_S: 
+                    push_i32((int32_t)(int16_t)lhs_i32, S->stack);
+                    break;
+                
+                case OP_I64_EXTEND8_S:
+                    push_i64((int64_t)(int8_t)lhs_i64, S->stack);
+                    break;
+                
+                case OP_I64_EXTEND16_S: 
+                    push_i64((int64_t)(int16_t)lhs_i64, S->stack);
+                    break;
+                
+                 case OP_I64_EXTEND32_S: 
+                    push_i64((int64_t)(int32_t)lhs_i64, S->stack);
+                    break;
 
                 default:
                     PANIC("Exec: unsupported opcode: %x\n", ip->op);
