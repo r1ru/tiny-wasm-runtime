@@ -275,6 +275,26 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(TYPE_NUM_I64, stack);
                 break;
             
+            case OP_F32_CEIL:
+            case OP_F32_FLOOR:
+            case OP_F32_TRUNC:
+            case OP_F32_NEAREST:
+            case OP_F32_SQRT:
+                __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                push(TYPE_NUM_F32, stack);
+                break;
+            
+            case OP_F32_ADD:
+            case OP_F32_SUB:
+            case OP_F32_MUL:
+            case OP_F32_DIV:
+            case OP_F32_MIN:
+            case OP_F32_MAX:
+                __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                push(TYPE_NUM_F32, stack);
+                break;
+            
             default:
                 ERROR("Validation: unsupported opcode: %x\n", ip->op);
                 __throw(ERR_FAILED);
