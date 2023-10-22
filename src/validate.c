@@ -313,6 +313,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(TYPE_NUM_F32, stack);
                 break;
             
+            case OP_F64_ABS:
+            case OP_F64_NEG:
             case OP_F64_CEIL:
             case OP_F64_FLOOR:
             case OP_F64_TRUNC:
@@ -328,6 +330,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_F64_DIV:
             case OP_F64_MIN:
             case OP_F64_MAX:
+            case OP_F64_COPYSIGN:
                 __throwiferr(try_pop(TYPE_NUM_F64, stack));
                 __throwiferr(try_pop(TYPE_NUM_F64, stack));
                 push(TYPE_NUM_F64, stack);
