@@ -259,6 +259,17 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(TYPE_NUM_I32, stack);
                 break;
             
+            case OP_F32_EQ:
+            case OP_F32_NE:
+            case OP_F32_LT:
+            case OP_F32_GT:
+            case OP_F32_LE:
+            case OP_F32_GE:
+                __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                push(TYPE_NUM_I32, stack);
+                break;
+            
             case OP_I64_ADD:
             case OP_I64_SUB:
             case OP_I64_MUL:
