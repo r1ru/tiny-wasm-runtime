@@ -236,7 +236,6 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
             // check that validation fails
             error_t err = validate_module(ctx->mod);
             __throwif(ERR_FAILED, !IS_ERROR(err));
-
             // check that error messagees match
             __throwif(
                 ERR_FAILED, 

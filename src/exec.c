@@ -250,7 +250,8 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 pop_i64(&rhs_i64, S->stack);
                 pop_i64(&lhs_i64, S->stack);
             }
-            if(OP_F32_ADD <= ip->op && ip->op <= OP_F32_COPYSIGN) {
+            if(OP_F32_EQ <= ip->op && ip->op <= OP_F32_GE ||
+               OP_F32_ADD <= ip->op && ip->op <= OP_F32_COPYSIGN) {
                 pop_f32(&rhs_f32, S->stack);
                 pop_f32(&lhs_f32, S->stack);
             }
@@ -472,6 +473,30 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 
                 case OP_I64_GE_U:
                     push_i32((uint64_t)lhs_i64 >= (uint64_t)rhs_i64, S->stack);
+                    break;
+                
+                case OP_F32_EQ:
+                    push_i32(lhs_f32 == rhs_f32, S->stack);
+                    break;
+                
+                case OP_F32_NE:
+                    push_i32(lhs_f32 != rhs_f32, S->stack);
+                    break;
+                
+                case OP_F32_LT:
+                    push_i32(lhs_f32 < rhs_f32, S->stack);
+                    break;
+                
+                case OP_F32_GT:
+                    push_i32(lhs_f32 > rhs_f32, S->stack);
+                    break;
+                
+                case OP_F32_LE:
+                    push_i32(lhs_f32 <= rhs_f32, S->stack);
+                    break;
+                
+                case OP_F32_GE:
+                    push_i32(lhs_f32 >= rhs_f32, S->stack);
                     break;
                 
                 case OP_I32_CLZ:
