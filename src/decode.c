@@ -390,6 +390,12 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_I64_LE_U:
             case OP_I64_GE_S:
             case OP_I64_GE_U:
+            case OP_F32_EQ:
+            case OP_F32_NE:
+            case OP_F32_LT:
+            case OP_F32_GT:
+            case OP_F32_LE:
+            case OP_F32_GE:
 
             case OP_I32_CLZ:
             case OP_I32_CTZ:
