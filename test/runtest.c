@@ -74,6 +74,10 @@ void destroy_test_ctx(test_ctx_t *ctx) {
 }
 
 // ref: https://github.com/WebAssembly/wabt/blob/main/docs/wast2json.md
+// used only in test
+#define TYPE_NAN_CANONICAL  (1<<7)
+#define TYPE_NAN_ARITHMETIC (1<<7 | 1<<1)
+
 static void convert_to_arg(arg_t *arg, JSON_Object *obj) {
     const char *ty  =  json_object_get_string(obj, "type");
     const char *val = json_object_get_string(obj, "value");
@@ -85,6 +89,17 @@ static void convert_to_arg(arg_t *arg, JSON_Object *obj) {
     else if(strcmp(ty, "i64") == 0) {
         arg->type = TYPE_NUM_I64;
         arg->val.num.i64 = strtoumax(val, NULL, 0);
+    }
+    else if(strcmp(ty, "f32") == 0) {
+        // ref: https://github.com/WebAssembly/wabt/blob/main/docs/wast2json.md
+        if(strcmp(val, "nan:canonical") == 0)
+            arg->type = TYPE_NAN_CANONICAL|TYPE_NUM_F32;
+        else if(strcmp(val, "nan:arithmetic") == 0)
+            arg->type = TYPE_NAN_ARITHMETIC|TYPE_NUM_F32;
+        else {
+            arg->type = TYPE_NUM_F32;
+            arg->val.num.i32 = strtoimax(val, NULL, 0);
+        }
     }
     // todo: add here
 }
@@ -155,8 +170,21 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                             case TYPE_NUM_I32:
                                 __throwif(ERR_FAILED, ret->val.num.i32 != expect->val.num.i32);
                                 break;
+                            
                             case TYPE_NUM_I64:
                                 __throwif(ERR_FAILED, ret->val.num.i64 != expect->val.num.i64);
+                                break;
+                            
+                            case TYPE_NUM_F32|TYPE_NAN_ARITHMETIC:
+                                __throwif(ERR_FAILED, ret->val.num.i32 & 0x00400000 != 0x00400000);
+                                break;
+                            
+                            case TYPE_NUM_F32|TYPE_NAN_CANONICAL:
+                                __throwif(ERR_FAILED, ret->val.num.i32 & 0x7fffffff != 0x7fc00000);
+                                break;
+                            
+                            case TYPE_NUM_F32:
+                                __throwif(ERR_FAILED, ret->val.num.f32 != expect->val.num.f32);
                                 break;
                             // todo: add here
                         }

@@ -182,6 +182,10 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_F32_CONST:
                 push(TYPE_NUM_F32, stack);
                 break;
+            
+            case OP_F64_CONST:
+                push(TYPE_NUM_F64, stack);
+                break;
              
             // testop and unop
             case OP_I32_EQZ:
@@ -296,8 +300,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             
             default:
-                ERROR("Validation: unsupported opcode: %x\n", ip->op);
-                __throw(ERR_FAILED);
+                PANIC("Validation: unsupported opcode: %x\n", ip->op);
         }       
     } 
     __catch:

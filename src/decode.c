@@ -169,6 +169,16 @@ error_t read_f32(float *d, buffer_t *buf) {
         return err;
 }
 
+error_t read_f64(double *d, buffer_t *buf) {
+    __try {
+        __throwif(ERR_FAILED, buf->p + 8 > buf->end);
+         *d = *(double *)buf->p;
+        buf->p += 8;
+    }
+    __catch:
+        return err;
+}
+
 // useful macros
 typedef error_t (*decoder_t) (module_t *mod, buffer_t *buf);
 
@@ -354,6 +364,10 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 __throwiferr(read_f32(&i->c.f32, buf));
                 break;
             
+            case OP_F64_CONST:
+                __throwiferr(read_f64(&i->c.f64, buf));
+                break;
+            
             case OP_I32_EQZ:
             case OP_I32_EQ:
             case OP_I32_NE:
@@ -434,8 +448,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 break;
             
             default:
-                ERROR("Decode: unsupported opcode: %x", i->op);
-                __throw(ERR_FAILED);
+                PANIC("Decode: unsupported opcode: %x", i->op);
         }
         
         *instr = i;

@@ -25,6 +25,7 @@ typedef struct {
 typedef union {
     int32_t         i32;
     int64_t         i64;
+    float           f32;
 } num_t;
 
 typedef union {

@@ -13,6 +13,7 @@ add_custom_target(
     tests ALL 
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/i32.wast -o ${CMAKE_CURRENT_BINARY_DIR}/i32
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/i64.wast -o ${CMAKE_CURRENT_BINARY_DIR}/i64
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/f32.wast -o ${CMAKE_CURRENT_BINARY_DIR}/f32
 )
 
 add_test(
@@ -24,5 +25,11 @@ add_test(
 add_test(
     NAME i64
     COMMAND runtest i64
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME f32
+    COMMAND runtest f32
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

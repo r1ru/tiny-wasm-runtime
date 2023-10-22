@@ -2,6 +2,9 @@
 #include "print.h"
 #include "exception.h"
 
+// todo: fix this?
+#include <math.h>
+
 // stack
 void new_stack(stack_t **d) {
     stack_t *stack = *d = malloc(sizeof(stack_t));
@@ -39,6 +42,11 @@ static inline void push_i32(int32_t val, stack_t *stack) {
 
 static inline void push_i64(int64_t val, stack_t *stack) {
     val_t v = {.num.i64 = val};
+    push_val(v, stack);
+}
+
+static inline void push_f32(float val, stack_t *stack) {
+    val_t v = {.num.f32 = val};
     push_val(v, stack);
 }
 
@@ -89,6 +97,12 @@ static inline void pop_i64(int64_t *val, stack_t *stack) {
     val_t v;
     pop_val(&v, stack);
     *val = v.num.i64;
+}
+
+static inline void pop_f32(float *val, stack_t *stack) {
+    val_t v;
+    pop_val(&v, stack);
+    *val = v.num.f32;
 }
 
 // pop all values from the stack top
@@ -210,6 +224,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
 
             int32_t rhs_i32, lhs_i32;
             int64_t rhs_i64, lhs_i64;
+            float   rhs_f32, lhs_f32;
 
             // unary operator
             if(ip->op == OP_I32_EQZ || OP_I32_CLZ <= ip->op && ip->op <= OP_I32_POPCNT ||
@@ -219,6 +234,9 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
             if(ip->op == OP_I64_EQZ || OP_I64_CLZ <= ip->op && ip->op <= OP_I64_POPCNT ||
                OP_I64_EXTEND8_S <= ip->op && ip->op <= OP_I64_EXTEND32_S) {
                 pop_i64(&lhs_i64, S->stack);
+            }
+            if(OP_F32_CEIL <= ip->op && ip->op <= OP_F32_SQRT) {
+                pop_f32(&lhs_f32, S->stack);
             }
             
             // binary operator
@@ -231,6 +249,10 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                OP_I64_ADD <= ip->op && ip->op <= OP_I64_ROTR) {
                 pop_i64(&rhs_i64, S->stack);
                 pop_i64(&lhs_i64, S->stack);
+            }
+            if(OP_F32_ADD <= ip->op && ip->op <= OP_F32_MAX) {
+                pop_f32(&rhs_f32, S->stack);
+                pop_f32(&lhs_f32, S->stack);
             }
 
             switch(ip->op) {
@@ -358,6 +380,10 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 
                 case OP_I64_CONST:
                     push_i64(ip->c.i64, S->stack);
+                    break;
+                
+                case OP_F32_CONST:
+                    push_f32(ip->c.f32, S->stack);
                     break;
                 
                 case OP_I32_EQZ:
@@ -638,6 +664,66 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     break;
                 }
 
+                case OP_F32_CEIL:
+                    push_f32(ceilf(lhs_f32), S->stack);
+                    break;
+
+                case OP_F32_FLOOR:
+                    push_f32(floorf(lhs_f32), S->stack);
+                    break;
+
+                case OP_F32_TRUNC:
+                    push_f32(truncf(lhs_f32), S->stack);
+                    break;
+                
+                case OP_F32_NEAREST:
+                    push_f32(nearbyintf(lhs_f32), S->stack);
+                    break;
+                
+                case OP_F32_SQRT:
+                    push_f32(sqrtf(lhs_f32), S->stack);
+                    break;
+                
+                case OP_F32_ADD:
+                    push_f32(lhs_f32 + rhs_f32, S->stack);
+                    break;
+                
+                case OP_F32_SUB:
+                    push_f32(lhs_f32 - rhs_f32, S->stack);
+                    break;
+                
+                case OP_F32_MUL:
+                    push_f32(lhs_f32 * rhs_f32, S->stack);
+                    break;
+                
+                case OP_F32_DIV:
+                    push_f32(lhs_f32 / rhs_f32, S->stack);
+                    break;
+                
+                case OP_F32_MIN:
+                    if(isnan(lhs_f32) || isnan(rhs_f32))
+                        push_f32(NAN, S->stack);
+                    else if(lhs_f32 == 0 && rhs_f32 == 0)
+                        push_f32(signbit(lhs_f32) ? lhs_f32 : rhs_f32, S->stack);
+                    else 
+                        push_f32(
+                            lhs_f32 < rhs_f32 ? lhs_f32 : rhs_f32,
+                            S->stack
+                        );
+                    break;
+                
+                case OP_F32_MAX:
+                    if(isnan(lhs_f32) || isnan(rhs_f32))
+                        push_f32(NAN, S->stack);
+                    else if(lhs_f32 == 0 && rhs_f32 == 0)
+                        push_f32(signbit(lhs_f32) ? rhs_f32 : lhs_f32, S->stack);
+                    else
+                        push_f32(
+                            lhs_f32 > rhs_f32 ? lhs_f32 : rhs_f32,
+                            S->stack
+                        );
+                    break;
+                
                 case OP_I32_EXTEND8_S:
                     push_i32((int32_t)(int8_t)lhs_i32, S->stack);
                     break;

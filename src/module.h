@@ -17,6 +17,7 @@ typedef uint32_t    tableidx_t;
 #define TYPE_NUM_I32 0x7F
 #define TYPE_NUM_I64 0x7E
 #define TYPE_NUM_F32 0x7D
+#define TYPE_NUM_F64 0x7C
 
 typedef VECTOR(valtype_t) resulttype_t;
 
@@ -63,6 +64,7 @@ enum op {
     OP_I32_CONST        = 0x41,
     OP_I64_CONST        = 0x42,
     OP_F32_CONST        = 0x43,
+    OP_F64_CONST        = 0x44,
     OP_I32_EQZ          = 0x45,
     OP_I32_EQ           = 0x46,
     OP_I32_NE           = 0x47,
@@ -148,6 +150,7 @@ typedef union {
     int32_t     i32;
     int64_t     i64;
     float       f32;
+    double      f64;
 } const_t;
 
 typedef struct {
