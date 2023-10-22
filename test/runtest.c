@@ -78,6 +78,20 @@ void destroy_test_ctx(test_ctx_t *ctx) {
 #define TYPE_NAN_CANONICAL  (1<<7)
 #define TYPE_NAN_ARITHMETIC (1<<7 | 1<<1)
 
+static inline bool is_canonical_nan(arg_t *arg) {
+    switch(arg->type) {
+        case TYPE_NUM_F32:
+            return (arg->val.num.i32 & 0x7fffffff) == 0x7fc00000;
+    }
+}
+
+static inline bool is_arithmetic_nan(arg_t *arg) {
+    switch(arg->type) {
+        case TYPE_NUM_F32:
+            return (arg->val.num.i32 & 0x00400000) == 0x00400000;
+    }
+}
+
 static void convert_to_arg(arg_t *arg, JSON_Object *obj) {
     const char *ty  =  json_object_get_string(obj, "type");
     const char *val = json_object_get_string(obj, "value");
@@ -176,15 +190,16 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                                 break;
                             
                             case TYPE_NUM_F32|TYPE_NAN_ARITHMETIC:
-                                __throwif(ERR_FAILED, ret->val.num.i32 & 0x00400000 != 0x00400000);
+                                __throwif(ERR_FAILED, !is_arithmetic_nan(ret));
                                 break;
                             
                             case TYPE_NUM_F32|TYPE_NAN_CANONICAL:
-                                __throwif(ERR_FAILED, ret->val.num.i32 & 0x7fffffff != 0x7fc00000);
+                                __throwif(ERR_FAILED, !is_canonical_nan(ret));
                                 break;
                             
+                            // compare as bitpattern
                             case TYPE_NUM_F32:
-                                __throwif(ERR_FAILED, ret->val.num.f32 != expect->val.num.f32);
+                                __throwif(ERR_FAILED, ret->val.num.i32 != expect->val.num.i32);
                                 break;
                             // todo: add here
                         }

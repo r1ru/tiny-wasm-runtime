@@ -235,7 +235,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                OP_I64_EXTEND8_S <= ip->op && ip->op <= OP_I64_EXTEND32_S) {
                 pop_i64(&lhs_i64, S->stack);
             }
-            if(OP_F32_CEIL <= ip->op && ip->op <= OP_F32_SQRT) {
+            if(OP_F32_ABS <= ip->op && ip->op <= OP_F32_SQRT) {
                 pop_f32(&lhs_f32, S->stack);
             }
             
@@ -250,7 +250,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 pop_i64(&rhs_i64, S->stack);
                 pop_i64(&lhs_i64, S->stack);
             }
-            if(OP_F32_ADD <= ip->op && ip->op <= OP_F32_MAX) {
+            if(OP_F32_ADD <= ip->op && ip->op <= OP_F32_COPYSIGN) {
                 pop_f32(&rhs_f32, S->stack);
                 pop_f32(&lhs_f32, S->stack);
             }
@@ -664,6 +664,14 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     break;
                 }
 
+                case OP_F32_ABS:
+                    push_f32(fabsf(lhs_f32), S->stack);
+                    break;
+
+                case OP_F32_NEG:
+                    push_f32(-lhs_f32, S->stack);
+                    break;
+                
                 case OP_F32_CEIL:
                     push_f32(ceilf(lhs_f32), S->stack);
                     break;
@@ -722,6 +730,10 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                             lhs_f32 > rhs_f32 ? lhs_f32 : rhs_f32,
                             S->stack
                         );
+                    break;
+                
+                case OP_F32_COPYSIGN:
+                    push_f32(copysignf(lhs_f32, rhs_f32), S->stack);
                     break;
                 
                 case OP_I32_EXTEND8_S:
@@ -816,7 +828,9 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         // reuse args to return results since it is no longer used.
         //free(args->elem);
         VECTOR_INIT(args, functype->rt2.n, arg_t);
+        idx = 0;
         VECTOR_FOR_EACH(ret, args, arg_t) {
+            ret->type = *VECTOR_ELEM(&functype->rt2, idx++);
             pop_val(&ret->val, S->stack);
         }
     }
