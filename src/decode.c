@@ -448,6 +448,18 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_F32_MIN:
             case OP_F32_MAX:
             case OP_F32_COPYSIGN:
+
+            case OP_F64_CEIL:
+            case OP_F64_FLOOR:
+            case OP_F64_TRUNC:
+            case OP_F64_NEAREST:
+            case OP_F64_SQRT:
+            case OP_F64_ADD:
+            case OP_F64_SUB:
+            case OP_F64_MUL:
+            case OP_F64_DIV:
+            case OP_F64_MIN:
+            case OP_F64_MAX:
             
             case OP_I32_EXTEND8_S:
             case OP_I32_EXTEND16_S:
