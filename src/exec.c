@@ -250,7 +250,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
             if(OP_F32_ABS <= ip->op && ip->op <= OP_F32_SQRT) {
                 pop_f32(&lhs_f32, S->stack);
             }
-            if(OP_F64_CEIL <= ip->op && ip->op <= OP_F64_SQRT) {
+            if(OP_F64_ABS <= ip->op && ip->op <= OP_F64_SQRT) {
                 pop_f64(&lhs_f64, S->stack);
             }
             
@@ -270,7 +270,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 pop_f32(&rhs_f32, S->stack);
                 pop_f32(&lhs_f32, S->stack);
             }
-            if(OP_F64_ADD <= ip->op && ip->op <= OP_F64_MAX) {
+            if(OP_F64_ADD <= ip->op && ip->op <= OP_F64_COPYSIGN) {
                 pop_f64(&rhs_f64, S->stack);
                 pop_f64(&lhs_f64, S->stack);
             }
@@ -780,6 +780,14 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     push_f32(copysignf(lhs_f32, rhs_f32), S->stack);
                     break;
                 
+                case OP_F64_ABS:
+                    push_f64(fabs(lhs_f64), S->stack);
+                    break;
+                
+                case OP_F64_NEG:
+                    push_f64(-lhs_f64, S->stack);
+                    break;
+                
                 case OP_F64_CEIL:
                     push_f64(ceil(lhs_f64), S->stack);
                     break;
@@ -838,6 +846,10 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                             lhs_f64 > rhs_f64 ? lhs_f64 : rhs_f64,
                             S->stack
                         );
+                    break;
+                
+                case OP_F64_COPYSIGN:
+                    push_f64(copysign(lhs_f64, rhs_f64), S->stack);
                     break;
                 
                 case OP_I32_EXTEND8_S:
