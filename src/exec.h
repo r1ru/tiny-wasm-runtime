@@ -26,6 +26,7 @@ typedef union {
     int32_t         i32;
     int64_t         i64;
     float           f32;
+    double          f64;
 } num_t;
 
 typedef union {

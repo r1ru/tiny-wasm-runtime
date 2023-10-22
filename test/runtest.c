@@ -82,6 +82,8 @@ static inline bool is_canonical_nan(arg_t *arg) {
     switch(arg->type) {
         case TYPE_NUM_F32:
             return (arg->val.num.i32 & 0x7fffffff) == 0x7fc00000;
+        case TYPE_NUM_F64:
+            return (arg->val.num.i64 & 0x7fffffffffffffff) == 0x7ff8000000000000;
     }
 }
 
@@ -89,6 +91,8 @@ static inline bool is_arithmetic_nan(arg_t *arg) {
     switch(arg->type) {
         case TYPE_NUM_F32:
             return (arg->val.num.i32 & 0x00400000) == 0x00400000;
+        case TYPE_NUM_F64:
+            return (arg->val.num.i64 & 0x0008000000000000) == 0x0008000000000000;
     }
 }
 
@@ -113,6 +117,17 @@ static void convert_to_arg(arg_t *arg, JSON_Object *obj) {
         else {
             arg->type = TYPE_NUM_F32;
             arg->val.num.i32 = strtoimax(val, NULL, 0);
+        }
+    }
+    else if(strcmp(ty, "f64") == 0) {
+        // ref: https://github.com/WebAssembly/wabt/blob/main/docs/wast2json.md
+        if(strcmp(val, "nan:canonical") == 0)
+            arg->type = TYPE_NAN_CANONICAL|TYPE_NUM_F64;
+        else if(strcmp(val, "nan:arithmetic") == 0)
+            arg->type = TYPE_NAN_ARITHMETIC|TYPE_NUM_F64;
+        else {
+            arg->type = TYPE_NUM_F64;
+            arg->val.num.i64 = strtoumax(val, NULL, 0);
         }
     }
     // todo: add here
@@ -190,16 +205,22 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                                 break;
                             
                             case TYPE_NUM_F32|TYPE_NAN_ARITHMETIC:
+                            case TYPE_NUM_F64|TYPE_NAN_ARITHMETIC:
                                 __throwif(ERR_FAILED, !is_arithmetic_nan(ret));
                                 break;
                             
                             case TYPE_NUM_F32|TYPE_NAN_CANONICAL:
+                            case TYPE_NUM_F64|TYPE_NAN_CANONICAL:
                                 __throwif(ERR_FAILED, !is_canonical_nan(ret));
                                 break;
                             
                             // compare as bitpattern
                             case TYPE_NUM_F32:
                                 __throwif(ERR_FAILED, ret->val.num.i32 != expect->val.num.i32);
+                                break;
+                            
+                            case TYPE_NUM_F64:
+                                __throwif(ERR_FAILED, ret->val.num.i64 != expect->val.num.i64);
                                 break;
                             // todo: add here
                         }

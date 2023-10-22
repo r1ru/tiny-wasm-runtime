@@ -50,6 +50,11 @@ static inline void push_f32(float val, stack_t *stack) {
     push_val(v, stack);
 }
 
+static inline void push_f64(double val, stack_t *stack) {
+    val_t v = {.num.f64 = val};
+    push_val(v, stack);
+}
+
 void push_vals(vals_t vals, stack_t *stack) {
     VECTOR_FOR_EACH(val, &vals, val_t) {
         push_val(*val, stack);
@@ -103,6 +108,12 @@ static inline void pop_f32(float *val, stack_t *stack) {
     val_t v;
     pop_val(&v, stack);
     *val = v.num.f32;
+}
+
+static inline void pop_f64(double *val, stack_t *stack) {
+    val_t v;
+    pop_val(&v, stack);
+    *val = v.num.f64;
 }
 
 // pop all values from the stack top
@@ -225,6 +236,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
             int32_t rhs_i32, lhs_i32;
             int64_t rhs_i64, lhs_i64;
             float   rhs_f32, lhs_f32;
+            double  rhs_f64, lhs_f64;
 
             // unary operator
             if(ip->op == OP_I32_EQZ || OP_I32_CLZ <= ip->op && ip->op <= OP_I32_POPCNT ||
@@ -237,6 +249,9 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
             }
             if(OP_F32_ABS <= ip->op && ip->op <= OP_F32_SQRT) {
                 pop_f32(&lhs_f32, S->stack);
+            }
+            if(OP_F64_CEIL <= ip->op && ip->op <= OP_F64_SQRT) {
+                pop_f64(&lhs_f64, S->stack);
             }
             
             // binary operator
@@ -254,6 +269,10 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                OP_F32_ADD <= ip->op && ip->op <= OP_F32_COPYSIGN) {
                 pop_f32(&rhs_f32, S->stack);
                 pop_f32(&lhs_f32, S->stack);
+            }
+            if(OP_F64_ADD <= ip->op && ip->op <= OP_F64_MAX) {
+                pop_f64(&rhs_f64, S->stack);
+                pop_f64(&lhs_f64, S->stack);
             }
 
             switch(ip->op) {
@@ -759,6 +778,66 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 
                 case OP_F32_COPYSIGN:
                     push_f32(copysignf(lhs_f32, rhs_f32), S->stack);
+                    break;
+                
+                case OP_F64_CEIL:
+                    push_f64(ceil(lhs_f64), S->stack);
+                    break;
+                
+                case OP_F64_FLOOR:
+                    push_f64(floor(lhs_f64), S->stack);
+                    break;
+                
+                case OP_F64_TRUNC:
+                    push_f64(trunc(lhs_f64), S->stack);
+                    break;
+                
+                case OP_F64_NEAREST:
+                    push_f64(nearbyint(lhs_f64), S->stack);
+                    break;
+                
+                case OP_F64_SQRT:
+                    push_f64(sqrt(lhs_f64), S->stack);
+                    break;
+                
+                case OP_F64_ADD:
+                    push_f64(lhs_f64 + rhs_f64, S->stack);
+                    break;
+                
+                case OP_F64_SUB:
+                    push_f64(lhs_f64 - rhs_f64, S->stack);
+                    break;
+                
+                case OP_F64_MUL:
+                    push_f64(lhs_f64 * rhs_f64, S->stack);
+                    break;
+                
+                case OP_F64_DIV:
+                    push_f64(lhs_f64 / rhs_f64, S->stack);
+                    break;
+                
+                case OP_F64_MIN:
+                    if(isnan(lhs_f64) || isnan(rhs_f64))
+                        push_f64(NAN, S->stack);
+                    else if(lhs_f64 == 0 && rhs_f64 == 0)
+                        push_f64(signbit(lhs_f64) ? lhs_f64 : rhs_f64, S->stack);
+                    else 
+                        push_f64(
+                            lhs_f64 < rhs_f64 ? lhs_f64 : rhs_f64,
+                            S->stack
+                        );
+                    break;
+                
+                case OP_F64_MAX:
+                    if(isnan(lhs_f64) || isnan(rhs_f64))
+                        push_f64(NAN, S->stack);
+                    else if(lhs_f64 == 0 && rhs_f64 == 0)
+                        push_f64(signbit(lhs_f64) ? rhs_f64 : lhs_f64, S->stack);
+                    else
+                        push_f64(
+                            lhs_f64 > rhs_f64 ? lhs_f64 : rhs_f64,
+                            S->stack
+                        );
                     break;
                 
                 case OP_I32_EXTEND8_S:
