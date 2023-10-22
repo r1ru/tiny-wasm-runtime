@@ -313,6 +313,26 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(TYPE_NUM_F32, stack);
                 break;
             
+            case OP_F64_CEIL:
+            case OP_F64_FLOOR:
+            case OP_F64_TRUNC:
+            case OP_F64_NEAREST:
+            case OP_F64_SQRT:
+                __throwiferr(try_pop(TYPE_NUM_F64, stack));
+                push(TYPE_NUM_F64, stack);
+                break;
+            
+            case OP_F64_ADD:
+            case OP_F64_SUB:
+            case OP_F64_MUL:
+            case OP_F64_DIV:
+            case OP_F64_MIN:
+            case OP_F64_MAX:
+                __throwiferr(try_pop(TYPE_NUM_F64, stack));
+                __throwiferr(try_pop(TYPE_NUM_F64, stack));
+                push(TYPE_NUM_F64, stack);
+                break;
+            
             default:
                 PANIC("Validation: unsupported opcode: %x\n", ip->op);
         }       
