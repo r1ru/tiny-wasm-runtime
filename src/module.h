@@ -172,6 +172,7 @@ enum op {
 
 typedef union {
     // todo: support s33
+    typeidx_t   typeidx;
     valtype_t   valtype;
 } blocktype_t;
 

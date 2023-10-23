@@ -19,6 +19,7 @@ static inline bool empty(type_stack *stack) {
 static inline void push(valtype_t ty, type_stack *stack) {
     // todo: panic if stack is full?
     stack->pool[++stack->idx] = ty;
+    //printf("push %x\n", ty);
 }
 
 // Type is not verified if expect is 0.
@@ -26,12 +27,15 @@ static inline error_t try_pop(valtype_t expect, type_stack *stack) {
     __try {
         if(empty(stack)) {
             __throwif(ERR_TYPE_MISMATCH, !stack->polymorphic);
+            //printf("pop %x\n", expect);
             __throw(ERR_SUCCESS);
         }
         else {
             valtype_t ty;
             ty = stack->pool[stack->idx--];
-            __throwif(ERR_TYPE_MISMATCH, ty != expect);
+            if(expect)
+                __throwif(ERR_TYPE_MISMATCH, ty != expect);
+            //printf("pop %x\n", expect);
         }
     } 
     __catch:
@@ -42,26 +46,35 @@ error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
     // blocktype is expected to be [] -> [t*]
     // todo: consider the case where blocktype is typeidx
     __try {
+        ty->rt1 = (resulttype_t){.n = 0, .elem = NULL};
+
         switch(bt.valtype) {
             case 0x40:
                 ty->rt2 = (resulttype_t){.n = 0, .elem = NULL};
                 break;
 
             case TYPE_NUM_I32:
-                ty->rt1 = (resulttype_t){.n = 0, .elem = NULL};
+            case TYPE_NUM_I64:
+            case TYPE_NUM_F32:
+            case TYPE_NUM_F64:
                 VECTOR_INIT(&ty->rt2, 1, valtype_t);
-                *VECTOR_ELEM(&ty->rt2, 0) = TYPE_NUM_I32;
+                *VECTOR_ELEM(&ty->rt2, 0) = bt.valtype;
                 break;
 
             default:
-                __throw(ERR_FAILED);
+                // treat as typeidx
+                functype_t *type = VECTOR_ELEM(&C->types, bt.typeidx);
+                __throwif(ERR_FAILED, !type);
+                VECTOR_COPY(&ty->rt1, &type->rt1, valtype_t);
+                VECTOR_COPY(&ty->rt2, &type->rt2, valtype_t);
+                break;
         }
     }
     __catch:
         return err;
 }
 
-error_t validate_expr(context_t *C, instr_t *start, resulttype_t *expect);
+error_t validate_instrs(context_t *C, instr_t *start, resulttype_t *rt1, resulttype_t *rt2);
 
 error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
     __try {
@@ -72,17 +85,27 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 __throwiferr(validate_blocktype(C, ip->bt, &ty));
 
                 // push label
-                labeltype_t l = {.ty = ty.rt2};
+                labeltype_t l;
+                
+                if(ip->op == OP_BLOCK)
+                    l.ty = ty.rt2;
+                else
+                    l.ty = ty.rt1;
+                
                 list_push_back(&C->labels, &l.link);
 
-                __throwiferr(validate_expr(C, ip->in1, &ty.rt2));
+                __throwiferr(validate_instrs(C, ip->in1, &ty.rt1, &ty.rt2));
 
-                VECTOR_FOR_EACH(t ,&ty.rt2, valtype_t) {
+                // valid with type [t1*] -> [t2*]
+                VECTOR_FOR_EACH(t,& ty.rt1, valtype_t) {
+                    __throwiferr(try_pop(*t, stack));
+                }
+                VECTOR_FOR_EACH(t,& ty.rt2, valtype_t) {
                     push(*t, stack);
                 }
 
                 // cleanup
-                VECTOR_DESTORY(&ty.rt2);
+                // todo: add VECTOR_DESTROY
                 list_pop_tail(&C->labels);
                 break;
             }
@@ -95,16 +118,19 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 labeltype_t l = {.ty = ty.rt2};
                 list_push_back(&C->labels, &l.link);
                 
-                __throwiferr(validate_expr(C, ip->in1, &ty.rt2));
-                __throwiferr(validate_expr(C, ip->in2, &ty.rt2));
+                __throwiferr(validate_instrs(C, ip->in1, &ty.rt1, &ty.rt2));
+                __throwiferr(validate_instrs(C, ip->in2, &ty.rt1, &ty.rt2));
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
 
+                // valid with type [t1*] -> [t2*]
+                VECTOR_FOR_EACH(t,& ty.rt1, valtype_t) {
+                    __throwiferr(try_pop(*t, stack));
+                }
                 VECTOR_FOR_EACH(t ,&ty.rt2, valtype_t) {
                     push(*t, stack);
                 }
                 
                 // cleanup
-                VECTOR_DESTORY(&ty.rt2);
                 list_pop_tail(&C->labels);
                 break;
             }
@@ -136,6 +162,18 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 VECTOR_FOR_EACH(t, &l->ty, valtype_t) {
                     push(*t, stack);
                 }
+                break;
+            }
+
+            case OP_RETURN: {
+                resulttype_t *ty = C->ret;
+                __throwif(ERR_FAILED, !ty);
+                VECTOR_FOR_EACH(t, ty, valtype_t) {
+                    __throwiferr(try_pop(*t, stack));
+                }
+                // empty the stack
+                stack->idx = -1;
+                stack->polymorphic = true;
                 break;
             }
 
@@ -355,30 +393,53 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
         return err;
 }
 
-// validate instructiin sequence
-error_t validate_instrs(context_t *C, instr_t *start, type_stack *stack) {
+// validate instruction sequence
+error_t validate_instrs(context_t *C, instr_t *start, resulttype_t *rt1, resulttype_t *rt2) {
     __try {
+        type_stack stack = {.idx = -1, .polymorphic = false};
+        VECTOR_FOR_EACH(t, rt1, valtype_t) {
+            push(*t, &stack);
+        }
+
         instr_t *ip = start;
         instr_t *next_ip;
         while(ip) {
             next_ip = ip->next;
-            __throwiferr(validate_instr(C, ip, stack));
+            __throwiferr(validate_instr(C, ip, &stack));
             ip = next_ip;
         }
+
+        // compare witch expected type
+        VECTOR_FOR_EACH(t, rt2, valtype_t) {
+            __throwiferr(try_pop(*t, &stack));
+        }
+
+        // check if stack is empty
+        __throwif(ERR_FAILED, !empty(&stack));
     }
     __catch:
         return err;
 }
 
-error_t validate_expr(context_t *C, instr_t *start, resulttype_t *expect) {
+error_t validate_expr(context_t *C, instr_t *start, resulttype_t *rt2) {
     __try {
         type_stack stack = {.idx = -1, .polymorphic = false};
-        __throwiferr(validate_instrs(C, start, &stack));
+
+        instr_t *ip = start;
+        instr_t *next_ip;
+        while(ip) {
+            next_ip = ip->next;
+            __throwiferr(validate_instr(C, ip, &stack));
+            ip = next_ip;
+        }
         
         // compare witch expected type
-        VECTOR_FOR_EACH(e, expect, valtype_t) {
-            __throwiferr(try_pop(*e, &stack));
+        VECTOR_FOR_EACH(t, rt2, valtype_t) {
+            __throwiferr(try_pop(*t, &stack));
         }
+
+        // check if stack is empty
+        __throwif(ERR_FAILED, !empty(&stack));
     }
     __catch:
         return err;
@@ -401,7 +462,6 @@ error_t validate_func(context_t *C, func_t *func, functype_t *actual) {
         __throwiferr(validate_expr(&ctx, func->body, &expect->rt2));
 
         VECTOR_COPY(&actual->rt1, &expect->rt1, valtype_t);
-        
         VECTOR_COPY(&actual->rt2, &expect->rt2, valtype_t);
     }
     __catch:

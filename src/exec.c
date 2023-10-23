@@ -18,10 +18,15 @@ void new_stack(stack_t **d) {
     };
 
     LIST_INIT(&stack->frames);
+    LIST_INIT(&stack->labels);
 }
 
 static inline bool full(stack_t *s) {
     return s->idx == NUM_STACK_ENT;
+}
+
+static inline bool empty(stack_t *s) {
+    return s->idx == -1;
 }
 
 void push_val(val_t val, stack_t *stack) {
@@ -55,9 +60,11 @@ static inline void push_f64(double val, stack_t *stack) {
     push_val(v, stack);
 }
 
+// todo: fix this?
 void push_vals(vals_t vals, stack_t *stack) {
-    VECTOR_FOR_EACH(val, &vals, val_t) {
-        push_val(*val, stack);
+    size_t num_vals = vals.n;
+    for(int32_t i = (num_vals - 1); 0 <= i; i--) {
+        push_val(vals.elem[i], stack);
     }
 }
 
@@ -65,10 +72,13 @@ void push_label(label_t label, stack_t *stack) {
     if(full(stack))
         PANIC("stack is full");
     
-    stack->pool[++stack->idx] = (obj_t) {
+    obj_t *obj = &stack->pool[++stack->idx];
+
+    *obj = (obj_t) {
         .type   = TYPE_LABEL,
         .label  = label 
     };
+    list_push_back(&stack->labels, &obj->label.link);
     //printf("push label idx: %ld\n", stack->idx);
 }
 
@@ -135,22 +145,28 @@ void pop_vals(vals_t *vals, stack_t *stack) {
     }
 }
 
+void pop_vals_n(vals_t *vals, size_t n, stack_t *stack) {
+    // init vector
+    VECTOR_INIT(vals, n, val_t);
+    
+    // pop values
+    VECTOR_FOR_EACH(val, vals, val_t) {
+        pop_val(val, stack);
+    }
+}
+
+// pop while stack top is not a frame
+void pop_while_not_frame(stack_t *stack) {
+    while(stack->pool[stack->idx].type != TYPE_FRAME) {
+        stack->idx--;
+    }
+}
+
 void pop_label(label_t *label, stack_t *stack) {
     *label = stack->pool[stack->idx].label;
     stack->idx--;
+    list_pop_tail(&stack->labels);
     //printf("pop label idx: %ld\n", stack->idx);
-}
-
-error_t try_pop_label(label_t *label, stack_t *stack) { 
-    obj_t obj = stack->pool[stack->idx];
-
-    if(obj.type != TYPE_LABEL)
-        return ERR_FAILED;
-    
-    *label = obj.label;
-    stack->idx--;
-    //printf("pop label idx: %ld\n", stack->idx);
-    return ERR_SUCCESS;
 }
 
 void pop_frame(frame_t *frame, stack_t *stack) {
@@ -216,13 +232,35 @@ error_t instantiate(store_t **S, module_t *module) {
     return ERR_SUCCESS;
 }
 
-static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
+static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
+    ty->rt1 = (resulttype_t){.n = 0, .elem = NULL};
+
+    switch(bt.valtype) {
+        case 0x40:
+            ty->rt2 = (resulttype_t){.n = 0, .elem = NULL};
+            break;
+
+        case TYPE_NUM_I32:
+        case TYPE_NUM_I64:
+        case TYPE_NUM_F32:
+        case TYPE_NUM_F64:
+            VECTOR_INIT(&ty->rt2, 1, valtype_t);
+            *VECTOR_ELEM(&ty->rt2, 0) = bt.valtype;
+            break;
+
+        default:
+            // treat as typeidx
+            *ty = F->module->types[bt.typeidx];
+            break;
+    }
+}
 
 // execute a sequence of instructions
 // ref: https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
 // ref: https://github.com/wasm3/wasm3/blob/main/source/m3_exec.h
 // ref: https://github.com/wasm3/wasm3/blob/main/source/m3_math_utils.h
 // ref: https://en.wikipedia.org/wiki/Circular_shift
+static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
 error_t exec_instrs(instr_t * ent, store_t *S) {
     instr_t *ip = ent;
 
@@ -232,6 +270,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
     __try {
         while(ip) {
             instr_t *next_ip = ip->next;
+            static instr_t end = {.op = OP_END};
 
             int32_t rhs_i32, lhs_i32;
             int64_t rhs_i64, lhs_i64;
@@ -277,23 +316,34 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
             }
 
             switch(ip->op) {
-                // todo: consider the case where blocktype is typeidx.
                 case OP_BLOCK: {
+                    functype_t ty;
+                    expand_F(&ty, ip->bt, F);
                     label_t L = {
-                        .arity = ip->bt.valtype == 0x40 ? 0 : 1,
-                        .continuation = ip->next,
+                        .arity  = ty.rt2.n,
+                        .parent = ip,
+                        .continuation = &end,
                     };
+                    vals_t vals;
+                    pop_vals_n(&vals, ty.rt1.n, S->stack);
                     push_label(L, S->stack);
+                    push_vals(vals, S->stack);
                     next_ip = ip->in1;
                     break;
                 }
 
                 case OP_LOOP: {
-                label_t L = {
-                        .arity = 0,
+                    functype_t ty;
+                    expand_F(&ty, ip->bt, F);
+                    label_t L = {
+                        .arity = ty.rt1.n,
+                        .parent = ip,
                         .continuation = ip,
                     };
+                    vals_t vals;
+                    pop_vals_n(&vals, ty.rt1.n, S->stack);
                     push_label(L, S->stack);
+                    push_vals(vals, S->stack);
                     next_ip = ip->in1;
                     break; 
                 }
@@ -302,9 +352,17 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     int32_t c;
                     pop_i32(&c, S->stack);
 
-                    // enter instr* with label L 
-                    label_t L = {.arity = 1, .continuation = ip->next};
+                    functype_t ty;
+                    expand_F(&ty, ip->bt, F);
+                    label_t L = {
+                        .arity = ty.rt2.n,
+                        .parent = ip,
+                        .continuation = &end,
+                    };
+                    vals_t vals;
+                    pop_vals_n(&vals, ty.rt1.n, S->stack);
                     push_label(L, S->stack);
+                    push_vals(vals, S->stack);
 
                     if(c) {
                         next_ip = ip->in1;
@@ -312,6 +370,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     else {
                         next_ip = ip->in2;
                     }
+
                     break;
                 }
 
@@ -320,30 +379,16 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 // The else instruction is treated as an exit from the instruction sequence with a label
                 case OP_ELSE:
                 case OP_END: {
+                    // exit instr* with label L
                     // pop all values from stack
                     vals_t vals;
                     pop_vals(&vals, S->stack);
 
-                    // Divide the cases according to whether there is a label or frame on the stack top.
-                    label_t L;
-                    error_t err;
-                    err = try_pop_label(&L, S->stack);
-
-                    switch(err) {
-                        case ERR_SUCCESS:
-                            // exit instr* with label L
-                            push_vals(vals, S->stack);
-                            next_ip = L.continuation;
-                            break;
-                        
-                        default: {
-                            // return from function
-                            frame_t frame;
-                            pop_frame(&frame, S->stack);
-                            push_vals(vals, S->stack);
-                            break;
-                        }
-                    }            
+                    // exit instr* with label L
+                    label_t l;
+                    pop_label(&l, S->stack);
+                    push_vals(vals, S->stack);
+                    next_ip = l.parent != NULL ? l.parent->next : NULL;
                     break;
                 }
 
@@ -357,8 +402,9 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 }
                 
                 case OP_BR: {
+                    label_t *l = LIST_GET_ELEM(&S->stack->labels, label_t, link, ip->labelidx);
                     vals_t vals;
-                    pop_vals(&vals, S->stack);
+                    pop_vals_n(&vals, l->arity, S->stack);
                     label_t L;
                     for(int i = 0; i <= ip->labelidx; i++) {
                         vals_t tmp;
@@ -366,13 +412,31 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                         pop_label(&L, S->stack);
                     }
                     push_vals(vals, S->stack);
-                    next_ip = L.continuation;
+
+                    // br instruction of block, if is treated as a "end" instruction
+                    switch(L.parent->op) {
+                        case OP_BLOCK:
+                        case OP_IF:
+                            next_ip = L.parent->next;
+                            break;
+                        case OP_LOOP:
+                            next_ip = L.continuation;
+                            break;
+                    }
                     break;
                 }
 
-                case OP_CALL:
+                // nop
+                case OP_RETURN: {
+                    next_ip = NULL;
+                    break;
+                }
+
+                case OP_CALL: {
+                    // invoke func
                     __throwiferr(invoke_func(S, F->module->funcaddrs[ip->funcidx]));
                     break;
+                }
 
                 case OP_DROP: {
                     val_t val;
@@ -931,13 +995,23 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
 
     // create label L
     static instr_t end = {.op = OP_END, .next = NULL};
-    label_t L = {.arity = functype->rt2.n, .continuation = &end};
+    label_t L = {.arity = functype->rt2.n, .parent = NULL, .continuation = &end};
 
-    // enter instr* with label L
-    push_label(L, S->stack);
+    __try {
+        // enter instr* with label L
+        push_label(L, S->stack);
 
-    // execute
-    return exec_instrs(funcinst->code->body ,S);
+        __throwiferr(exec_instrs(funcinst->code->body ,S));
+
+        // return from a function
+        vals_t vals;
+        pop_vals_n(&vals, frame.arity, S->stack);
+        pop_while_not_frame(S->stack);
+        pop_frame(&frame, S->stack);
+        push_vals(vals, S->stack);
+    }
+    __catch:
+        return err;
 }
 
 // The args is a reference to args_t. 

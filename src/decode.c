@@ -179,6 +179,29 @@ error_t read_f64(double *d, buffer_t *buf) {
         return err;
 }
 
+// todo: support s33
+error_t read_bt(blocktype_t *bt, buffer_t *buf) {
+    __try {
+        __throwif(ERR_FAILED, buf->p + 1 > buf->end);
+
+        switch(buf->p[0]) {
+            case 0x40:
+            case TYPE_NUM_I32:
+            case TYPE_NUM_I64:
+            case TYPE_NUM_F32:
+            case TYPE_NUM_F64:
+                __throwiferr(read_byte(&bt->valtype, buf));
+                break;
+            
+            default:
+                __throwiferr(read_u32_leb128(&bt->typeidx, buf));
+                break;
+        }
+    }
+    __catch:
+        return err;
+}
+
 // useful macros
 typedef error_t (*decoder_t) (module_t *mod, buffer_t *buf);
 
@@ -268,7 +291,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_LOOP:
             case OP_IF: {
                 // todo: support s33
-                __throwiferr(read_byte(&i->bt.valtype, buf));
+                __throwiferr(read_bt(&i->bt, buf));
 
                 __throwiferr(decode_instr(&i->in1, buf));
                 instr_t *j = i->in1;

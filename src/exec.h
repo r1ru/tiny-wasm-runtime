@@ -36,13 +36,14 @@ typedef union {
 typedef VECTOR(val_t) vals_t;
 
 typedef struct {
+    list_elem_t     link;
     uint32_t        arity;
+    instr_t         *parent;
     instr_t         *continuation;
 } label_t;
 
 typedef struct {
     list_elem_t     link;
-    
     uint32_t        arity;
     val_t           *locals;
     moduleinst_t    *module;
@@ -62,11 +63,12 @@ typedef struct {
 #define TYPE_LABEL      1
 #define TYPE_FRAME      2
 
-#define STACK_SIZE      (4096)
-#define NUM_STACK_ENT   (STACK_SIZE / sizeof(obj_t))
+#define STACK_SIZE      (4096 * 2)
+#define NUM_STACK_ENT   (STACK_SIZE / sizeof(obj_t) - 1)
 
 typedef struct {
     list_t          frames;
+    list_t          labels;
     size_t          idx;
     obj_t           *pool;
 } stack_t;
