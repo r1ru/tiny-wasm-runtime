@@ -180,21 +180,6 @@ void pop_frame(frame_t *frame, stack_t *stack) {
 // see Note of https://webassembly.github.io/spec/core/exec/modules.html#instantiation
 
 // todo: add externval(support imports)
-
-// There must be enough space in S to allocate all functions.
-funcaddr_t allocfunc(store_t *S, func_t *func, moduleinst_t *moduleinst) {
-    static funcaddr_t next_addr = 0;
-
-    funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, next_addr);
-    functype_t *functype = &moduleinst->types[func->type];
-
-    funcinst->type   = functype;
-    funcinst->module = moduleinst;
-    funcinst->code   = func;
-
-    return next_addr++; 
-}
-
 moduleinst_t *allocmodule(store_t *S, module_t *module) {
     // allocate moduleinst
     moduleinst_t *moduleinst = malloc(sizeof(moduleinst_t));
@@ -207,7 +192,15 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
     moduleinst->funcaddrs = malloc(sizeof(funcaddr_t) * num_funcs);
     for(uint32_t i = 0; i < num_funcs; i++) {
         func_t *func = VECTOR_ELEM(&module->funcs, i);
-        moduleinst->funcaddrs[i] = allocfunc(S, func, moduleinst);
+
+        // alloc func
+        funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, i);
+        functype_t *functype = &moduleinst->types[func->type];
+
+        funcinst->type   = functype;
+        funcinst->module = moduleinst;
+        funcinst->code   = func;
+        moduleinst->funcaddrs[i] = i;
     }
 
     moduleinst->exports = module->exports.elem;
@@ -469,6 +462,10 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 
                 case OP_F32_CONST:
                     push_f32(ip->c.f32, S->stack);
+                    break;
+                
+                case OP_F64_CONST:
+                    push_f64(ip->c.f64, S->stack);
                     break;
                 
                 case OP_I32_EQZ:
