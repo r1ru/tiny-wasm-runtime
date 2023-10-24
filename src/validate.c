@@ -385,6 +385,107 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(TYPE_NUM_F64, stack);
                 break;
             
+            case OP_I32_WRAP_I64:
+                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                push(TYPE_NUM_I32, stack);
+                break;
+            
+            case OP_I32_TRUNC_F32_S:
+            case OP_I32_TRUNC_F32_U:
+            case OP_I32_REINTERPRET_F32:
+                __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                push(TYPE_NUM_I32, stack);
+                break;
+            
+            case OP_I32_TRUNC_F64_S:
+            case OP_I32_TRUNC_F64_U:
+                __throwiferr(try_pop(TYPE_NUM_F64, stack));
+                push(TYPE_NUM_I32, stack);
+                break;
+            
+            case OP_I64_EXTEND_I32_S:
+            case OP_I64_EXTEND_I32_U:
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                push(TYPE_NUM_I64, stack);
+                break;
+
+            case OP_I64_TRUNC_F32_S:
+            case OP_I64_TRUNC_F32_U:
+                __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                push(TYPE_NUM_I64, stack);
+                break;
+            
+            case OP_I64_TRUNC_F64_S:
+            case OP_I64_TRUNC_F64_U:
+            case OP_I64_REINTERPRET_F64:
+                __throwiferr(try_pop(TYPE_NUM_F64, stack));
+                push(TYPE_NUM_I64, stack);
+                break;
+            
+            case OP_F32_CONVERT_I32_S:
+            case OP_F32_CONVERT_I32_U:
+            case OP_F32_REINTERPRET_I32:
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                push(TYPE_NUM_F32, stack);
+                break;
+            
+            case OP_F32_CONVERT_I64_S:
+            case OP_F32_CONVERT_I64_U:
+                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                push(TYPE_NUM_F32, stack);
+                break;
+
+            case OP_F32_DEMOTE_F64:
+                __throwiferr(try_pop(TYPE_NUM_F64, stack));
+                push(TYPE_NUM_F32, stack);
+                break;
+            
+            case OP_F64_CONVERT_I32_S:
+            case OP_F64_CONVERT_I32_U:
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                push(TYPE_NUM_F64, stack);
+                break;
+            
+            case OP_F64_CONVERT_I64_S:
+            case OP_F64_CONVERT_I64_U:
+            case OP_F64_REINTERPRET_I64:
+                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                push(TYPE_NUM_F64, stack);
+                break;
+            
+            case OP_F64_PROMOTE_F32:
+                __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                push(TYPE_NUM_F64, stack);
+                break;
+            
+            case OP_TRUNC_SAT:
+                switch(ip->op2) {
+                    case 0x00:
+                    case 0x01:
+                        __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                        push(TYPE_NUM_I32, stack);
+                        break;
+
+                    case 0x02:
+                    case 0x03:
+                        __throwiferr(try_pop(TYPE_NUM_F64, stack));
+                        push(TYPE_NUM_I32, stack);
+                        break;
+                    
+                    case 0x04:
+                    case 0x05:
+                        __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                        push(TYPE_NUM_I64, stack);
+                        break;
+                    
+                    case 0x06:
+                    case 0x07:
+                        __throwiferr(try_pop(TYPE_NUM_F64, stack));
+                        push(TYPE_NUM_I64, stack);
+                        break;
+                }
+                break;
+            
             default:
                 PANIC("Validation: unsupported opcode: %x\n", ip->op1);
         }       
