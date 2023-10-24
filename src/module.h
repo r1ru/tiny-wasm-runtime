@@ -194,7 +194,6 @@ enum op {
     OP_I64_EXTEND16_S       = 0xC3,
     OP_I64_EXTEND32_S       = 0xC4,
     OP_TRUNC_SAT            = 0xFC,
-
 };
 
 typedef union {

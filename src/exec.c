@@ -272,17 +272,35 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
 
             // unary operator
             if(ip->op1 == OP_I32_EQZ || OP_I32_CLZ <= ip->op1 && ip->op1 <= OP_I32_POPCNT ||
-               OP_I32_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I32_EXTEND16_S) {
+               OP_I64_EXTEND_I32_S <= ip->op1 && ip->op1 <= OP_I64_EXTEND_I32_U ||
+               OP_I32_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I32_EXTEND16_S ||
+               OP_F32_CONVERT_I32_S <= ip->op1 && ip->op1 <= OP_F32_CONVERT_I32_U ||
+               OP_F64_CONVERT_I32_S <= ip->op1 && ip->op1 <= OP_F64_CONVERT_I32_U ||
+               ip->op1 == OP_F32_REINTERPRET_I32) {
                 pop_i32(&lhs_i32, S->stack);
             }
             if(ip->op1 == OP_I64_EQZ || OP_I64_CLZ <= ip->op1 && ip->op1 <= OP_I64_POPCNT ||
-               OP_I64_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I64_EXTEND32_S) {
+               OP_I64_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I64_EXTEND32_S ||
+               ip->op1 == OP_I32_WRAP_I64 || 
+               OP_F32_CONVERT_I64_S <= ip->op1 && ip->op1 <= OP_F32_CONVERT_I64_U || 
+               OP_F64_CONVERT_I64_S <= ip->op1 && ip->op1 <= OP_F64_CONVERT_I64_U ||
+               ip->op1 == OP_F64_REINTERPRET_I64) {
                 pop_i64(&lhs_i64, S->stack);
             }
-            if(OP_F32_ABS <= ip->op1 && ip->op1 <= OP_F32_SQRT) {
+            if(OP_F32_ABS <= ip->op1 && ip->op1 <= OP_F32_SQRT || 
+               OP_I32_TRUNC_F32_S <= ip->op1 && ip->op1 <= OP_I32_TRUNC_F32_U ||
+               OP_I64_TRUNC_F32_S <= ip->op1 && ip->op1 <= OP_I64_TRUNC_F32_U ||
+               ip->op1 == OP_F64_PROMOTE_F32 || 
+               ip->op1 == OP_I32_REINTERPRET_F32 ||
+               ip->op1 == OP_TRUNC_SAT && (ip->op2 == 0 || ip->op2 == 1 || ip->op2 == 4 || ip->op2 == 5)) {
                 pop_f32(&lhs_f32, S->stack);
             }
-            if(OP_F64_ABS <= ip->op1 && ip->op1 <= OP_F64_SQRT) {
+            if(OP_F64_ABS <= ip->op1 && ip->op1 <= OP_F64_SQRT ||
+               OP_I32_TRUNC_F64_S <= ip->op1 && ip->op1 <= OP_I32_TRUNC_F64_U || 
+               OP_I64_TRUNC_F64_S <= ip->op1 && ip->op1 <= OP_I64_TRUNC_F64_U || 
+               ip->op1 == OP_F32_DEMOTE_F64 || 
+               ip->op1 == OP_I64_REINTERPRET_F64 ||
+               ip->op1 == OP_TRUNC_SAT && (ip->op2 == 2 || ip->op2 == 3 || ip->op2 == 6 || ip->op2 == 7)) {
                 pop_f64(&lhs_f64, S->stack);
             }
             
@@ -938,6 +956,115 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     push_f64(copysign(lhs_f64, rhs_f64), S->stack);
                     break;
                 
+                case OP_I32_WRAP_I64:
+                    push_i32(lhs_i64 & 0xffffffff, S->stack);
+                    break;
+
+                case OP_I32_TRUNC_F32_S:
+                    push_i32((int32_t)lhs_f32, S->stack);
+                    break;
+                
+                case OP_I32_TRUNC_F32_U:
+                    push_i32((int32_t)(uint32_t)lhs_f32, S->stack);
+                    break;
+                
+                case OP_I32_TRUNC_F64_S:
+                    push_i32((int32_t)lhs_f64, S->stack);
+                    break;
+                
+                case OP_I32_TRUNC_F64_U:
+                    push_i32((int32_t)(uint32_t)lhs_f64, S->stack);
+                    break;
+                
+                case OP_I64_EXTEND_I32_S:
+                    push_i64((int64_t)(int32_t)lhs_i32, S->stack);
+                    break;
+                
+                case OP_I64_EXTEND_I32_U:
+                    push_i64((int64_t)(uint32_t)lhs_i32, S->stack);
+                    break;
+
+                case OP_I64_TRUNC_F32_S:
+                    push_i64((int64_t)lhs_f32, S->stack);
+                    break;
+                
+                case OP_I64_TRUNC_F32_U:
+                    push_i64((int64_t)(uint64_t)lhs_f32, S->stack);
+                    break;
+                
+                case OP_I64_TRUNC_F64_S:
+                    push_i64((int64_t)lhs_f64, S->stack);
+                    break;
+                
+                case OP_I64_TRUNC_F64_U:
+                    push_i64((int64_t)(uint64_t)lhs_f64, S->stack);
+                    break;
+                
+                case OP_F32_CONVERT_I32_S:
+                    push_f32((float)lhs_i32, S->stack);
+                    break;
+                
+                case OP_F32_CONVERT_I32_U:
+                    push_f32((float)(uint32_t)lhs_i32, S->stack);
+                    break;
+
+                case OP_F32_CONVERT_I64_S:
+                    push_f32((float)lhs_i64, S->stack);
+                    break;
+                
+                case OP_F32_CONVERT_I64_U:
+                    push_f32((float)(uint64_t)lhs_i64, S->stack);
+                    break;
+                
+                case OP_F32_DEMOTE_F64:
+                    push_f32((float)lhs_f64, S->stack);
+                    break;
+                
+                case OP_F64_CONVERT_I32_S:
+                    push_f64((double)lhs_i32, S->stack);
+                    break;
+
+                case OP_F64_CONVERT_I32_U:
+                    push_f64((double)(uint32_t)lhs_i32, S->stack);
+                    break;
+
+                case OP_F64_CONVERT_I64_S:
+                    push_f64((double)lhs_i64, S->stack);
+                    break;
+
+                case OP_F64_CONVERT_I64_U:
+                    push_f64((double)(uint64_t)lhs_i64, S->stack);
+                    break;
+                
+                case OP_F64_PROMOTE_F32:
+                    push_f64((double)lhs_f32, S->stack);
+                    break;
+                
+                // todo: fix this
+                case OP_I32_REINTERPRET_F32: {
+                    num_t num = {.f32 = lhs_f32};
+                    push_i32(num.i32, S->stack);
+                    break;
+                }
+
+                case OP_I64_REINTERPRET_F64: {
+                    num_t num = {.f64 = lhs_f64};
+                    push_i64(num.i64, S->stack);
+                    break;
+                }
+                
+                case OP_F32_REINTERPRET_I32: {
+                    num_t num = {.i32 = lhs_i32};
+                    push_f32(num.f32, S->stack);
+                    break;
+                }
+
+                case OP_F64_REINTERPRET_I64: {
+                    num_t num = {.i64 = lhs_i64};
+                    push_f64(num.f64, S->stack);
+                    break;
+                }
+
                 case OP_I32_EXTEND8_S:
                     push_i32((int32_t)(int8_t)lhs_i32, S->stack);
                     break;
@@ -954,10 +1081,135 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     push_i64((int64_t)(int16_t)lhs_i64, S->stack);
                     break;
                 
-                 case OP_I64_EXTEND32_S: 
+                case OP_I64_EXTEND32_S: 
                     push_i64((int64_t)(int32_t)lhs_i64, S->stack);
                     break;
 
+                case OP_TRUNC_SAT:
+                    switch(ip->op2) {
+                        case 0x00: {
+                            int32_t val;
+                            if(isnan(lhs_f32)) {
+                                val = 0;
+                            } else if(lhs_f32 <= -2147483904.0f) {
+                                val = INT32_MIN;
+                            } else if(lhs_f32 >= 2147483648.0f) {
+                                val = INT32_MAX;
+                            } else {
+                                val = (int32_t)lhs_f32;
+                            }
+                            push_i32(val, S->stack);
+                            break;
+                        }
+                        
+                        case 0x01: {
+                            int32_t val;
+                            if(isnan(lhs_f32)) {
+                                val = 0;
+                            } else if(lhs_f32 <= -1.0f) {
+                                val = 0UL;
+                            } else if(lhs_f32 >= 4294967296.0f) {
+                                val = UINT32_MAX;
+                            } else {
+                                val = (uint32_t)lhs_f32;
+                            }
+                            push_i32(val, S->stack);
+                            break;
+                        }
+                        
+                        case 0x02: {
+                            int32_t val;
+                            if(isnan(lhs_f64)) {
+                                val = 0;
+                            } else if(lhs_f64 <= -2147483649.0) {
+                                val = INT32_MIN;
+                            } else if(lhs_f64 >= 2147483648.0) {
+                                val = INT32_MAX;
+                            } else {
+                                val = (int32_t)lhs_f64;
+                            }
+                            push_i32(val, S->stack);
+                            break;
+                        }
+
+                        case 0x03: {
+                            int32_t val;
+                            if(isnan(lhs_f64)) {
+                                val = 0;
+                            } else if(lhs_f64 <= -1.0) {
+                                val = 0UL;
+                            } else if(lhs_f64 >= 4294967296.0) {
+                                val = UINT32_MAX;
+                            } else {
+                                val = (uint32_t)lhs_f64;
+                            }
+                            push_i32(val, S->stack);
+                            break;
+                        }
+
+                        case 0x04: {
+                            int64_t val;
+                            if(isnan(lhs_f32)) {
+                                val = 0;
+                            } else if(lhs_f32 <= -9223373136366403584.0f) {
+                                val = INT64_MIN;
+                            } else if(lhs_f32 >= 9223372036854775808.0f) {
+                                val = INT64_MAX;
+                            } else {
+                                val = (int64_t)lhs_f32;
+                            }
+                            push_i64(val, S->stack);
+                            break;
+                        }
+
+                        case 0x05: {
+                            int64_t val;
+                            if(isnan(lhs_f32)) {
+                                val = 0;
+                            } else if(lhs_f32 <= -1.0f) {
+                                val = 0ULL;
+                            } else if(lhs_f32 >= 18446744073709551616.0f) {
+                                val = UINT64_MAX;
+                            } else {
+                                val = (uint64_t)lhs_f32;
+                            }
+                            push_i64(val, S->stack);
+                            break;
+                        }
+                        
+                        case 0x06: {
+                            int64_t val;
+                            if(isnan(lhs_f64)) {
+                                val = 0;
+                            } else if(lhs_f64 <= -9223372036854777856.0) {
+                                val = INT64_MIN;
+                            } else if(lhs_f64 >= 9223372036854775808.0) {
+                                val = INT64_MAX;
+                            } else {
+                                val = (int64_t)lhs_f64;
+                            }
+                            push_i64(val, S->stack);
+                            break;
+                        }
+
+                        case 0x07: {
+                            int64_t val;
+                            if(isnan(lhs_f64)) {
+                                val = 0;
+                            } else if(lhs_f64 <= -1.0f) {
+                                val = 0ULL;
+                            } else if(lhs_f64 >= 18446744073709551616.0) {
+                                val = UINT64_MAX;
+                            } else {
+                                val = (uint64_t)lhs_f64;
+                            }
+                            push_i64(val, S->stack);
+                            break;
+                        }
+                            
+                    }
+                    break;
+                
                 default:
                     PANIC("Exec: unsupported opcode: %x\n", ip->op1);
             }

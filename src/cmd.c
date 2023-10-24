@@ -35,182 +35,6 @@ void print_type(functype_t *func) {
     putchar('\n');
 }
 
-static const char *op_str[] = {
-    [OP_BLOCK]          = "block",
-    [OP_LOOP]           = "loop",
-    [OP_IF]             = "if",
-    [OP_END]            = "end",
-    [OP_BR]             = "br",
-    [OP_BR_IF]          = "br_if",
-    [OP_CALL]           = "call",
-    [OP_LOCAL_GET]      = "local.get",
-    [OP_LOCAL_SET]      = "local.set",
-    [OP_LOCAL_TEE]      = "local.tee",
-    [OP_GLOBAL_GET]     = "global.get",
-    [OP_GLOBAL_SET]     = "global.set",
-    [OP_I32_LOAD]       = "i32.load",
-    [OP_I32_STORE]      = "i32.store",
-    [OP_I32_CONST]      = "i32.const",
-    [OP_I32_EQZ]        = "i32.eqz",
-    [OP_I32_EQ]         = "i32.eq",
-    [OP_I32_NE]         = "i32.ne",
-    [OP_I32_LT_S]       = "i32.lt_s",
-    [OP_I32_LT_U]       = "i32.lt_u",
-    [OP_I32_GT_S]       = "i32.gt_s",
-    [OP_I32_GT_U]       = "i32.gt_u",
-    [OP_I32_LE_S]       = "i32.le_s",
-    [OP_I32_LE_U]       = "i32.le_u",
-    [OP_I32_GE_S]       = "i32.ge_s",
-    [OP_I32_GE_U]       = "i32.ge_u",
-    [OP_I32_CLZ]        = "i32.clz",
-    [OP_I32_CTZ]        = "i32.ctz",
-    [OP_I32_POPCNT]     = "i32.popcnt",
-    [OP_I32_ADD]        = "i32.add",
-    [OP_I32_SUB]        = "i32.sub",
-    [OP_I32_MUL]        = "i32.mul",
-    [OP_I32_DIV_S]      = "i32.div_s",
-    [OP_I32_DIV_U]      = "i32.div_u",
-    [OP_I32_REM_S]      = "i32.rem_s",
-    [OP_I32_REM_U]      = "i32.rem_u",
-    [OP_I32_AND]        = "i32.and",
-    [OP_I32_OR]         = "i32.or",
-    [OP_I32_XOR]        = "i32.xor",
-    [OP_I32_SHL]        = "i32.shl",
-    [OP_I32_SHR_S]      = "i32.shr_s",
-    [OP_I32_SHR_U]      = "i32.shr_u",
-    [OP_I32_ROTL]       = "i32.rotl",
-    [OP_I32_ROTR]       = "i32.rotr",
-    [OP_I32_EXTEND8_S]  = "i32.extend8_s",
-    [OP_I32_EXTEND16_S] = "i32.extend16_s",
-};
-
-void print_instr(instr_t *instr) {
-    switch(instr->op) {
-        case OP_BLOCK:
-        case OP_LOOP:
-        case OP_IF: {
-            printf("%s\n",op_str[instr->op]);
-            for(instr_t *i = instr->in1; i; i = i->next) {
-                print_instr(i);
-            }
-
-            if(instr->op == OP_IF) {
-                puts("else");
-                for(instr_t *i = instr->in2; i; i = i->next) {
-                    print_instr(i);
-                }
-            }
-
-            break;
-        }
-
-        case OP_END:
-            printf("%s\n", op_str[instr->op]);
-            break;
-        
-        case OP_BR:
-        case OP_BR_IF:
-            printf("%s %d\n", op_str[instr->op], instr->labelidx);
-            break;
-        
-        case OP_BR_TABLE:
-            printf("br_table");
-            VECTOR_FOR_EACH(l, &instr->labels, labelidx_t) {
-                printf(" %x", *l);
-            }
-            printf(" %x\n", instr->default_label);
-            break;
-        
-        case OP_RETURN:
-            printf("return\n");
-            break;
-        
-        case OP_CALL:
-            printf("%s %d\n", op_str[instr->op], instr->funcidx);
-            break;
-        
-        case OP_CALL_INDIRECT:
-            printf("call_indirect %x %x\n",instr->x, instr->y);
-            break;
-
-        case OP_DROP:
-            printf("drop\n");
-            break;
-        
-        case OP_SELECT:
-            printf("select\n");
-            break;
-        
-        case OP_LOCAL_GET:
-        case OP_LOCAL_SET:
-        case OP_LOCAL_TEE:
-            printf("%s %d\n", op_str[instr->op], instr->localidx);
-            break;
-
-        case OP_GLOBAL_GET:
-        case OP_GLOBAL_SET:
-            printf("%s %d\n", op_str[instr->op], instr->globalidx);
-            break;
-        
-        case OP_I32_LOAD:
-        case OP_I32_STORE:
-            printf("%s %x %x\n", op_str[instr->op], instr->m.align, instr->m.offset);
-            break;
-        
-        case OP_MEMORY_GROW:
-            printf("memory.grow 0\n");
-            break;
-        
-        case OP_I32_CONST:
-            printf("i32.const %d\n", instr->c.i32);
-            break;
-        
-        case OP_I64_CONST:
-            printf("i64.const %ld\n", instr->c.i64);
-            break;
-        
-        case OP_F32_CONST:
-            printf("i32.const %f\n", instr->c.f32);
-            break;
-        
-        case OP_I32_EQZ:
-        case OP_I32_EQ:
-        case OP_I32_NE:
-        case OP_I32_LT_S:
-        case OP_I32_LT_U:
-        case OP_I32_GT_S:
-        case OP_I32_GT_U:
-        case OP_I32_LE_S:
-        case OP_I32_LE_U:
-        case OP_I32_GE_S:
-        case OP_I32_GE_U:
-
-        case OP_I32_CLZ:
-        case OP_I32_CTZ:
-        case OP_I32_POPCNT:
-        case OP_I32_ADD:
-        case OP_I32_SUB:
-        case OP_I32_MUL:
-        case OP_I32_DIV_S:
-        case OP_I32_DIV_U:
-        case OP_I32_REM_S:
-        case OP_I32_REM_U:
-        case OP_I32_AND:
-        case OP_I32_OR:
-        case OP_I32_XOR:
-        case OP_I32_SHL:
-        case OP_I32_SHR_S:
-        case OP_I32_SHR_U:
-        case OP_I32_ROTL:
-        case OP_I32_ROTR:
-
-        case OP_I32_EXTEND8_S:
-        case OP_I32_EXTEND16_S:
-            printf("%s\n", op_str[instr->op]);
-            break;
-    }
-}
-
 void print_func(func_t *func) {
     printf("type: %x\n", func->type);
     printf("locals: ");
@@ -219,11 +43,6 @@ void print_func(func_t *func) {
         printf("%x ", *valtype);
     }
     putchar('\n');
-
-    puts("body:");
-    for(instr_t *i = func->body; i; i = i->next) {
-        print_instr(i);
-    }
 }
 
 static void print_export(export_t *export) {
@@ -243,7 +62,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/fac.0.wasm", O_RDONLY);
+    int fd = open("./build/test/conversions.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -295,6 +114,7 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("insntiation failed");
 
+    /*
     args_t args;
     VECTOR_INIT(&args, 1, arg_t);
 
@@ -309,7 +129,7 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("invocation failed");
     
-    printf("result = %ld\n", VECTOR_ELEM(&args, 0)->val.num.i64);
+    printf("result = %ld\n", VECTOR_ELEM(&args, 0)->val.num.i64);*/
 
     // cleanup
     munmap(head, fsize);
