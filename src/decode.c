@@ -284,9 +284,9 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
 
         i->next = NULL;
 
-        __throwiferr(read_byte(&i->op, buf));
+        __throwiferr(read_byte(&i->op1, buf));
         
-        switch(i->op) {
+        switch(i->op1) {
             case OP_BLOCK:
             case OP_LOOP:
             case OP_IF: {
@@ -295,15 +295,15 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
 
                 __throwiferr(decode_instr(&i->in1, buf));
                 instr_t *j = i->in1;
-                while(j->op != OP_END && j->op != OP_ELSE) {
+                while(j->op1 != OP_END && j->op1 != OP_ELSE) {
                     __throwiferr(decode_instr(&j->next, buf));
                     j = j->next;
                 }
 
-                if(j->op == OP_ELSE) {
+                if(j->op1 == OP_ELSE) {
                     __throwiferr(decode_instr(&i->in2, buf));
                     j = i->in2;
-                    while(j->op != OP_END) {
+                    while(j->op1 != OP_END) {
                         __throwiferr(decode_instr(&j->next, buf));
                         j = j->next;
                     }
@@ -492,7 +492,33 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_F64_MIN:
             case OP_F64_MAX:
             case OP_F64_COPYSIGN:
-            
+
+            case OP_I32_WRAP_I64:
+            case OP_I32_TRUNC_F32_S:
+            case OP_I32_TRUNC_F32_U:
+            case OP_I32_TRUNC_F64_S:
+            case OP_I32_TRUNC_F64_U:
+            case OP_I64_EXTEND_I32_S:
+            case OP_I64_EXTEND_I32_U:
+            case OP_I64_TRUNC_F32_S:
+            case OP_I64_TRUNC_F32_U:
+            case OP_I64_TRUNC_F64_S:
+            case OP_I64_TRUNC_F64_U:
+            case OP_F32_CONVERT_I32_S:
+            case OP_F32_CONVERT_I32_U:
+            case OP_F32_CONVERT_I64_S:
+            case OP_F32_CONVERT_I64_U:
+            case OP_F32_DEMOTE_F64:
+            case OP_F64_CONVERT_I32_S:
+            case OP_F64_CONVERT_I32_U:
+            case OP_F64_CONVERT_I64_S:
+            case OP_F64_CONVERT_I64_U:
+            case OP_F64_PROMOTE_F32:
+            case OP_I32_REINTERPRET_F32:
+            case OP_I64_REINTERPRET_F64:
+            case OP_F32_REINTERPRET_I32:
+            case OP_F64_REINTERPRET_I64:
+
             case OP_I32_EXTEND8_S:
             case OP_I32_EXTEND16_S:
             case OP_I64_EXTEND8_S:
@@ -500,8 +526,12 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_I64_EXTEND32_S:
                 break;
             
+            case OP_TRUNC_SAT:
+                __throwiferr(read_byte(&i->op2, buf));
+                break;
+            
             default:
-                PANIC("Decode: unsupported opcode: %x", i->op);
+                PANIC("Decode: unsupported opcode: %x", i->op1);
         }
         
         *instr = i;
@@ -547,7 +577,7 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
             // decode body
             __throwiferr(decode_instr(&func->body, buf));
             instr_t *instr = func->body;
-            while(instr->op != OP_END) {
+            while(instr->op1 != OP_END) {
                 __throwiferr(decode_instr(&instr->next, buf));
                 instr = instr->next;
             }

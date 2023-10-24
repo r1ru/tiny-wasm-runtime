@@ -78,7 +78,7 @@ error_t validate_instrs(context_t *C, instr_t *start, resulttype_t *rt1, resultt
 
 error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
     __try {
-        switch(ip->op) {
+        switch(ip->op1) {
             case OP_BLOCK:
             case OP_LOOP: {
                 functype_t ty;
@@ -87,7 +87,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 // push label
                 labeltype_t l;
                 
-                if(ip->op == OP_BLOCK)
+                if(ip->op1 == OP_BLOCK)
                     l.ty = ty.rt2;
                 else
                     l.ty = ty.rt1;
@@ -386,7 +386,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             
             default:
-                PANIC("Validation: unsupported opcode: %x\n", ip->op);
+                PANIC("Validation: unsupported opcode: %x\n", ip->op1);
         }       
     } 
     __catch:

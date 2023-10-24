@@ -163,11 +163,38 @@ enum op {
     OP_F64_MIN          = 0xA4,
     OP_F64_MAX          = 0xA5,
     OP_F64_COPYSIGN     = 0xA6,
-    OP_I32_EXTEND8_S    = 0xC0,
-    OP_I32_EXTEND16_S   = 0xC1,
-    OP_I64_EXTEND8_S    = 0xC2,
-    OP_I64_EXTEND16_S   = 0xC3,
-    OP_I64_EXTEND32_S   = 0xC4,
+    OP_I32_WRAP_I64         = 0xA7,
+    OP_I32_TRUNC_F32_S      = 0xA8,
+    OP_I32_TRUNC_F32_U      = 0xA9,
+    OP_I32_TRUNC_F64_S      = 0xAA,
+    OP_I32_TRUNC_F64_U      = 0xAB,
+    OP_I64_EXTEND_I32_S     = 0xAC,
+    OP_I64_EXTEND_I32_U     = 0xAD,
+    OP_I64_TRUNC_F32_S      = 0xAE,
+    OP_I64_TRUNC_F32_U      = 0xAF,
+    OP_I64_TRUNC_F64_S      = 0xB0,
+    OP_I64_TRUNC_F64_U      = 0xB1,
+    OP_F32_CONVERT_I32_S    = 0xB2,
+    OP_F32_CONVERT_I32_U    = 0xB3,
+    OP_F32_CONVERT_I64_S    = 0xB4,
+    OP_F32_CONVERT_I64_U    = 0xB5,
+    OP_F32_DEMOTE_F64       = 0xB6,
+    OP_F64_CONVERT_I32_S    = 0xB7,
+    OP_F64_CONVERT_I32_U    = 0xB8,
+    OP_F64_CONVERT_I64_S    = 0xB9,
+    OP_F64_CONVERT_I64_U    = 0xBA,
+    OP_F64_PROMOTE_F32      = 0xBB,
+    OP_I32_REINTERPRET_F32  = 0xBC,
+    OP_I64_REINTERPRET_F64  = 0xBD,
+    OP_F32_REINTERPRET_I32  = 0xBE,
+    OP_F64_REINTERPRET_I64  = 0xBF,
+    OP_I32_EXTEND8_S        = 0xC0,
+    OP_I32_EXTEND16_S       = 0xC1,
+    OP_I64_EXTEND8_S        = 0xC2,
+    OP_I64_EXTEND16_S       = 0xC3,
+    OP_I64_EXTEND32_S       = 0xC4,
+    OP_TRUNC_SAT            = 0xFC,
+
 };
 
 typedef union {
@@ -190,7 +217,8 @@ typedef struct {
 
 typedef struct instr {
     struct instr                *next;
-    uint8_t                     op;
+    uint8_t                     op1;
+    uint8_t                     op2;
 
     union {
         // control instructions

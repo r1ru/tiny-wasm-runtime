@@ -263,7 +263,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
     __try {
         while(ip) {
             instr_t *next_ip = ip->next;
-            static instr_t end = {.op = OP_END};
+            static instr_t end = {.op1 = OP_END};
 
             int32_t rhs_i32, lhs_i32;
             int64_t rhs_i64, lhs_i64;
@@ -271,44 +271,44 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
             double  rhs_f64, lhs_f64;
 
             // unary operator
-            if(ip->op == OP_I32_EQZ || OP_I32_CLZ <= ip->op && ip->op <= OP_I32_POPCNT ||
-               OP_I32_EXTEND8_S <= ip->op && ip->op <= OP_I32_EXTEND16_S) {
+            if(ip->op1 == OP_I32_EQZ || OP_I32_CLZ <= ip->op1 && ip->op1 <= OP_I32_POPCNT ||
+               OP_I32_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I32_EXTEND16_S) {
                 pop_i32(&lhs_i32, S->stack);
             }
-            if(ip->op == OP_I64_EQZ || OP_I64_CLZ <= ip->op && ip->op <= OP_I64_POPCNT ||
-               OP_I64_EXTEND8_S <= ip->op && ip->op <= OP_I64_EXTEND32_S) {
+            if(ip->op1 == OP_I64_EQZ || OP_I64_CLZ <= ip->op1 && ip->op1 <= OP_I64_POPCNT ||
+               OP_I64_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I64_EXTEND32_S) {
                 pop_i64(&lhs_i64, S->stack);
             }
-            if(OP_F32_ABS <= ip->op && ip->op <= OP_F32_SQRT) {
+            if(OP_F32_ABS <= ip->op1 && ip->op1 <= OP_F32_SQRT) {
                 pop_f32(&lhs_f32, S->stack);
             }
-            if(OP_F64_ABS <= ip->op && ip->op <= OP_F64_SQRT) {
+            if(OP_F64_ABS <= ip->op1 && ip->op1 <= OP_F64_SQRT) {
                 pop_f64(&lhs_f64, S->stack);
             }
             
             // binary operator
-            if(OP_I32_EQ <= ip->op && ip->op <= OP_I32_GE_U || 
-               OP_I32_ADD <= ip->op && ip->op <= OP_I32_ROTR) {
+            if(OP_I32_EQ <= ip->op1 && ip->op1 <= OP_I32_GE_U || 
+               OP_I32_ADD <= ip->op1 && ip->op1 <= OP_I32_ROTR) {
                 pop_i32(&rhs_i32, S->stack);
                 pop_i32(&lhs_i32, S->stack);
             }
-            if(OP_I64_EQ <= ip->op && ip->op <= OP_I64_GE_U || 
-               OP_I64_ADD <= ip->op && ip->op <= OP_I64_ROTR) {
+            if(OP_I64_EQ <= ip->op1 && ip->op1 <= OP_I64_GE_U || 
+               OP_I64_ADD <= ip->op1 && ip->op1 <= OP_I64_ROTR) {
                 pop_i64(&rhs_i64, S->stack);
                 pop_i64(&lhs_i64, S->stack);
             }
-            if(OP_F32_EQ <= ip->op && ip->op <= OP_F32_GE ||
-               OP_F32_ADD <= ip->op && ip->op <= OP_F32_COPYSIGN) {
+            if(OP_F32_EQ <= ip->op1 && ip->op1 <= OP_F32_GE ||
+               OP_F32_ADD <= ip->op1 && ip->op1 <= OP_F32_COPYSIGN) {
                 pop_f32(&rhs_f32, S->stack);
                 pop_f32(&lhs_f32, S->stack);
             }
-            if(OP_F64_EQ <= ip->op && ip->op <= OP_F64_GE ||
-               OP_F64_ADD <= ip->op && ip->op <= OP_F64_COPYSIGN) {
+            if(OP_F64_EQ <= ip->op1 && ip->op1 <= OP_F64_GE ||
+               OP_F64_ADD <= ip->op1 && ip->op1 <= OP_F64_COPYSIGN) {
                 pop_f64(&rhs_f64, S->stack);
                 pop_f64(&lhs_f64, S->stack);
             }
 
-            switch(ip->op) {
+            switch(ip->op1) {
                 case OP_BLOCK: {
                     functype_t ty;
                     expand_F(&ty, ip->bt, F);
@@ -407,7 +407,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     push_vals(vals, S->stack);
 
                     // br instruction of block, if is treated as a "end" instruction
-                    switch(L.parent->op) {
+                    switch(L.parent->op1) {
                         case OP_BLOCK:
                         case OP_IF:
                             next_ip = L.parent->next;
@@ -959,7 +959,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     break;
 
                 default:
-                    PANIC("Exec: unsupported opcode: %x\n", ip->op);
+                    PANIC("Exec: unsupported opcode: %x\n", ip->op1);
             }
             
             // update ip
@@ -991,7 +991,7 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
     push_frame(frame, S->stack);
 
     // create label L
-    static instr_t end = {.op = OP_END, .next = NULL};
+    static instr_t end = {.op1 = OP_END, .next = NULL};
     label_t L = {.arity = functype->rt2.n, .parent = NULL, .continuation = &end};
 
     __try {
