@@ -404,20 +404,35 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 }
 
                 case OP_BR_IF: {
+                    labelidx_t idx;
                     int32_t c;
+                    
                     pop_i32(&c, S->stack);
 
                     if(c == 0) {
                         break;
                     }
-                }
-                
-                case OP_BR: {
-                    label_t *l = LIST_GET_ELEM(&S->stack->labels, label_t, link, ip->labelidx);
+                    idx = ip->labelidx;
+                    goto __br;
+
+                case OP_BR_TABLE:
+                    pop_i32(&c, S->stack);
+                    if(c < ip->labels.n) {
+                        idx = ip->labels.elem[c];
+                    }
+                    else {
+                        idx = ip->default_label;
+                    }
+                    goto __br;
+
+                case OP_BR:
+                    idx = ip->labelidx;
+                __br:
+                    label_t *l = LIST_GET_ELEM(&S->stack->labels, label_t, link, idx);
                     vals_t vals;
                     pop_vals_n(&vals, l->arity, S->stack);
                     label_t L;
-                    for(int i = 0; i <= ip->labelidx; i++) {
+                    for(int i = 0; i <= idx; i++) {
                         vals_t tmp;
                         pop_vals(&tmp, S->stack);
                         pop_label(&L, S->stack);
