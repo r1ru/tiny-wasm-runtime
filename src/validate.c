@@ -165,6 +165,31 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             }
 
+            case OP_BR_TABLE: {
+                labeltype_t *default_label = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->default_label);
+                __throwif(ERR_FAILED, !default_label);
+
+                VECTOR_FOR_EACH(i, &ip->labels, labelidx_t) {
+                    labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, *i);
+                    __throwif(ERR_FAILED, !l);
+
+                    size_t j = 0;
+                    VECTOR_FOR_EACH(t, &default_label->ty, valtype_t) {
+                        __throwif(ERR_FAILED, *t != *VECTOR_ELEM(&l->ty, j++));
+                    }
+                }
+
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                VECTOR_FOR_EACH(t, &default_label->ty, valtype_t) {
+                    __throwiferr(try_pop(*t, stack));
+                }
+
+                // empty the stack
+                stack->idx = -1;
+                stack->polymorphic = true;
+                break;
+            }
+
             case OP_RETURN: {
                 resulttype_t *ty = C->ret;
                 __throwif(ERR_FAILED, !ty);
