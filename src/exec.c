@@ -381,7 +381,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     if(c) {
                         next_ip = ip->in1;
                     } 
-                    else {
+                    else if(ip->in2) {
                         next_ip = ip->in2;
                     }
 
