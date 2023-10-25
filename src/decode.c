@@ -265,6 +265,9 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
         __throwiferr(read_byte(&i->op1, buf));
         
         switch(i->op1) {
+            case OP_NOP:
+                break;
+            
             case OP_BLOCK:
             case OP_LOOP:
             case OP_IF: {

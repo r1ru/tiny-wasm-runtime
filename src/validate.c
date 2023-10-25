@@ -79,6 +79,9 @@ error_t validate_instrs(context_t *C, instr_t *start, resulttype_t *rt1, resultt
 error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
     __try {
         switch(ip->op1) {
+            case OP_NOP:
+                break;
+            
             case OP_BLOCK:
             case OP_LOOP: {
                 functype_t ty;

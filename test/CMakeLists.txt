@@ -28,6 +28,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/forward.wast -o ${CMAKE_CURRENT_BINARY_DIR}/forward
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/const.wast -o ${CMAKE_CURRENT_BINARY_DIR}/const
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/local_get.wast -o ${CMAKE_CURRENT_BINARY_DIR}/local_get
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/local_set.wast -o ${CMAKE_CURRENT_BINARY_DIR}/local_set
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/labels.wast -o ${CMAKE_CURRENT_BINARY_DIR}/labels
 )
 
@@ -130,5 +131,11 @@ add_test(
 add_test(
     NAME local_get
     COMMAND runtest local_get
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME local_set
+    COMMAND runtest local_set
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

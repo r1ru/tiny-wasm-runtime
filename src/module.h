@@ -40,6 +40,7 @@ typedef struct {
 } export_t;
 
 enum op {
+    OP_NOP              = 0x01,
     OP_BLOCK            = 0x02,
     OP_LOOP             = 0x03,
     OP_IF               = 0x04,

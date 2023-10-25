@@ -327,6 +327,9 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
             }
 
             switch(ip->op1) {
+                case OP_NOP:
+                    break;
+                
                 case OP_BLOCK: {
                     functype_t ty;
                     expand_F(&ty, ip->bt, F);
