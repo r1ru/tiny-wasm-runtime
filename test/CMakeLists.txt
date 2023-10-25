@@ -30,6 +30,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/local_get.wast -o ${CMAKE_CURRENT_BINARY_DIR}/local_get
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/local_set.wast -o ${CMAKE_CURRENT_BINARY_DIR}/local_set
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/labels.wast -o ${CMAKE_CURRENT_BINARY_DIR}/labels
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/switch.wast -o ${CMAKE_CURRENT_BINARY_DIR}/switch
 )
 
 add_test(
@@ -142,6 +143,12 @@ add_test(
 
 add_test(
     NAME labels
+    COMMAND runtest labels
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME switch
     COMMAND runtest labels
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
