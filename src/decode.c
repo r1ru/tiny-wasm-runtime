@@ -545,13 +545,14 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
             }
 
             // create vec(valtype)
+            size_t i = 0;
             VECTOR_INIT(&func->locals, num_locals, valtype_t);
             VECTOR_FOR_EACH(locals, &localses, locals_t) {
-                for(uint32_t i = 0; i < locals->n; i++) {
-                    func->locals.elem[i] = locals->type;
+                for(uint32_t j = 0; j < locals->n; j++) {
+                    func->locals.elem[i++] = locals->type;
                 }
             }
-            
+
             // decode body
             __throwiferr(decode_instr(&func->body, buf));
             instr_t *instr = func->body;
