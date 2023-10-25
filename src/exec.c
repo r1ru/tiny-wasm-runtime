@@ -480,6 +480,13 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     break;
                 }
 
+                case OP_LOCAL_TEE: {
+                    val_t val;
+                    pop_val(&val, S->stack);
+                    push_val(val, S->stack);
+                    push_val(val, S->stack);
+                }
+
                 case OP_LOCAL_SET: {
                     localidx_t x = ip->localidx;
                     val_t val;

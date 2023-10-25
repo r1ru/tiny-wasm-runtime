@@ -236,6 +236,14 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 __throwiferr(try_pop(*t, stack));
                 break;
             }
+
+            case OP_LOCAL_TEE: {
+                valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
+                __throwif(ERR_FAILED, !t);
+                __throwiferr(try_pop(*t, stack));
+                push(*t, stack);
+                break;
+            }
             
             case OP_I32_CONST:
                 push(TYPE_NUM_I32, stack);
