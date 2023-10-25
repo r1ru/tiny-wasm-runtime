@@ -24,6 +24,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/fac.wast -o ${CMAKE_CURRENT_BINARY_DIR}/fac
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/conversions.wast -o ${CMAKE_CURRENT_BINARY_DIR}/conversions
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/float_literals.wast -o ${CMAKE_CURRENT_BINARY_DIR}/float_literals
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/forward.wast -o ${CMAKE_CURRENT_BINARY_DIR}/forward
 )
 
 add_test(
@@ -101,5 +102,11 @@ add_test(
 add_test(
     NAME float_literals
     COMMAND runtest float_literals
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME forward
+    COMMAND runtest forward
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
