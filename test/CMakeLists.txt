@@ -10,7 +10,8 @@ add_executable(runtest runtest.c ${PARSON_ROOT}/parson.c)
 target_link_libraries(runtest tiny_wasm_runtime)
 
 add_custom_target(
-    tests ALL 
+    tests ALL
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/int_literals.wast -o ${CMAKE_CURRENT_BINARY_DIR}/int_literals
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/i32.wast -o ${CMAKE_CURRENT_BINARY_DIR}/i32
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/i64.wast -o ${CMAKE_CURRENT_BINARY_DIR}/i64
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/f32.wast -o ${CMAKE_CURRENT_BINARY_DIR}/f32
@@ -23,6 +24,12 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/fac.wast -o ${CMAKE_CURRENT_BINARY_DIR}/fac
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/conversions.wast -o ${CMAKE_CURRENT_BINARY_DIR}/conversions
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/float_literals.wast -o ${CMAKE_CURRENT_BINARY_DIR}/float_literals
+)
+
+add_test(
+    NAME int_literals
+    COMMAND runtest int_literals
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 add_test(

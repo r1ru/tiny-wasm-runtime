@@ -77,58 +77,18 @@ error_t read_i32(int32_t *d, buffer_t *buf) {
 }
 
 // Little Endian Base 128
-error_t read_u32_leb128(uint32_t *d, buffer_t *buf) {
-    __try {
-        uint32_t result = 0, shift = 0;
-        while(1) {
-            uint8_t byte;
-            __throwiferr(read_byte(&byte, buf));
-
-            result |= (byte & 0b1111111) << shift;
-            shift += 7;
-            if((0b10000000 & byte) == 0)
-                break;
-        }
-        *d = result;
-    }
-    __catch:
-        return err;
-}
-
 error_t read_u64_leb128(uint64_t *d, buffer_t *buf) {
     __try {
-        uint64_t result = 0, shift = 0;
+        uint64_t result = 0;
+        uint32_t shift = 0;
         while(1) {
             uint8_t byte;
             __throwiferr(read_byte(&byte, buf));
 
-            result |= (byte & 0b1111111) << shift;
+            result |= (((uint64_t)byte & 0x7f) << shift);
             shift += 7;
-            if((0b10000000 & byte) == 0)
+            if((byte & 0x80) == 0)
                 break;
-        }
-        *d = result;
-    }
-    __catch:
-        return err;
-}
-
-error_t read_i32_leb128(int32_t *d, buffer_t *buf) {
-    __try {
-        int32_t result = 0, shift = 0;
-        while(1) {
-            uint8_t byte;
-            __throwiferr(read_byte(&byte, buf));
-
-            result |= (byte & 0b1111111) << shift;
-            shift += 7;
-            if((0b10000000 & byte) == 0) {
-                if((byte & 0b1000000) != 0)
-                    result |= ~0 << shift;
-                else
-                    result;
-                break;
-            }
         }
         *d = result;
     }
@@ -138,22 +98,40 @@ error_t read_i32_leb128(int32_t *d, buffer_t *buf) {
 
 error_t read_i64_leb128(int64_t *d, buffer_t *buf) {
     __try {
-        int64_t result = 0, shift = 0;
+        int64_t result = 0;
+        uint32_t shift = 0;
         while(1) {
             uint8_t byte;
             __throwiferr(read_byte(&byte, buf));
-
-            result |= (byte & 0b1111111) << shift;
+            result |= (((uint64_t)byte & 0x7f) << shift);
             shift += 7;
-            if((0b10000000 & byte) == 0) {
-                if((byte & 0b1000000) != 0)
-                    result |= ~0 << shift;
-                else
-                    result;
+            if((byte & 0x80) == 0) {
+                if((byte & 0x40) && (shift < 64))
+                    result |= (~0UL << shift);
                 break;
             }
         }
         *d = result;
+    }
+    __catch:
+        return err;
+}
+
+error_t read_u32_leb128(uint32_t *d, buffer_t *buf) {
+    __try {
+        uint64_t val;
+        __throwiferr(read_u64_leb128(&val, buf));
+        *d = (uint32_t)val;
+    }
+    __catch:
+        return err;
+}
+
+error_t read_i32_leb128(int32_t *d, buffer_t *buf) {
+    __try {
+        int64_t val;
+        __throwiferr(read_i64_leb128(&val, buf));
+        *d = (int32_t)val;
     }
     __catch:
         return err;
