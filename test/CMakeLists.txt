@@ -139,3 +139,9 @@ add_test(
     COMMAND runtest local_set
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+add_test(
+    NAME labels
+    COMMAND runtest labels
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
