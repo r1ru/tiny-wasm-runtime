@@ -254,6 +254,31 @@ static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
 // ref: https://github.com/wasm3/wasm3/blob/main/source/m3_math_utils.h
 // ref: https://en.wikipedia.org/wiki/Circular_shift
 static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
+
+#define TRUNC_SAT(A, TYPE, RMIN, RMAX, IMIN, IMAX)          \
+    ({                                                      \
+        TYPE __val;                                         \
+        if (isnan(A)) {                                     \
+            __val = 0;                                      \
+        } else if (A <= RMIN) {                             \
+            __val = IMIN;                                   \
+        } else if (A >= RMAX) {                             \
+            __val = IMAX;                                   \
+        } else {                                            \
+            __val = (TYPE)A;                                \
+        }                                                   \
+        __val;                                              \
+    })
+
+#define I32_TRUNC_SAT_F32(A)    TRUNC_SAT(A, int32_t, -2147483904.0f, 2147483648.0f,   INT32_MIN,  INT32_MAX)
+#define U32_TRUNC_SAT_F32(A)    TRUNC_SAT(A, uint32_t,         -1.0f, 4294967296.0f,         0UL, UINT32_MAX)
+#define I32_TRUNC_SAT_F64(A)    TRUNC_SAT(A, int32_t, -2147483649.0 , 2147483648.0,    INT32_MIN,  INT32_MAX)
+#define U32_TRUNC_SAT_F64(A)    TRUNC_SAT(A, uint32_t,         -1.0 , 4294967296.0,          0UL, UINT32_MAX)
+#define I64_TRUNC_SAT_F32(A)    TRUNC_SAT(A, int64_t, -9223373136366403584.0f,  9223372036854775808.0f, INT64_MIN,  INT64_MAX)
+#define U64_TRUNC_SAT_F32(A)    TRUNC_SAT(A, uint64_t,                  -1.0f, 18446744073709551616.0f,      0ULL, UINT64_MAX)
+#define I64_TRUNC_SAT_F64(A)    TRUNC_SAT(A, int64_t, -9223372036854777856.0 ,  9223372036854775808.0,  INT64_MIN,  INT64_MAX)
+#define U64_TRUNC_SAT_F64(A)    TRUNC_SAT(A, uint64_t,                  -1.0 , 18446744073709551616.0,       0ULL, UINT64_MAX)
+
 error_t exec_instrs(instr_t * ent, store_t *S) {
     instr_t *ip = ent;
 
@@ -1112,126 +1137,37 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
 
                 case OP_TRUNC_SAT:
                     switch(ip->op2) {
-                        case 0x00: {
-                            int32_t val;
-                            if(isnan(lhs_f32)) {
-                                val = 0;
-                            } else if(lhs_f32 <= -2147483904.0f) {
-                                val = INT32_MIN;
-                            } else if(lhs_f32 >= 2147483648.0f) {
-                                val = INT32_MAX;
-                            } else {
-                                val = (int32_t)lhs_f32;
-                            }
-                            push_i32(val, S->stack);
+                        case 0x00:
+                            push_i32(I32_TRUNC_SAT_F32(lhs_f32), S->stack);
                             break;
-                        }
+
+                        case 0x01:
+                            push_i32(U32_TRUNC_SAT_F32(lhs_f32), S->stack);
+                            break;
                         
-                        case 0x01: {
-                            int32_t val;
-                            if(isnan(lhs_f32)) {
-                                val = 0;
-                            } else if(lhs_f32 <= -1.0f) {
-                                val = 0UL;
-                            } else if(lhs_f32 >= 4294967296.0f) {
-                                val = UINT32_MAX;
-                            } else {
-                                val = (uint32_t)lhs_f32;
-                            }
-                            push_i32(val, S->stack);
+                        case 0x02:
+                            push_i32(I32_TRUNC_SAT_F64(lhs_f64), S->stack);
                             break;
-                        }
+
+                        case 0x03:
+                            push_i32(U32_TRUNC_SAT_F64(lhs_f64), S->stack);
+                            break;
                         
-                        case 0x02: {
-                            int32_t val;
-                            if(isnan(lhs_f64)) {
-                                val = 0;
-                            } else if(lhs_f64 <= -2147483649.0) {
-                                val = INT32_MIN;
-                            } else if(lhs_f64 >= 2147483648.0) {
-                                val = INT32_MAX;
-                            } else {
-                                val = (int32_t)lhs_f64;
-                            }
-                            push_i32(val, S->stack);
+                        case 0x04:
+                            push_i64(I64_TRUNC_SAT_F32(lhs_f32), S->stack);
                             break;
-                        }
-
-                        case 0x03: {
-                            int32_t val;
-                            if(isnan(lhs_f64)) {
-                                val = 0;
-                            } else if(lhs_f64 <= -1.0) {
-                                val = 0UL;
-                            } else if(lhs_f64 >= 4294967296.0) {
-                                val = UINT32_MAX;
-                            } else {
-                                val = (uint32_t)lhs_f64;
-                            }
-                            push_i32(val, S->stack);
-                            break;
-                        }
-
-                        case 0x04: {
-                            int64_t val;
-                            if(isnan(lhs_f32)) {
-                                val = 0;
-                            } else if(lhs_f32 <= -9223373136366403584.0f) {
-                                val = INT64_MIN;
-                            } else if(lhs_f32 >= 9223372036854775808.0f) {
-                                val = INT64_MAX;
-                            } else {
-                                val = (int64_t)lhs_f32;
-                            }
-                            push_i64(val, S->stack);
-                            break;
-                        }
-
-                        case 0x05: {
-                            int64_t val;
-                            if(isnan(lhs_f32)) {
-                                val = 0;
-                            } else if(lhs_f32 <= -1.0f) {
-                                val = 0ULL;
-                            } else if(lhs_f32 >= 18446744073709551616.0f) {
-                                val = UINT64_MAX;
-                            } else {
-                                val = (uint64_t)lhs_f32;
-                            }
-                            push_i64(val, S->stack);
-                            break;
-                        }
                         
-                        case 0x06: {
-                            int64_t val;
-                            if(isnan(lhs_f64)) {
-                                val = 0;
-                            } else if(lhs_f64 <= -9223372036854777856.0) {
-                                val = INT64_MIN;
-                            } else if(lhs_f64 >= 9223372036854775808.0) {
-                                val = INT64_MAX;
-                            } else {
-                                val = (int64_t)lhs_f64;
-                            }
-                            push_i64(val, S->stack);
+                        case 0x05:
+                            push_i64(U64_TRUNC_SAT_F32(lhs_f32), S->stack);
                             break;
-                        }
 
-                        case 0x07: {
-                            int64_t val;
-                            if(isnan(lhs_f64)) {
-                                val = 0;
-                            } else if(lhs_f64 <= -1.0f) {
-                                val = 0ULL;
-                            } else if(lhs_f64 >= 18446744073709551616.0) {
-                                val = UINT64_MAX;
-                            } else {
-                                val = (uint64_t)lhs_f64;
-                            }
-                            push_i64(val, S->stack);
+                        case 0x06:
+                            push_i64(I64_TRUNC_SAT_F64(lhs_f64), S->stack);
                             break;
-                        }
-                            
+
+                        case 0x07:
+                            push_i64(U64_TRUNC_SAT_F64(lhs_f64), S->stack);
+                            break;                    
                     }
                     break;
                 
