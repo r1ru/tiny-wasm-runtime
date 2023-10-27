@@ -149,6 +149,6 @@ add_test(
 
 add_test(
     NAME switch
-    COMMAND runtest labels
+    COMMAND runtest switch
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
