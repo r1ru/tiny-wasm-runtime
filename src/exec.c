@@ -534,17 +534,46 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     push_val(val, S->stack);
                 }
 
-                case OP_I32_STORE: {
+                case OP_I32_STORE:
+                case OP_F32_STORE:
+                case OP_F64_STORE:
+                case OP_I32_STORE8:
+                case OP_I32_STORE16:
+                case OP_I64_STORE8:
+                case OP_I64_STORE16:
+                case OP_I64_STORE32: {
                     memaddr_t a = F->module->memaddrs[0];
                     meminst_t *mem = VECTOR_ELEM(&S->mems, a);
 
-                    int32_t c, i;
-                    pop_i32(&c, S->stack);
+                    val_t c;
+                    int32_t i;
+                    pop_val(&c, S->stack);
                     pop_i32(&i, S->stack);
 
                     int32_t ea = ip->m.offset + i;
 
-                    if(ea + 4 > WASM_MEM_SIZE) {
+                    int32_t N;
+                    switch(ip->op1) {
+                        case OP_I32_STORE:
+                        case OP_F32_STORE:
+                        case OP_I64_STORE32:
+                            N= 4;
+                            break;
+                        case OP_I64_STORE:
+                        case OP_F64_STORE:
+                            N = 8;
+                            break;
+                        case OP_I32_STORE8:
+                        case OP_I64_STORE8:
+                            N = 1;
+                            break;
+                        case OP_I32_STORE16:
+                        case OP_I64_STORE16:
+                            N = 2;
+                            break;
+                    }
+
+                    if(ea + N > WASM_MEM_SIZE) {
                         PANIC("out of range");
                     }
 
@@ -556,7 +585,33 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     }
 
                     uint8_t *base = mem->base[idx];
-                    *(int32_t *)(base + offs) = c;
+
+                    switch(ip->op1) {
+                        case OP_I32_STORE:
+                            *(int32_t *)(base + offs) = c.num.i32;
+                            break;
+                        case OP_F32_STORE:
+                            *(float *)(base + offs) = c.num.f32;
+                            break;
+                        case OP_F64_STORE:
+                            *(double *)(base + offs) = c.num.f64;
+                            break;
+                        case OP_I32_STORE8:
+                            *(uint8_t *)(base + offs) = c.num.i32 & 0xff;
+                            break;
+                        case OP_I32_STORE16:
+                            *(uint16_t *)(base + offs) = c.num.i32 & 0xffff;
+                            break;
+                        case OP_I64_STORE8:
+                            *(uint8_t *)(base + offs) = c.num.i64 & 0xff;
+                            break;
+                        case OP_I64_STORE16:
+                            *(uint16_t *)(base + offs) = c.num.i64 & 0xffff;
+                            break;
+                        case OP_I64_STORE32:
+                            *(uint32_t *)(base + offs) = c.num.i64 & 0xffffffff;
+                            break;
+                    }
                     break;
                 }                
 
