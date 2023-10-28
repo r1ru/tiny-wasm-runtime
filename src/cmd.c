@@ -45,6 +45,10 @@ void print_func(func_t *func) {
     putchar('\n');
 }
 
+void print_mem(mem_t *mem) {
+    printf("min: %x, max: %x\n", mem->type.min, mem->type.max);
+}
+
 static void print_export(export_t *export) {
     printf(
         "%s %x %x\n", 
@@ -62,7 +66,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/switch.1.wasm", O_RDONLY);
+    int fd = open("./build/test/store.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -98,6 +102,12 @@ int main(int argc, char *argv[]) {
     }
     putchar('\n');
 
+    puts("[mems]");
+    VECTOR_FOR_EACH(mem, &mod->mems, mem_t) {
+        print_mem(mem);
+    }
+    putchar('\n');
+
     puts("[exports]");
     VECTOR_FOR_EACH(export, &mod->exports, export_t) {
         print_export(export);
@@ -108,9 +118,7 @@ int main(int argc, char *argv[]) {
     err = validate_module(mod);
     if(IS_ERROR(err))
         PANIC("validation failed: %d", err);
-
-    puts("hi!");
-    
+        
     store_t *S;
     err = instantiate(&S, mod);
     if(IS_ERROR(err))

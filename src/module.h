@@ -263,7 +263,19 @@ typedef struct {
 } func_t;
 
 typedef struct {
+    uint32_t    min;
+    uint32_t    max;
+} limits_t;
+
+typedef limits_t memtype_t;
+
+typedef struct {
+    memtype_t   type;
+} mem_t;
+
+typedef struct {
     VECTOR(functype_t)  types;
     VECTOR(func_t)      funcs;
+    VECTOR(mem_t)       mems;    
     VECTOR(export_t)    exports;
 } module_t;

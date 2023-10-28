@@ -186,6 +186,7 @@ typedef error_t (*decoder_t) (module_t *mod, buffer_t *buf);
 static decoder_t decoders[11] = {
     [1]     = decode_typesec,
     [3]     = decode_funcsec,
+    [5]     = decode_memsec,
     [7]     = decode_exportsec,
     [10]    = decode_codesec,
 };
@@ -232,6 +233,29 @@ error_t decode_funcsec(module_t *mod, buffer_t *buf) {
 
         VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
             __throwiferr(read_u32_leb128(&func->type, buf));
+        }
+    }
+    __catch:
+        return err;
+}
+
+error_t decode_memsec(module_t *mod, buffer_t *buf) {
+    __try {
+        uint32_t n;
+        __throwiferr(read_u32_leb128(&n, buf));
+
+        VECTOR_INIT(&mod->mems, n, mem_t);
+        
+        uint8_t has_max;
+        VECTOR_FOR_EACH(mem, &mod->mems, mem_t) {
+            __throwiferr(read_byte(&has_max, buf));
+            __throwiferr(read_u32_leb128(&mem->type.min, buf));
+            if(has_max) {
+                __throwiferr(read_u32_leb128(&mem->type.max, buf));
+            }
+            else {
+                mem->type.max = 0;
+            }
         }
     }
     __catch:
@@ -582,6 +606,7 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         module_t *m = *mod = malloc(sizeof(module_t));
         VECTOR_INIT(&m->types, 0, functype_t);
         VECTOR_INIT(&m->funcs, 0, func_t);
+        VECTOR_INIT(&m->mems, 0, mem_t);
         VECTOR_INIT(&m->exports, 0, export_t);
 
         while(!eof(buf)) {
