@@ -14,6 +14,7 @@ typedef struct {
 typedef struct {
     VECTOR(functype_t)      types;
     VECTOR(functype_t)      funcs;
+    VECTOR(mem_t)           mems;
     VECTOR(valtype_t)       locals;
     list_t                  labels;
     resulttype_t            *ret;

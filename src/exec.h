@@ -9,10 +9,12 @@
 // ref: https://webassembly.github.io/spec/core/exec/index.html
 typedef export_t    exportinst_t;
 typedef uint32_t    funcaddr_t;
+typedef uint32_t    memaddr_t;
 
 typedef struct {
     functype_t      *types;
     funcaddr_t      *funcaddrs;
+    memaddr_t       *memaddrs;
     exportinst_t    *exports;
 } moduleinst_t;
 
@@ -73,9 +75,16 @@ typedef struct {
     obj_t           *pool;
 } stack_t;
 
+#define WASM_MEM_SIZE   (4096 * 16)
 typedef struct {
-    stack_t         *stack;
+    memtype_t       type;
+    uint8_t         *base[16];
+} meminst_t;
+
+typedef struct {
+    stack_t             *stack;
     VECTOR(funcinst_t)  funcs;
+    VECTOR(meminst_t)   mems;
 } store_t;
 
 typedef struct {

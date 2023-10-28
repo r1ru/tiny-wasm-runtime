@@ -203,6 +203,20 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
         moduleinst->funcaddrs[i] = i;
     }
 
+    // allocate mems
+    uint32_t num_mems = module->mems.n;
+    moduleinst->memaddrs = malloc(sizeof(memaddr_t) * num_mems);
+    for(uint32_t i = 0; i < num_mems; i++) {
+        mem_t *mem = VECTOR_ELEM(&module->mems, i);
+        meminst_t *meminst = VECTOR_ELEM(&S->mems, i);
+
+        meminst->type = mem->type;
+        for(int j = 0; j < 16; j++) {
+            meminst->base[j] = NULL;
+        }
+        moduleinst->memaddrs[i] = i;
+    }
+
     moduleinst->exports = module->exports.elem;
 
     return moduleinst;
@@ -215,9 +229,9 @@ error_t instantiate(store_t **S, module_t *module) {
     // allocate stack
     new_stack(&store->stack);
 
-    // allocate funcs
     VECTOR_INIT(&store->funcs, module->funcs.n, funcinst_t);
-
+    VECTOR_INIT(&store->mems, module->mems.n, meminst_t);
+    
     moduleinst_t *moduleinst = allocmodule(store, module);
 
     // todo: support start section
@@ -505,13 +519,6 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     break;
                 }
 
-                case OP_LOCAL_TEE: {
-                    val_t val;
-                    pop_val(&val, S->stack);
-                    push_val(val, S->stack);
-                    push_val(val, S->stack);
-                }
-
                 case OP_LOCAL_SET: {
                     localidx_t x = ip->localidx;
                     val_t val;
@@ -519,7 +526,40 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     F->locals[x] = val;
                     break;
                 }
+
+                case OP_LOCAL_TEE: {
+                    val_t val;
+                    pop_val(&val, S->stack);
+                    push_val(val, S->stack);
+                    push_val(val, S->stack);
+                }
+
+                case OP_I32_STORE: {
+                    memaddr_t a = F->module->memaddrs[0];
+                    meminst_t *mem = VECTOR_ELEM(&S->mems, a);
+
+                    int32_t c, i;
+                    pop_i32(&c, S->stack);
+                    pop_i32(&i, S->stack);
+
+                    int32_t ea = ip->m.offset + i;
+
+                    if(ea + 4 > WASM_MEM_SIZE) {
+                        PANIC("out of range");
+                    }
+
+                    int32_t idx = ea == 0 ? 0 : (ea >> 12) -1;
+                    int32_t offs = ea - 0x1000 * idx;
                 
+                    if(!mem->base[idx]) {
+                        mem->base[idx] = malloc(4096);
+                    }
+
+                    uint8_t *base = mem->base[idx];
+                    *(int32_t *)(base + offs) = c;
+                    break;
+                }                
+
                 case OP_I32_CONST:
                     push_i32(ip->c.i32, S->stack);
                     break;

@@ -245,6 +245,15 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             }
             
+            case OP_I32_STORE: {
+                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                __throwif(ERR_FAILED, !mem);
+                __throwif(ERR_FAILED, ip->m.align > 4);
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                break;
+            }
+            
             case OP_I32_CONST:
                 push(TYPE_NUM_I32, stack);
                 break;
@@ -607,13 +616,33 @@ error_t validate_func(context_t *C, func_t *func, functype_t *actual) {
         return err;
 }
 
+error_t validate_limits(limits_t *limits, uint32_t k) {
+    __try {
+        __throwif(ERR_FAILED, limits->min > k);
+        if(limits->max) {
+            __throwif(ERR_FAILED, limits->max > k);
+            __throwif(ERR_FAILED, limits->max < limits->min);
+        }
+    }
+    __catch:
+}
+
+error_t validate_mem(mem_t *mem) {
+    return validate_limits(&mem->type, 1<<16);
+}
+
 error_t validate_module(module_t *mod) {
     __try {
+        // validate mems
+        VECTOR_FOR_EACH(mem, &mod->mems,mem_t) {
+            __throwiferr(validate_mem(mem));
+        }
+
         // create context
         context_t C;
-
         VECTOR_COPY(&C.types, &mod->types, functype_t);
         VECTOR_INIT(&C.funcs, mod->funcs.n, functype_t);
+        VECTOR_COPY(&C.mems, &mod->mems, mem_t);
         LIST_INIT(&C.labels);
 
         size_t idx = 0;
