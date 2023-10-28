@@ -245,7 +245,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             }
             
-            case OP_I32_STORE: {
+            case OP_I32_STORE:
+            case OP_I32_STORE8:
+            case OP_I32_STORE16: {
                 mem_t *mem = VECTOR_ELEM(&C->mems, 0);
                 __throwif(ERR_FAILED, !mem);
                 __throwif(ERR_FAILED, ip->m.align > 4);
@@ -253,7 +255,37 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 break;
             }
-            
+
+            case OP_F32_STORE: {
+                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                __throwif(ERR_FAILED, !mem);
+                __throwif(ERR_FAILED, ip->m.align > 4);
+                __throwiferr(try_pop(TYPE_NUM_F32, stack));
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                break;
+            }
+
+            case OP_F64_STORE: {
+                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                __throwif(ERR_FAILED, !mem);
+                __throwif(ERR_FAILED, ip->m.align > 8);
+                __throwiferr(try_pop(TYPE_NUM_F64, stack));
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                break;
+            }
+
+            case OP_I64_STORE:
+            case OP_I64_STORE8:
+            case OP_I64_STORE16:
+            case OP_I64_STORE32: {
+                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                __throwif(ERR_FAILED, !mem);
+                __throwif(ERR_FAILED, ip->m.align > 8);
+                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                break;
+            }
+
             case OP_I32_CONST:
                 push(TYPE_NUM_I32, stack);
                 break;

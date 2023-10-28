@@ -369,6 +369,14 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             
             case OP_I32_LOAD:
             case OP_I32_STORE:
+            case OP_I64_STORE:
+            case OP_F32_STORE:
+            case OP_F64_STORE:
+            case OP_I32_STORE8:
+            case OP_I32_STORE16:
+            case OP_I64_STORE8:
+            case OP_I64_STORE16:
+            case OP_I64_STORE32:
                 __throwiferr(read_u32_leb128(&i->m.align, buf));
                 __throwiferr(read_u32_leb128(&i->m.offset, buf));
                 break;
