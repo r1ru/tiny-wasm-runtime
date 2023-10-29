@@ -246,42 +246,58 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             }
             
             case OP_I32_STORE:
-            case OP_I32_STORE8:
-            case OP_I32_STORE16: {
-                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
-                __throwif(ERR_FAILED, !mem);
-                __throwif(ERR_FAILED, ip->m.align > 4);
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                break;
-            }
-
-            case OP_F32_STORE: {
-                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
-                __throwif(ERR_FAILED, !mem);
-                __throwif(ERR_FAILED, ip->m.align > 4);
-                __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                break;
-            }
-
-            case OP_F64_STORE: {
-                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
-                __throwif(ERR_FAILED, !mem);
-                __throwif(ERR_FAILED, ip->m.align > 8);
-                __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                break;
-            }
-
             case OP_I64_STORE:
+            case OP_F32_STORE:
+            case OP_F64_STORE:
+            case OP_I32_STORE8:
+            case OP_I32_STORE16:
             case OP_I64_STORE8:
             case OP_I64_STORE16:
             case OP_I64_STORE32: {
                 mem_t *mem = VECTOR_ELEM(&C->mems, 0);
                 __throwif(ERR_FAILED, !mem);
-                __throwif(ERR_FAILED, ip->m.align > 8);
-                __throwiferr(try_pop(TYPE_NUM_I64, stack));
+                int32_t N;
+                switch(ip->op1) {
+                    case OP_I32_STORE:
+                    case OP_F32_STORE:
+                    case OP_I64_STORE32:
+                        N= 4;
+                        break;
+                    case OP_I64_STORE:
+                    case OP_F64_STORE:
+                        N = 8;
+                        break;
+                    case OP_I32_STORE8:
+                    case OP_I64_STORE8:
+                        N = 1;
+                        break;
+                    case OP_I32_STORE16:
+                    case OP_I64_STORE16:
+                        N = 2;
+                        break;
+                }
+                __throwif(ERR_FAILED, (1 << ip->m.align) > N);
+                valtype_t t;
+                switch(ip->op1) {
+                    case OP_I32_STORE:
+                    case OP_I32_STORE8:
+                    case OP_I32_STORE16:
+                        t = TYPE_NUM_I32;
+                        break;
+                    case OP_F32_STORE:
+                        t = TYPE_NUM_F32;
+                        break;
+                    case OP_F64_STORE:
+                        t = TYPE_NUM_F64;
+                        break;
+                    case OP_I64_STORE:
+                    case OP_I64_STORE8:
+                    case OP_I64_STORE16:
+                    case OP_I64_STORE32:
+                        t = TYPE_NUM_I64;
+                        break;
+                }
+                __throwiferr(try_pop(t, stack));
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 break;
             }
