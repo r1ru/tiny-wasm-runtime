@@ -534,6 +534,117 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     push_val(val, S->stack);
                 }
 
+                case OP_I32_LOAD:
+                case OP_I64_LOAD:
+                case OP_F32_LOAD:
+                case OP_F64_LOAD:
+                case OP_I32_LOAD8_S:
+                case OP_I32_LOAD8_U:
+                case OP_I32_LOAD16_S:
+                case OP_I32_LOAD16_U:
+                case OP_I64_LOAD8_S:
+                case OP_I64_LOAD8_U:
+                case OP_I64_LOAD16_S:
+                case OP_I64_LOAD16_U:
+                case OP_I64_LOAD32_S:
+                case OP_I64_LOAD32_U: {
+                    memaddr_t a = F->module->memaddrs[0];
+                    meminst_t *mem = VECTOR_ELEM(&S->mems, a);
+
+                    int32_t i;
+                    pop_i32(&i, S->stack);
+                    int32_t ea = ip->m.offset + i;
+
+                    int32_t n;
+                    switch(ip->op1) {
+                        case OP_I32_LOAD:
+                        case OP_F32_LOAD:
+                        case OP_I64_LOAD32_S:
+                        case OP_I64_LOAD32_U:
+                            n = 4;
+                            break;
+                        case OP_I64_LOAD:
+                        case OP_F64_LOAD:
+                            n = 8;
+                            break;
+                        case OP_I32_LOAD8_S:
+                        case OP_I32_LOAD8_U:
+                        case OP_I64_LOAD8_S:
+                        case OP_I64_LOAD8_U:
+                            n = 1;
+                            break;
+                        case OP_I32_LOAD16_S:
+                        case OP_I32_LOAD16_U:
+                        case OP_I64_LOAD16_S:
+                        case OP_I64_LOAD16_U:
+                            n = 2;
+                            break;
+                    }
+
+                    if(ea + n > WASM_MEM_SIZE) {
+                        PANIC("out of range");
+                    }
+
+                    int32_t idx = ea == 0 ? 0 : (ea >> 12) -1;
+                    int32_t offs = ea - 0x1000 * idx;
+
+                    // todo: fix this?
+                    if(!mem->base[idx]) {
+                        mem->base[idx] = malloc(4096);
+                    }
+
+                    uint8_t *base = mem->base[idx];
+
+                    val_t val = {.num.i64 = 0};
+
+                    switch(ip->op1) {
+                        case OP_I32_LOAD:
+                            val.num.i32 = *(int32_t *)(base + offs);
+                            break;
+                        case OP_I32_LOAD8_S:
+                            val.num.i32 = (int32_t)*(int8_t *)(base + offs);
+                            break;
+                        case OP_I32_LOAD8_U:
+                            val.num.i32 = (int32_t)*(uint8_t *)(base + offs);
+                            break;
+                        case OP_I32_LOAD16_S:
+                            val.num.i32 = (int32_t)*(int16_t *)(base + offs);
+                            break;
+                        case OP_I32_LOAD16_U:
+                            val.num.i32 = (int32_t)*(uint16_t *)(base + offs);
+                            break;
+                        case OP_I64_LOAD:
+                            val.num.i64 = *(int64_t *)(base + offs);
+                            break;
+                        case OP_I64_LOAD8_S:
+                            val.num.i64 = (int64_t)*(int8_t *)(base + offs);
+                            break;
+                        case OP_I64_LOAD8_U:
+                            val.num.i64 = (int64_t)*(uint8_t *)(base + offs);
+                            break;
+                        case OP_I64_LOAD16_S:
+                            val.num.i64 = (int64_t)*(int16_t *)(base + offs);
+                            break;
+                        case OP_I64_LOAD16_U:
+                            val.num.i64 = (int64_t)*(uint16_t *)(base + offs);
+                            break;
+                        case OP_I64_LOAD32_S:
+                            val.num.i64 = (int64_t)*(int32_t *)(base + offs);
+                            break;
+                        case OP_I64_LOAD32_U:
+                            val.num.i64 = (int64_t)*(uint32_t *)(base + offs);
+                            break;
+                        case OP_F32_LOAD:
+                            val.num.f32 = *(float *)(base + offs);
+                            break;
+                        case OP_F64_LOAD:
+                            val.num.f64 = *(double *)(base + offs);
+                            break;
+                    }
+                    push_val(val, S->stack);
+                    break;
+                }
+
                 case OP_I32_STORE:
                 case OP_F32_STORE:
                 case OP_F64_STORE:
@@ -552,28 +663,28 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
 
                     int32_t ea = ip->m.offset + i;
 
-                    int32_t N;
+                    int32_t n;
                     switch(ip->op1) {
                         case OP_I32_STORE:
                         case OP_F32_STORE:
                         case OP_I64_STORE32:
-                            N= 4;
+                            n= 4;
                             break;
                         case OP_I64_STORE:
                         case OP_F64_STORE:
-                            N = 8;
+                            n = 8;
                             break;
                         case OP_I32_STORE8:
                         case OP_I64_STORE8:
-                            N = 1;
+                            n = 1;
                             break;
                         case OP_I32_STORE16:
                         case OP_I64_STORE16:
-                            N = 2;
+                            n = 2;
                             break;
                     }
 
-                    if(ea + N > WASM_MEM_SIZE) {
+                    if(ea + n > WASM_MEM_SIZE) {
                         PANIC("out of range");
                     }
 
