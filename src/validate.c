@@ -244,7 +244,78 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(*t, stack);
                 break;
             }
-            
+
+            case OP_I32_LOAD:
+            case OP_I64_LOAD:
+            case OP_F32_LOAD:
+            case OP_F64_LOAD:
+            case OP_I32_LOAD8_S:
+            case OP_I32_LOAD8_U:
+            case OP_I32_LOAD16_S:
+            case OP_I32_LOAD16_U:
+            case OP_I64_LOAD8_S:
+            case OP_I64_LOAD8_U:
+            case OP_I64_LOAD16_S:
+            case OP_I64_LOAD16_U:
+            case OP_I64_LOAD32_S:
+            case OP_I64_LOAD32_U: {
+                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                __throwif(ERR_FAILED, !mem);
+                int32_t n;
+                switch(ip->op1) {
+                    case OP_I32_LOAD:
+                    case OP_F32_LOAD:
+                    case OP_I64_LOAD32_S:
+                    case OP_I64_LOAD32_U:
+                        n = 4;
+                        break;
+                    case OP_I64_LOAD:
+                    case OP_F64_LOAD:
+                        n = 8;
+                        break;
+                    case OP_I32_LOAD8_S:
+                    case OP_I32_LOAD8_U:
+                    case OP_I64_LOAD8_S:
+                    case OP_I64_LOAD8_U:
+                        n = 1;
+                        break;
+                    case OP_I32_LOAD16_S:
+                    case OP_I32_LOAD16_U:
+                    case OP_I64_LOAD16_S:
+                    case OP_I64_LOAD16_U:
+                        n = 2;
+                        break;
+                }
+                __throwif(ERR_FAILED, (1 << ip->m.align) > n);
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                valtype_t t;
+                switch(ip->op1) {
+                    case OP_I32_LOAD:
+                    case OP_I32_LOAD8_S:
+                    case OP_I32_LOAD8_U:
+                    case OP_I32_LOAD16_S:
+                    case OP_I32_LOAD16_U:
+                        t = TYPE_NUM_I32;
+                        break;
+                    case OP_I64_LOAD:
+                    case OP_I64_LOAD8_S:
+                    case OP_I64_LOAD8_U:
+                    case OP_I64_LOAD16_S:
+                    case OP_I64_LOAD16_U:
+                    case OP_I64_LOAD32_S:
+                    case OP_I64_LOAD32_U:
+                        t = TYPE_NUM_I64;
+                        break;
+                    case OP_F32_LOAD:
+                        t = TYPE_NUM_F32;
+                        break;
+                    case OP_F64_LOAD:
+                        t = TYPE_NUM_F64;
+                        break;
+                }
+                push(t, stack);
+                break;
+            }
             case OP_I32_STORE:
             case OP_I64_STORE:
             case OP_F32_STORE:
@@ -256,27 +327,27 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I64_STORE32: {
                 mem_t *mem = VECTOR_ELEM(&C->mems, 0);
                 __throwif(ERR_FAILED, !mem);
-                int32_t N;
+                int32_t n;
                 switch(ip->op1) {
                     case OP_I32_STORE:
                     case OP_F32_STORE:
                     case OP_I64_STORE32:
-                        N= 4;
+                        n = 4;
                         break;
                     case OP_I64_STORE:
                     case OP_F64_STORE:
-                        N = 8;
+                        n = 8;
                         break;
                     case OP_I32_STORE8:
                     case OP_I64_STORE8:
-                        N = 1;
+                        n = 1;
                         break;
                     case OP_I32_STORE16:
                     case OP_I64_STORE16:
-                        N = 2;
+                        n = 2;
                         break;
                 }
-                __throwif(ERR_FAILED, (1 << ip->m.align) > N);
+                __throwif(ERR_FAILED, (1 << ip->m.align) > n);
                 valtype_t t;
                 switch(ip->op1) {
                     case OP_I32_STORE:
