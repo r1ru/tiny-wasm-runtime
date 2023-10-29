@@ -585,7 +585,7 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                         PANIC("out of range");
                     }
 
-                    int32_t idx = ea == 0 ? 0 : (ea >> 12) -1;
+                    int32_t idx = ea >> 12;
                     int32_t offs = ea - 0x1000 * idx;
 
                     // todo: fix this?
@@ -594,7 +594,6 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     }
 
                     uint8_t *base = mem->base[idx];
-
                     val_t val = {.num.i64 = 0};
 
                     switch(ip->op1) {
@@ -688,9 +687,9 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                         PANIC("out of range");
                     }
 
-                    int32_t idx = ea == 0 ? 0 : (ea >> 12) -1;
+                    int32_t idx = ea >> 12;
                     int32_t offs = ea - 0x1000 * idx;
-                
+
                     if(!mem->base[idx]) {
                         mem->base[idx] = malloc(4096);
                     }

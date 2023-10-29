@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/store.0.wasm", O_RDONLY);
+    int fd = open("./sample/load_store.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
     VECTOR_INIT(&args, 0, arg_t);
 
     // invoke
-    err = invoke(S, 1, &args);
+    err = invoke(S, 0, &args);
     if(IS_ERROR(err))
         PANIC("invocation failed");
     
