@@ -368,6 +368,19 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 break;
             
             case OP_I32_LOAD:
+            case OP_I64_LOAD:
+            case OP_F32_LOAD:
+            case OP_F64_LOAD:
+            case OP_I32_LOAD8_S:
+            case OP_I32_LOAD8_U:
+            case OP_I32_LOAD16_S:
+            case OP_I32_LOAD16_U:
+            case OP_I64_LOAD8_S:
+            case OP_I64_LOAD8_U:
+            case OP_I64_LOAD16_S:
+            case OP_I64_LOAD16_U:
+            case OP_I64_LOAD32_S:
+            case OP_I64_LOAD32_U:
             case OP_I32_STORE:
             case OP_I64_STORE:
             case OP_F32_STORE:
