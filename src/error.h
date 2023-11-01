@@ -15,3 +15,4 @@ typedef int error_t;
 // runtime error
 #define ERR_TRAP_INTERGER_DIVIDE_BY_ZERO    ERR_CODE(3)
 #define ERR_TRAP_INTERGET_OVERFLOW          ERR_CODE(4)
+#define ERR_TRAP_UNREACHABLE                ERR_CODE(5)

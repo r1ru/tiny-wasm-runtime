@@ -366,6 +366,10 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
             }
 
             switch(ip->op1) {
+                case OP_UNREACHABLE:
+                    __throw(ERR_TRAP_UNREACHABLE);
+                    break;
+                
                 case OP_NOP:
                     break;
                 
