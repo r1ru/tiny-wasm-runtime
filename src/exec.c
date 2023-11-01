@@ -169,6 +169,14 @@ void pop_label(label_t *label, stack_t *stack) {
     //printf("pop label idx: %ld\n", stack->idx);
 }
 
+void try_pop_label(label_t *label, stack_t *stack) {
+    // nop
+    if(stack->pool[stack->idx].type != TYPE_LABEL)
+        return;
+    
+    pop_label(label, stack);
+}
+
 void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
@@ -180,7 +188,7 @@ void pop_frame(frame_t *frame, stack_t *stack) {
 // see Note of https://webassembly.github.io/spec/core/exec/modules.html#instantiation
 
 // todo: add externval(support imports)
-moduleinst_t *allocmodule(store_t *S, module_t *module) {
+moduleinst_t *allocmodule(store_t *S, module_t *module, vals_t *vals) {
     // allocate moduleinst
     moduleinst_t *moduleinst = malloc(sizeof(moduleinst_t));
     
@@ -217,26 +225,53 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
         moduleinst->memaddrs[i] = i;
     }
 
+    // allocate globals
+    uint32_t num_globals = module->globals.n;
+    moduleinst->globaladdrs = malloc(sizeof(globaladdr_t) * num_globals);
+    for(uint32_t i = 0; i < num_globals; i++) {
+        globaltype_t globaltype = VECTOR_ELEM(&module->globals, i)->gt;
+        globalinst_t *globalinst = VECTOR_ELEM(&S->globals, i);
+
+        globalinst->gt = globaltype;
+        globalinst->val = *VECTOR_ELEM(vals, i);
+        moduleinst->globaladdrs[i] = i;
+    }
+
     moduleinst->exports = module->exports.elem;
 
     return moduleinst;
 }
 
+error_t exec_instrs(instr_t * ent, store_t *S);
+
 error_t instantiate(store_t **S, module_t *module) {
-    // allocate store
-    store_t *store = *S = malloc(sizeof(store_t));
-    
-    // allocate stack
-    new_stack(&store->stack);
+    __try {
+        // allocate store
+        store_t *store = *S = malloc(sizeof(store_t));
+        
+        // allocate stack
+        new_stack(&store->stack);
+        
+        // omit pushing F_init onto the stack
 
-    VECTOR_INIT(&store->funcs, module->funcs.n, funcinst_t);
-    VECTOR_INIT(&store->mems, module->mems.n, meminst_t);
-    
-    moduleinst_t *moduleinst = allocmodule(store, module);
+        VECTOR_INIT(&store->funcs, module->funcs.n, funcinst_t);
+        VECTOR_INIT(&store->mems, module->mems.n, meminst_t);
+        VECTOR_INIT(&store->globals, module->globals.n, globalinst_t);
+        
+        // eval init expr for global variables
+        vals_t vals;
+        VECTOR_INIT(&vals, module->globals.n, val_t);
+        size_t idx = 0;        
+        VECTOR_FOR_EACH(g, &module->globals, global_t) {
+            exec_instrs(g->expr, store);
+            pop_val(VECTOR_ELEM(&vals, idx++), store->stack);
+        }
 
-    // todo: support start section
-
-    return ERR_SUCCESS;
+        moduleinst_t *moduleinst = allocmodule(store, module, &vals);
+        // todo: support start section
+    }
+    __catch:
+        return err;
 }
 
 static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
@@ -442,8 +477,8 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     pop_vals(&vals, S->stack);
 
                     // exit instr* with label L
-                    label_t l;
-                    pop_label(&l, S->stack);
+                    label_t l = {.parent = NULL};
+                    try_pop_label(&l, S->stack);
                     push_vals(vals, S->stack);
                     next_ip = l.parent != NULL ? l.parent->next : NULL;
                     break;
@@ -537,6 +572,23 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     push_val(val, S->stack);
                     push_val(val, S->stack);
                 }
+
+                case OP_GLOBAL_GET: {
+                    globaladdr_t a = F->module->globaladdrs[ip->globalidx];
+                    globalinst_t *glob = VECTOR_ELEM(&S->globals, a);
+                    push_val(glob->val, S->stack);
+                    break;
+                }
+
+                case OP_GLOBAL_SET: {
+                    val_t val;
+                    globaladdr_t a = F->module->globaladdrs[ip->globalidx];
+                    globalinst_t *glob = VECTOR_ELEM(&S->globals, a);
+                    pop_val(&val, S->stack);
+                    glob->val = val;
+                    break;
+                }
+
 
                 case OP_I32_LOAD:
                 case OP_I64_LOAD:
@@ -1422,7 +1474,7 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
 
         __throwiferr(exec_instrs(funcinst->code->body ,S));
 
-        // return from a function
+        // return from a function("return" instruction)
         vals_t vals;
         pop_vals_n(&vals, frame.arity, S->stack);
         pop_while_not_frame(S->stack);

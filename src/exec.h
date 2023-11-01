@@ -10,11 +10,13 @@
 typedef export_t    exportinst_t;
 typedef uint32_t    funcaddr_t;
 typedef uint32_t    memaddr_t;
+typedef uint32_t    globaladdr_t;
 
 typedef struct {
     functype_t      *types;
     funcaddr_t      *funcaddrs;
     memaddr_t       *memaddrs;
+    globaladdr_t    *globaladdrs;
     exportinst_t    *exports;
 } moduleinst_t;
 
@@ -82,9 +84,15 @@ typedef struct {
 } meminst_t;
 
 typedef struct {
-    stack_t             *stack;
-    VECTOR(funcinst_t)  funcs;
-    VECTOR(meminst_t)   mems;
+    globaltype_t        gt;
+    val_t               val;
+} globalinst_t;
+
+typedef struct {
+    stack_t                 *stack;
+    VECTOR(funcinst_t)      funcs;
+    VECTOR(meminst_t)       mems;
+    VECTOR(globalinst_t)    globals;
 } store_t;
 
 typedef struct {
@@ -104,6 +112,6 @@ void pop_label(label_t *label, stack_t *stack);
 void pop_frame(frame_t *frame, stack_t *stack);
 
 funcaddr_t  allocfunc(store_t *S, func_t *func, moduleinst_t *mod);
-moduleinst_t *allocmodule(store_t *S, module_t *module);
+moduleinst_t *allocmodule(store_t *S, module_t *module, vals_t *vals);
 error_t instantiate(store_t **store, module_t *module);
 error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args);
