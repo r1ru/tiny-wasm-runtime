@@ -250,6 +250,21 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             }
 
+            case OP_GLOBAL_GET: {
+                globaltype_t *gt = VECTOR_ELEM(&C->globals, ip->globalidx);
+                __throwif(ERR_FAILED, !gt);
+                push(gt->type, stack);
+                break;
+            }
+
+             case OP_GLOBAL_SET: {
+                globaltype_t *gt = VECTOR_ELEM(&C->globals, ip->globalidx);
+                __throwif(ERR_FAILED, !gt);
+                __throwif(ERR_FAILED, !gt->mut);
+                __throwiferr(try_pop(gt->type, stack));
+                break;
+            }
+
             case OP_I32_LOAD:
             case OP_I64_LOAD:
             case OP_F32_LOAD:
@@ -740,7 +755,7 @@ error_t validate_func(context_t *C, func_t *func, functype_t *actual) {
         return err;
 }
 
-error_t validate_limits(limits_t *limits, uint32_t k) {
+static error_t validate_limits(limits_t *limits, uint32_t k) {
     __try {
         __throwif(ERR_FAILED, limits->min > k);
         if(limits->max) {
@@ -751,25 +766,56 @@ error_t validate_limits(limits_t *limits, uint32_t k) {
     __catch:
 }
 
-error_t validate_mem(mem_t *mem) {
-    return validate_limits(&mem->type, 1<<16);
+error_t validate_mem(context_t *ctx, mem_t *src, mem_t *dst) {
+    __try {
+        __throwiferr(validate_limits(&src->type, 1<<16));
+        // append
+        *dst = *src;
+    }
+    __catch:    
+        return err;
+}
+
+error_t validate_global(context_t *ctx, global_t *g, globaltype_t *dst) {
+    resulttype_t rt2 = {.n = 1, .elem = &g->gt.type};
+    __try {
+        __throwiferr(validate_expr(ctx, g->expr, &rt2));
+        // append 
+        *dst = g->gt;
+    }
+    __catch:
+        return err;
 }
 
 error_t validate_module(module_t *mod) {
     __try {
-        // validate mems
-        VECTOR_FOR_EACH(mem, &mod->mems,mem_t) {
-            __throwiferr(validate_mem(mem));
-        }
-
-        // create context
+        // create context C
         context_t C;
         VECTOR_COPY(&C.types, &mod->types, functype_t);
         VECTOR_INIT(&C.funcs, mod->funcs.n, functype_t);
-        VECTOR_COPY(&C.mems, &mod->mems, mem_t);
+        VECTOR_INIT(&C.mems, mod->mems.n, mem_t);
+        VECTOR_INIT(&C.globals, mod->globals.n, globaltype_t);
+        VECTOR_INIT(&C.locals, 0, valtype_t);
         LIST_INIT(&C.labels);
+        C.ret = NULL;
 
+        // C.mems must be larger than 1
+        __throwif(ERR_FAILED, C.mems.n > 1);
+
+        // validate mems
         size_t idx = 0;
+        VECTOR_FOR_EACH(m, &mod->mems, mem_t) {
+            __throwiferr(validate_mem(&C, m, VECTOR_ELEM(&C.mems, idx++)));
+        }
+
+        // validate globals
+        idx = 0;
+        VECTOR_FOR_EACH(g, &mod->globals, global_t) {
+            __throwiferr(validate_global(&C, g, VECTOR_ELEM(&C.globals, idx++)));
+        }
+
+        // validte funcs
+        idx = 0;
         VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
             __throwiferr(validate_func(&C, func, VECTOR_ELEM(&C.funcs, idx++)));
         }
