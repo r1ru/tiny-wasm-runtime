@@ -187,6 +187,7 @@ static decoder_t decoders[11] = {
     [1]     = decode_typesec,
     [3]     = decode_funcsec,
     [5]     = decode_memsec,
+    [6]     = decode_globalsec,
     [7]     = decode_exportsec,
     [10]    = decode_codesec,
 };
@@ -567,6 +568,29 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
         return err;
 }
 
+error_t decode_globalsec(module_t *mod, buffer_t *buf) {
+    __try {
+        uint32_t n;
+        __throwiferr(read_u32_leb128(&n, buf));
+
+        VECTOR_INIT(&mod->globals, n, global_t);
+        
+        VECTOR_FOR_EACH(g, &mod->globals, global_t) {
+            __throwiferr(read_byte(&g->gt.type, buf));
+            __throwiferr(read_byte(&g->gt.mut, buf));
+
+            __throwiferr(decode_instr(&g->expr, buf));
+            instr_t *instr = g->expr;
+            while(instr->op1 != OP_END) {
+                __throwiferr(decode_instr(&instr->next, buf));
+                instr = instr->next;
+            }
+        }
+    }
+    __catch:
+        return err;
+}
+
 error_t decode_codesec(module_t *mod, buffer_t *buf) {
     __try {
         uint32_t n1;
@@ -629,6 +653,7 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         VECTOR_INIT(&m->types, 0, functype_t);
         VECTOR_INIT(&m->funcs, 0, func_t);
         VECTOR_INIT(&m->mems, 0, mem_t);
+        VECTOR_INIT(&m->globals, 0, global_t);
         VECTOR_INIT(&m->exports, 0, export_t);
 
         while(!eof(buf)) {

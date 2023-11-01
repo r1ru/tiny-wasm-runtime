@@ -26,19 +26,6 @@ typedef struct {
     resulttype_t rt2;
 } functype_t;
 
-typedef struct {
-    uint8_t     kind;
-    union {
-        funcidx_t funcidx;
-        // todo: add here
-    };
-} exportdesc_t;
-
-typedef struct {
-    uint8_t         *name;
-    exportdesc_t    exportdesc;
-} export_t;
-
 enum op {
     OP_UNREACHABLE      = 0x00,
     OP_NOP              = 0x01,
@@ -295,9 +282,34 @@ typedef struct {
     memtype_t   type;
 } mem_t;
 
+typedef uint8_t mut_t;
+typedef struct {
+    valtype_t   type;
+    mut_t       mut;
+} globaltype_t;
+
+typedef struct {
+    globaltype_t    gt;
+    expr_t          expr;
+} global_t;
+
+typedef struct {
+    uint8_t     kind;
+    union {
+        funcidx_t funcidx;
+        // todo: add here
+    };
+} exportdesc_t;
+
+typedef struct {
+    uint8_t         *name;
+    exportdesc_t    exportdesc;
+} export_t;
+
 typedef struct {
     VECTOR(functype_t)  types;
     VECTOR(func_t)      funcs;
-    VECTOR(mem_t)       mems;    
+    VECTOR(mem_t)       mems;
+    VECTOR(global_t)    globals;
     VECTOR(export_t)    exports;
 } module_t;

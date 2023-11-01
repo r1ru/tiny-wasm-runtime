@@ -49,6 +49,10 @@ void print_mem(mem_t *mem) {
     printf("min: %x, max: %x\n", mem->type.min, mem->type.max);
 }
 
+void print_global(global_t *g) {
+    printf("type: %x, mut: %x expr head: %x\n", g->gt.type, g->gt.mut, g->expr->op1);
+}
+
 static void print_export(export_t *export) {
     printf(
         "%s %x %x\n", 
@@ -66,7 +70,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./sample/load_store.wasm", O_RDONLY);
+    int fd = open("./sample/global.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -105,6 +109,12 @@ int main(int argc, char *argv[]) {
     puts("[mems]");
     VECTOR_FOR_EACH(mem, &mod->mems, mem_t) {
         print_mem(mem);
+    }
+    putchar('\n');
+
+    puts("[globals]");
+    VECTOR_FOR_EACH(g, &mod->globals, global_t) {
+        print_global(g);
     }
     putchar('\n');
 
