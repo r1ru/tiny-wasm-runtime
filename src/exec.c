@@ -37,7 +37,7 @@ void push_val(val_t val, stack_t *stack) {
         .type   = TYPE_VAL,
         .val    = val 
     };
-    //printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
+    printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
 }
 
 static inline void push_i32(int32_t val, stack_t *stack) {
@@ -79,7 +79,7 @@ void push_label(label_t label, stack_t *stack) {
         .label  = label 
     };
     list_push_back(&stack->labels, &obj->label.link);
-    //printf("push label idx: %ld\n", stack->idx);
+    printf("push label idx: %ld\n", stack->idx);
 }
 
 void push_frame(frame_t frame, stack_t *stack) {
@@ -93,13 +93,13 @@ void push_frame(frame_t frame, stack_t *stack) {
         .frame  = frame 
     };
     list_push_back(&stack->frames, &obj->frame.link);
-    //printf("push frame idx: %ld\n", stack->idx);
+    printf("push frame idx: %ld\n", stack->idx);
 }
 
 void pop_val(val_t *val, stack_t *stack) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
-    //printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
+    printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
 }
 
 static inline void pop_i32(int32_t *val, stack_t *stack) {
@@ -166,7 +166,7 @@ void pop_label(label_t *label, stack_t *stack) {
     *label = stack->pool[stack->idx].label;
     stack->idx--;
     list_pop_tail(&stack->labels);
-    //printf("pop label idx: %ld\n", stack->idx);
+    printf("pop label idx: %ld\n", stack->idx);
 }
 
 void try_pop_label(label_t *label, stack_t *stack) {
@@ -181,7 +181,7 @@ void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
     list_pop_tail(&stack->frames);
-    //printf("pop frame idx: %ld\n", stack->idx);
+    printf("pop frame idx: %ld\n", stack->idx);
 }
 
 // There is no need to use append when instantiating, since everything we need (functions, imports, etc.) is known to us.
@@ -548,6 +548,19 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                 case OP_DROP: {
                     val_t val;
                     pop_val(&val, S->stack);
+                    break;
+                }
+
+                case OP_SELECT: {
+                    val_t v1, v2;
+                    int32_t c;
+                    pop_i32(&c, S->stack);
+                    pop_val(&v2, S->stack);
+                    pop_val(&v1, S->stack);
+                    if(c != 0)
+                        push_val(v1, S->stack);
+                    else
+                        push_val(v2, S->stack);
                     break;
                 }
 
