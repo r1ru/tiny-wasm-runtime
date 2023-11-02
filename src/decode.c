@@ -384,6 +384,16 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_SELECT:
                 break;
 
+            case OP_SELECT_T: {
+                uint32_t n;
+                __throwiferr(read_u32_leb128(&n, buf));
+                VECTOR_INIT(&i->types, n, valtype_t);
+                VECTOR_FOR_EACH(t, &i->types, valtype_t) {
+                    __throwiferr(read_byte(t, buf));
+                }
+                break;
+            }
+
             case OP_LOCAL_GET:
             case OP_LOCAL_SET:
             case OP_LOCAL_TEE:

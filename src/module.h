@@ -42,6 +42,7 @@ enum op {
     OP_CALL_INDIRECT    = 0x11,
     OP_DROP             = 0x1A,
     OP_SELECT           = 0x1B,
+    OP_SELECT_T         = 0x1C,
     OP_LOCAL_GET        = 0x20,
     OP_LOCAL_SET        = 0x21,
     OP_LOCAL_TEE        = 0x22,
@@ -246,6 +247,8 @@ typedef struct instr {
             typeidx_t           y;
             tableidx_t          x;
         };
+        // select(0x1c)
+        VECTOR(valtype_t)       types;
         memarg_t                m;
         labelidx_t              globalidx;
         labelidx_t              labelidx;

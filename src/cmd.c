@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./sample/select_t.wasm", O_RDONLY);
+    int fd = open("./sample/select_i32.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
 
     args_t args;
     VECTOR_INIT(&args, 1, arg_t);
-    args.elem[0] = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 1};
+    args.elem[0] = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 0};
 
     // invoke
     err = invoke(S, 0, &args);

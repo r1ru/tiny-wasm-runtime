@@ -551,7 +551,8 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     break;
                 }
 
-                case OP_SELECT: {
+                case OP_SELECT:
+                case OP_SELECT_T: {
                     val_t v1, v2;
                     int32_t c;
                     pop_i32(&c, S->stack);

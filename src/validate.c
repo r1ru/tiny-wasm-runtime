@@ -251,6 +251,16 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             }
 
+            case OP_SELECT_T: {
+                __throwif(ERR_FAILED, ip->types.n != 1);
+                valtype_t t = ip->types.elem[0];
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(t, stack));
+                __throwiferr(try_pop(t, stack));
+                push(t, stack);
+                break;
+            }
+
             case OP_LOCAL_GET: {
                 valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
                 __throwif(ERR_FAILED, !t);
