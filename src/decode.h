@@ -30,6 +30,7 @@ error_t read_i64_leb128(int64_t *d, buffer_t *buf);
 
 error_t decode_typesec(module_t *mod, buffer_t *buf);
 error_t decode_funcsec(module_t *mod, buffer_t *buf);
+error_t decode_tablesec(module_t *mod, buffer_t *buf);
 error_t decode_memsec(module_t *mod, buffer_t *buf);
 error_t decode_globalsec(module_t *mod, buffer_t *buf);
 error_t decode_exportsec(module_t *mod, buffer_t *buf);

@@ -276,6 +276,16 @@ typedef struct {
     uint32_t    max;
 } limits_t;
 
+typedef uint8_t reftype_t;
+typedef struct {
+    reftype_t   reftype;
+    limits_t    limits;
+} tabletype_t;
+
+typedef struct {
+    tabletype_t type;
+} table_t;
+
 typedef limits_t memtype_t;
 
 typedef struct {
@@ -309,6 +319,7 @@ typedef struct {
 typedef struct {
     VECTOR(functype_t)  types;
     VECTOR(func_t)      funcs;
+    VECTOR(table_t)     tables;
     VECTOR(mem_t)       mems;
     VECTOR(global_t)    globals;
     VECTOR(export_t)    exports;

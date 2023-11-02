@@ -186,6 +186,7 @@ typedef error_t (*decoder_t) (module_t *mod, buffer_t *buf);
 static decoder_t decoders[11] = {
     [1]     = decode_typesec,
     [3]     = decode_funcsec,
+    [4]     = decode_tablesec,
     [5]     = decode_memsec,
     [6]     = decode_globalsec,
     [7]     = decode_exportsec,
@@ -240,6 +241,38 @@ error_t decode_funcsec(module_t *mod, buffer_t *buf) {
         return err;
 }
 
+static error_t decode_limits(limits_t *limits, buffer_t *buf) {
+    __try {
+        uint8_t has_max;
+        __throwiferr(read_byte(&has_max, buf));
+        __throwiferr(read_u32_leb128(&limits->min, buf));
+        if(has_max) {
+            __throwiferr(read_u32_leb128(&limits->max, buf));
+        }
+        else {
+            limits->max = 0;
+        }
+    }
+    __catch:
+        return err;
+}
+
+error_t decode_tablesec(module_t *mod, buffer_t *buf) {
+    __try {
+        uint32_t n;
+        __throwiferr(read_u32_leb128(&n, buf));
+
+        VECTOR_INIT(&mod->tables, n, table_t);
+        
+        VECTOR_FOR_EACH(table, &mod->tables, table_t) {
+            __throwiferr(read_byte(&table->type.reftype, buf));
+            __throwiferr(decode_limits(&table->type.limits, buf));
+        }
+    }
+    __catch:
+        return err;
+}
+
 error_t decode_memsec(module_t *mod, buffer_t *buf) {
     __try {
         uint32_t n;
@@ -249,14 +282,7 @@ error_t decode_memsec(module_t *mod, buffer_t *buf) {
         
         uint8_t has_max;
         VECTOR_FOR_EACH(mem, &mod->mems, mem_t) {
-            __throwiferr(read_byte(&has_max, buf));
-            __throwiferr(read_u32_leb128(&mem->type.min, buf));
-            if(has_max) {
-                __throwiferr(read_u32_leb128(&mem->type.max, buf));
-            }
-            else {
-                mem->type.max = 0;
-            }
+            __throwiferr(decode_limits(&mem->type, buf));
         }
     }
     __catch:
@@ -357,7 +383,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_DROP:
             case OP_SELECT:
                 break;
-            
+
             case OP_LOCAL_GET:
             case OP_LOCAL_SET:
             case OP_LOCAL_TEE:
@@ -652,6 +678,7 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         module_t *m = *mod = malloc(sizeof(module_t));
         VECTOR_INIT(&m->types, 0, functype_t);
         VECTOR_INIT(&m->funcs, 0, func_t);
+        VECTOR_INIT(&m->tables, 0, table_t);
         VECTOR_INIT(&m->mems, 0, mem_t);
         VECTOR_INIT(&m->globals, 0, global_t);
         VECTOR_INIT(&m->exports, 0, export_t);

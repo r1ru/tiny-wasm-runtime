@@ -45,6 +45,15 @@ void print_func(func_t *func) {
     putchar('\n');
 }
 
+void print_table(table_t *table) {
+    printf(
+        "reftype: %x, min: %x, max: %x\n",
+        table->type.reftype,
+        table->type.limits.min,
+        table->type.limits.max
+    );
+}
+
 void print_mem(mem_t *mem) {
     printf("min: %x, max: %x\n", mem->type.min, mem->type.max);
 }
@@ -70,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./sample/global.wasm", O_RDONLY);
+    int fd = open("./build/test/block.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -106,6 +115,12 @@ int main(int argc, char *argv[]) {
     }
     putchar('\n');
 
+    puts("[tables]");
+    VECTOR_FOR_EACH(table, &mod->tables, table_t) {
+        print_table(table);
+    }
+    putchar('\n');
+    
     puts("[mems]");
     VECTOR_FOR_EACH(mem, &mod->mems, mem_t) {
         print_mem(mem);
@@ -128,7 +143,8 @@ int main(int argc, char *argv[]) {
     err = validate_module(mod);
     if(IS_ERROR(err))
         PANIC("validation failed: %d", err);
-        
+    
+    /*
     store_t *S;
     err = instantiate(&S, mod);
     if(IS_ERROR(err))
@@ -142,7 +158,7 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("invocation failed");
     
-    printf("result = %ld\n", VECTOR_ELEM(&args, 0)->val.num.i64);
+    printf("result = %ld\n", VECTOR_ELEM(&args, 0)->val.num.i64); */
 
     // cleanup
     munmap(head, fsize);
