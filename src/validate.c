@@ -28,7 +28,6 @@ static inline error_t try_pop(valtype_t expect, type_stack *stack) {
         if(empty(stack)) {
             __throwif(ERR_TYPE_MISMATCH, !stack->polymorphic);
             //printf("pop %x\n", expect);
-            __throw(ERR_SUCCESS);
         }
         else {
             valtype_t ty;
@@ -40,6 +39,20 @@ static inline error_t try_pop(valtype_t expect, type_stack *stack) {
     } 
     __catch:
         return err;
+}
+
+static inline error_t peek_stack_top(valtype_t *d, type_stack *stack) {
+    __try{
+        if(empty(stack)) {
+            __throwif(ERR_TYPE_MISMATCH, !stack->polymorphic);
+            *d = 0;
+        }
+        else {
+            *d = stack->pool[stack->idx];
+        }
+        __catch:
+            return err;
+    }
 }
 
 error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
@@ -228,6 +241,16 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 __throwiferr(try_pop(0, stack));
                 break;
             
+            case OP_SELECT: {
+                valtype_t t;
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(peek_stack_top(&t, stack));
+                __throwiferr(try_pop(t, stack));
+                __throwiferr(try_pop(t, stack));
+                push(t, stack);
+                break;
+            }
+
             case OP_LOCAL_GET: {
                 valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
                 __throwif(ERR_FAILED, !t);
