@@ -118,7 +118,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 __throwiferr(validate_instrs(C, ip->in1, &ty.rt1, &ty.rt2));
 
                 // valid with type [t1*] -> [t2*]
-                VECTOR_FOR_EACH(t,& ty.rt1, valtype_t) {
+                VECTOR_FOR_EACH_REVERSE(t, &ty.rt1, valtype_t) {
                     __throwiferr(try_pop(*t, stack));
                 }
                 VECTOR_FOR_EACH(t,& ty.rt2, valtype_t) {
@@ -164,7 +164,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_BR: {
                 labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->labelidx);
                 __throwif(ERR_FAILED, !l);
-                VECTOR_FOR_EACH(t, &l->ty, valtype_t) {
+                VECTOR_FOR_EACH_REVERSE(t, &l->ty, valtype_t) {
                     __throwiferr(try_pop(*t, stack));
                 }
                 // empty the stack
@@ -232,6 +232,27 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 }
 
                 VECTOR_FOR_EACH(t, &ty->rt2, valtype_t) {
+                    push(*t, stack);
+                }
+                break;
+            }
+            
+            case OP_CALL_INDIRECT: {
+                tabletype_t *tt = VECTOR_ELEM(&C->tables, ip->x);
+                __throwif(ERR_FAILED, !tt);
+
+                reftype_t t = tt->reftype;
+                __throwif(ERR_FAILED, t != TYPE_REF_FUNC);
+
+                functype_t *ft = VECTOR_ELEM(&C->types, ip->y);
+                __throwif(ERR_FAILED, !ft);
+                
+                // valid with type [t1* i32] -> [t2*]
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                VECTOR_FOR_EACH_REVERSE(t, &ft->rt1, valtype_t) {
+                    __throwiferr(try_pop(*t, stack));
+                }
+                VECTOR_FOR_EACH(t, &ft->rt2, valtype_t) {
                     push(*t, stack);
                 }
                 break;
@@ -423,6 +444,15 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 }
                 __throwiferr(try_pop(t, stack));
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                break;
+            }
+
+            case OP_MEMORY_GROW: {
+                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                __throwif(ERR_FAILED, !mem);
+                // valid with [i32] -> [i32]
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                push(TYPE_NUM_I32, stack);
                 break;
             }
 
@@ -675,6 +705,25 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(TYPE_NUM_F64, stack);
                 break;
             
+            case OP_REF_FUNC: {
+                functype_t *ty = VECTOR_ELEM(&C->funcs, ip->funcidx);
+                __throwif(ERR_FAILED, !ty);
+
+                bool is_contained = false;
+                VECTOR_FOR_EACH(ref, &C->refs, funcidx_t) {
+                    if(*ref == ip->funcidx)
+                        is_contained = true;
+                }
+
+                if(is_contained) {
+                    // valid with type [] -> [funcref]
+                    push(TYPE_REF_FUNC, stack);
+                }
+                else
+                    __throw(ERR_FAILED)
+                break;
+            }
+            
             case OP_TRUNC_SAT:
                 switch(ip->op2) {
                     case 0x00:
@@ -720,15 +769,13 @@ error_t validate_instrs(context_t *C, instr_t *start, resulttype_t *rt1, resultt
         }
 
         instr_t *ip = start;
-        instr_t *next_ip;
         while(ip) {
-            next_ip = ip->next;
             __throwiferr(validate_instr(C, ip, &stack));
-            ip = next_ip;
+            ip = ip->next;
         }
 
         // compare witch expected type
-        VECTOR_FOR_EACH(t, rt2, valtype_t) {
+        VECTOR_FOR_EACH_REVERSE(t, rt2, valtype_t) {
             __throwiferr(try_pop(*t, &stack));
         }
 
@@ -739,20 +786,18 @@ error_t validate_instrs(context_t *C, instr_t *start, resulttype_t *rt1, resultt
         return err;
 }
 
-error_t validate_expr(context_t *C, instr_t *start, resulttype_t *rt2) {
+error_t validate_expr(context_t *C, expr_t *expr, resulttype_t *rt2) {
     __try {
         type_stack stack = {.idx = -1, .polymorphic = false};
 
-        instr_t *ip = start;
-        instr_t *next_ip;
+        instr_t *ip = *expr;
         while(ip) {
-            next_ip = ip->next;
             __throwiferr(validate_instr(C, ip, &stack));
-            ip = next_ip;
+            ip = ip->next;
         }
-        
+
         // compare witch expected type
-        VECTOR_FOR_EACH(t, rt2, valtype_t) {
+        VECTOR_FOR_EACH_REVERSE(t, rt2, valtype_t) {
             __throwiferr(try_pop(*t, &stack));
         }
 
@@ -778,7 +823,7 @@ error_t validate_func(context_t *C, func_t *func, functype_t *actual) {
         ctx.ret = &expect->rt2;
 
         // validate expr
-        __throwiferr(validate_expr(&ctx, func->body, &expect->rt2));
+        __throwiferr(validate_expr(&ctx, &func->body, &expect->rt2));
 
         VECTOR_COPY(&actual->rt1, &expect->rt1, valtype_t);
         VECTOR_COPY(&actual->rt2, &expect->rt2, valtype_t);
@@ -799,6 +844,15 @@ static error_t validate_limits(limits_t *limits, uint32_t k) {
     __catch:
 }
 
+error_t validate_table(context_t *ctx, table_t *table, tabletype_t *actual) {
+     __try {
+        __throwiferr(validate_limits(&table->type.limits, UINT32_MAX));
+        *actual = table->type;
+    }
+    __catch:
+        return err;
+}
+
 error_t validate_mem(context_t *ctx, mem_t *src, mem_t *dst) {
     __try {
         __throwiferr(validate_limits(&src->type, 1<<16));
@@ -812,9 +866,60 @@ error_t validate_mem(context_t *ctx, mem_t *src, mem_t *dst) {
 error_t validate_global(context_t *ctx, global_t *g, globaltype_t *dst) {
     resulttype_t rt2 = {.n = 1, .elem = &g->gt.type};
     __try {
-        __throwiferr(validate_expr(ctx, g->expr, &rt2));
+        __throwiferr(validate_expr(ctx, &g->expr, &rt2));
         // append 
         *dst = g->gt;
+    }
+    __catch:
+        return err;
+}
+
+static bool is_constant_expr(expr_t *expr) {
+    instr_t *i = *expr;
+    while(i->op1 != OP_END) {
+        // return false if i is not t.const
+        if((i->op1 < 0x41 || 0x44 < i->op1) && (i->op1 != OP_REF_FUNC)) {
+            return false;
+        }
+        i = i->next;
+    }
+    return true;
+}
+
+error_t validate_elemmode(context_t *ctx, elemmode_t *mode, reftype_t expect) {
+    __try {
+        tabletype_t *tt = VECTOR_ELEM(&ctx->tables, mode->table);
+        __throwif(ERR_FAILED, !tt);
+
+        // expr must be valid with result type [i32]
+        valtype_t type_i32 = TYPE_NUM_I32;
+        resulttype_t rt2 = {.n = 1, .elem = &type_i32};
+        __throwiferr(validate_expr(ctx, &mode->offset, &rt2));
+
+        // expr must be constant
+        __throwif(ERR_FAILED, !is_constant_expr(&mode->offset));
+
+        __throwif(ERR_FAILED, tt->reftype != expect);
+    }
+    __catch:
+        return err;
+}
+
+error_t validate_elem(context_t *C, elem_t *elem, reftype_t *actual) {
+    __try {
+        VECTOR_FOR_EACH(e, &elem->init, expr_t) {
+            // e must be valid with result type [t]
+            resulttype_t rt2 = {.n = 1, .elem = &elem->type};
+            __throwiferr(validate_expr(C, e, &rt2));
+            // e must be constant
+            __throwif(ERR_FAILED, !is_constant_expr(e));
+        }
+
+        // elemmode must be valid with reference type t
+        __throwiferr(validate_elemmode(C, &elem->mode, elem->type));
+
+        // valid with referene type t
+        *actual = elem->type;
     }
     __catch:
         return err;
@@ -826,17 +931,31 @@ error_t validate_module(module_t *mod) {
         context_t C;
         VECTOR_COPY(&C.types, &mod->types, functype_t);
         VECTOR_INIT(&C.funcs, mod->funcs.n, functype_t);
+        VECTOR_INIT(&C.tables, mod->tables.n, tabletype_t);
         VECTOR_INIT(&C.mems, mod->mems.n, mem_t);
         VECTOR_INIT(&C.globals, mod->globals.n, globaltype_t);
+        VECTOR_INIT(&C.elems, mod->elems.n, reftype_t);
         VECTOR_INIT(&C.locals, 0, valtype_t);
         LIST_INIT(&C.labels);
         C.ret = NULL;
 
+        VECTOR_INIT(&C.refs, mod->funcs.n, funcidx_t);
+        size_t idx = 0;
+        VECTOR_FOR_EACH(x, &C.refs, funcidx_t) {
+            *x = idx++;
+        }
+
         // C.mems must be larger than 1
         __throwif(ERR_FAILED, C.mems.n > 1);
 
+        // validate tables
+        idx = 0;
+        VECTOR_FOR_EACH(table, &mod->tables, table_t) {
+            __throwiferr(validate_table(&C, table, VECTOR_ELEM(&C.tables, idx++)));
+        }
+
         // validate mems
-        size_t idx = 0;
+        idx = 0;
         VECTOR_FOR_EACH(m, &mod->mems, mem_t) {
             __throwiferr(validate_mem(&C, m, VECTOR_ELEM(&C.mems, idx++)));
         }
@@ -845,6 +964,12 @@ error_t validate_module(module_t *mod) {
         idx = 0;
         VECTOR_FOR_EACH(g, &mod->globals, global_t) {
             __throwiferr(validate_global(&C, g, VECTOR_ELEM(&C.globals, idx++)));
+        }
+
+        // validate elems
+        idx = 0;
+        VECTOR_FOR_EACH(elem, &mod->elems, elem_t) {
+            __throwiferr(validate_elem(&C, elem, VECTOR_ELEM(&C.elems, idx++)));
         }
 
         // validte funcs

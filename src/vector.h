@@ -21,6 +21,12 @@
         iter++                                                                  \
     )
 
+#define VECTOR_FOR_EACH_REVERSE(iter, vec, type)                                \
+    for(type *iter = &(vec)->elem[(vec)->n - 1];                                \
+        (vec)->n != 0 &&  iter != &(vec)->elem[-1];                             \
+        iter--                                                                  \
+    )
+
 #define VECTOR_ELEM(vec, idx)                                                   \
     ({                                                                          \
         size_t __i = (idx);                                                     \

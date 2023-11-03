@@ -14,11 +14,14 @@ typedef struct {
 typedef struct {
     VECTOR(functype_t)      types;
     VECTOR(functype_t)      funcs;
+    VECTOR(tabletype_t)     tables;
     VECTOR(mem_t)           mems;
     VECTOR(globaltype_t)    globals;
+    VECTOR(reftype_t)       elems;
     VECTOR(valtype_t)       locals;
     list_t                  labels;
     resulttype_t            *ret;
+    VECTOR(funcidx_t)       refs;
 } context_t;
 
 error_t validate_module(module_t *mod);

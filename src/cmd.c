@@ -149,9 +149,7 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("insntiation failed");
 
-    args_t args;
-    VECTOR_INIT(&args, 1, arg_t);
-    args.elem[0] = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 0};
+    args_t args = {.n = 0, .elem = NULL};
 
     // invoke
     err = invoke(S, 0, &args);
