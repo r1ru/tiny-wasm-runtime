@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./sample/select_i32.wasm", O_RDONLY);
+    int fd = open("./build/test/block.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;

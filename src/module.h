@@ -14,10 +14,11 @@ typedef uint32_t    funcidx_t;
 typedef uint32_t    localidx_t;
 typedef uint32_t    tableidx_t;
 
-#define TYPE_NUM_I32 0x7F
-#define TYPE_NUM_I64 0x7E
-#define TYPE_NUM_F32 0x7D
-#define TYPE_NUM_F64 0x7C
+#define TYPE_NUM_I32    0x7F
+#define TYPE_NUM_I64    0x7E
+#define TYPE_NUM_F32    0x7D
+#define TYPE_NUM_F64    0x7C
+#define TYPE_REF_FUNC   0x70
 
 typedef VECTOR(valtype_t) resulttype_t;
 
@@ -204,6 +205,7 @@ enum op {
     OP_I64_EXTEND8_S        = 0xC2,
     OP_I64_EXTEND16_S       = 0xC3,
     OP_I64_EXTEND32_S       = 0xC4,
+    OP_REF_FUNC             = 0xD2,
     OP_TRUNC_SAT            = 0xFC,
 };
 
@@ -307,6 +309,18 @@ typedef struct {
 } global_t;
 
 typedef struct {
+    uint8_t         kind;
+    tableidx_t      table;
+    expr_t          offset;
+} elemmode_t;
+
+typedef struct {
+    reftype_t       type;
+    VECTOR(expr_t)  init;
+    elemmode_t      mode;
+} elem_t;
+
+typedef struct {
     uint8_t     kind;
     union {
         funcidx_t funcidx;
@@ -325,5 +339,6 @@ typedef struct {
     VECTOR(table_t)     tables;
     VECTOR(mem_t)       mems;
     VECTOR(global_t)    globals;
+    VECTOR(elem_t)      elems;
     VECTOR(export_t)    exports;
 } module_t;

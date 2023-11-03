@@ -190,6 +190,7 @@ static decoder_t decoders[11] = {
     [5]     = decode_memsec,
     [6]     = decode_globalsec,
     [7]     = decode_exportsec,
+    [9]     = decode_elemsec,
     [10]    = decode_codesec,
 };
 
@@ -604,6 +605,19 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
         return err;
 }
 
+static error_t decode_expr(expr_t *expr, buffer_t *buf) {
+    __try {
+        __throwiferr(decode_instr(expr, buf));
+        instr_t *instr = *expr;
+        while(instr->op1 != OP_END) {
+            __throwiferr(decode_instr(&instr->next, buf));
+            instr = instr->next;
+        }
+    }
+    __catch:
+        return err;
+}
+
 error_t decode_globalsec(module_t *mod, buffer_t *buf) {
     __try {
         uint32_t n;
@@ -614,12 +628,55 @@ error_t decode_globalsec(module_t *mod, buffer_t *buf) {
         VECTOR_FOR_EACH(g, &mod->globals, global_t) {
             __throwiferr(read_byte(&g->gt.type, buf));
             __throwiferr(read_byte(&g->gt.mut, buf));
+            __throwiferr(decode_expr(&g->expr, buf));
+        }
+    }
+    __catch:
+        return err;
+}
 
-            __throwiferr(decode_instr(&g->expr, buf));
-            instr_t *instr = g->expr;
-            while(instr->op1 != OP_END) {
-                __throwiferr(decode_instr(&instr->next, buf));
-                instr = instr->next;
+error_t decode_elemsec(module_t *mod, buffer_t *buf) {
+    __try {
+        uint32_t n;
+        __throwiferr(read_u32_leb128(&n, buf));
+
+        VECTOR_INIT(&mod->elems, n,elem_t);
+
+        uint32_t kind;
+        VECTOR_FOR_EACH(elem, &mod->elems, elem_t) {
+            __throwiferr(read_u32_leb128(&kind, buf));
+            switch(kind) {
+                case 0: {
+                    elem->type = TYPE_REF_FUNC;
+
+                    elem->mode.kind = 0; // active
+                    elem->mode.table = 0;
+                    __throwiferr(decode_expr(&elem->mode.offset, buf));
+
+                    uint32_t n;
+                    __throwiferr(read_u32_leb128(&n, buf));
+
+                    // create init exprs
+                    VECTOR_INIT(&elem->init, n, expr_t);
+                    static instr_t end = {.op1 = OP_END};
+
+                    VECTOR_FOR_EACH(e, &elem->init, expr_t) {
+                        funcidx_t x;
+                        __throwiferr(read_u32_leb128(&x, buf));
+                        expr_t init = malloc(sizeof(instr_t));
+                        *init = (instr_t) {
+                            .op1        = OP_REF_FUNC,
+                            .funcidx    = x,
+                            .next       = &end
+                        };
+
+                        *e = init;
+                    }
+                    break;
+                }
+
+                default:
+                    PANIC("unsupported element: %x", kind);
             }
         }
     }
@@ -663,12 +720,7 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
             }
 
             // decode body
-            __throwiferr(decode_instr(&func->body, buf));
-            instr_t *instr = func->body;
-            while(instr->op1 != OP_END) {
-                __throwiferr(decode_instr(&instr->next, buf));
-                instr = instr->next;
-            }
+            __throwiferr(decode_expr(&func->body, buf));
         }
     }
     __catch:
@@ -691,6 +743,7 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         VECTOR_INIT(&m->tables, 0, table_t);
         VECTOR_INIT(&m->mems, 0, mem_t);
         VECTOR_INIT(&m->globals, 0, global_t);
+        VECTOR_INIT(&m->elems, 0, elem_t);
         VECTOR_INIT(&m->exports, 0, export_t);
 
         while(!eof(buf)) {
