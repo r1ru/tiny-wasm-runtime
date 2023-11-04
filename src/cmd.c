@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/br.0.wasm", O_RDONLY);
+    int fd = open("./build/test/br_if.27.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -149,15 +149,19 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("insntiation failed");
 
-    args_t args = {.n = 0, .elem = NULL};
+    args_t args;
+    VECTOR_INIT(&args, 1, arg_t);
+    VECTOR_FOR_EACH(arg, &args, arg_t) {
+        arg->type = TYPE_NUM_I32;
+        arg->val.num.i32 = 1;
+    }
 
     // invoke
-    err = invoke(S, 13, &args);
+    err = invoke(S, 17, &args);
     if(IS_ERROR(err))
         PANIC("invocation failed");
     
-    printf("result = %lf\n", VECTOR_ELEM(&args, 0)->val.num.f64);
-    printf("result = %lf\n", VECTOR_ELEM(&args, 1)->val.num.f64);
+    printf("result = %lx\n", VECTOR_ELEM(&args, 0)->val.num.i64);
 
     // cleanup
     munmap(head, fsize);

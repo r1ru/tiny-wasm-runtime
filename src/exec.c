@@ -578,15 +578,21 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     }
                     push_vals(vals, S->stack);
 
-                    // br instruction of block, if is treated as a "end" instruction
-                    switch(L.parent->op1) {
-                        case OP_BLOCK:
-                        case OP_IF:
-                            next_ip = L.parent->next;
-                            break;
-                        case OP_LOOP:
-                            next_ip = L.continuation;
-                            break;
+                    // br to "outermost" label (return from function)
+                    if(!L.parent) {
+                        next_ip = NULL;
+                    }
+                    else {
+                        // br instruction of block, if is treated as a "end" instruction
+                        switch(L.parent->op1) {
+                            case OP_BLOCK:
+                            case OP_IF:
+                                next_ip = L.parent->next;
+                                break;
+                            case OP_LOOP:
+                                next_ip = L.continuation;
+                                break;
+                        }
                     }
                     break;
                 }

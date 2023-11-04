@@ -162,7 +162,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
 
             case OP_BR_IF: {
                 labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->labelidx);
-                __throwif(ERR_FAILED, !l);
+                __throwif(ERR_UNKNOWN_LABEL, !l);
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 VECTOR_FOR_EACH(t, &l->ty, valtype_t) {
                     __throwiferr(try_pop(*t, stack));
