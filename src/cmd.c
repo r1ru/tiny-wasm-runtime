@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
     args_t args = {.n = 0, .elem = NULL};
 
     // invoke
-    err = invoke(S, 0, &args);
+    err = invoke(S, 20, &args);
     if(IS_ERROR(err))
         PANIC("invocation failed");
     

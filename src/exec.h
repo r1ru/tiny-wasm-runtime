@@ -9,14 +9,18 @@
 // ref: https://webassembly.github.io/spec/core/exec/index.html
 typedef export_t    exportinst_t;
 typedef uint32_t    funcaddr_t;
+typedef uint32_t    tableaddr_t;
 typedef uint32_t    memaddr_t;
 typedef uint32_t    globaladdr_t;
+typedef uint32_t    elemaddr_t;
 
 typedef struct {
     functype_t      *types;
     funcaddr_t      *funcaddrs;
+    tableaddr_t     *tableaddrs;
     memaddr_t       *memaddrs;
     globaladdr_t    *globaladdrs;
+    elemaddr_t      *elemaddrs;
     exportinst_t    *exports;
 } moduleinst_t;
 
@@ -25,6 +29,12 @@ typedef struct {
     moduleinst_t    *module;
     func_t          *code;
 } funcinst_t;
+
+typedef uint32_t    ref_t;
+typedef struct {
+    tabletype_t     type;
+    VECTOR(ref_t)   elem;
+} tableinst_t;
 
 typedef union {
     int32_t         i32;
@@ -35,6 +45,7 @@ typedef union {
 
 typedef union {
     num_t       num;
+    ref_t       ref;
 } val_t;
 
 typedef VECTOR(val_t) vals_t;
@@ -88,11 +99,18 @@ typedef struct {
     val_t               val;
 } globalinst_t;
 
+typedef  struct {
+    reftype_t           type;
+    VECTOR(ref_t)       elem;
+} eleminst_t;
+
 typedef struct {
     stack_t                 *stack;
     VECTOR(funcinst_t)      funcs;
+    VECTOR(tableinst_t)     tables;
     VECTOR(meminst_t)       mems;
     VECTOR(globalinst_t)    globals;
+    VECTOR(eleminst_t)      elems;
 } store_t;
 
 typedef struct {
@@ -111,7 +129,6 @@ void pop_vals(vals_t *vals, stack_t *stack);
 void pop_label(label_t *label, stack_t *stack);
 void pop_frame(frame_t *frame, stack_t *stack);
 
-funcaddr_t  allocfunc(store_t *S, func_t *func, moduleinst_t *mod);
-moduleinst_t *allocmodule(store_t *S, module_t *module, vals_t *vals);
+moduleinst_t *allocmodule(store_t *S, module_t *module);
 error_t instantiate(store_t **store, module_t *module);
 error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args);

@@ -37,7 +37,7 @@ void push_val(val_t val, stack_t *stack) {
         .type   = TYPE_VAL,
         .val    = val 
     };
-    printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
+    //printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
 }
 
 static inline void push_i32(int32_t val, stack_t *stack) {
@@ -79,7 +79,7 @@ void push_label(label_t label, stack_t *stack) {
         .label  = label 
     };
     list_push_back(&stack->labels, &obj->label.link);
-    printf("push label idx: %ld\n", stack->idx);
+    //printf("push label idx: %ld\n", stack->idx);
 }
 
 void push_frame(frame_t frame, stack_t *stack) {
@@ -93,13 +93,13 @@ void push_frame(frame_t frame, stack_t *stack) {
         .frame  = frame 
     };
     list_push_back(&stack->frames, &obj->frame.link);
-    printf("push frame idx: %ld\n", stack->idx);
+    //printf("push frame idx: %ld\n", stack->idx);
 }
 
 void pop_val(val_t *val, stack_t *stack) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
-    printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
+    //printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
 }
 
 static inline void pop_i32(int32_t *val, stack_t *stack) {
@@ -166,7 +166,7 @@ void pop_label(label_t *label, stack_t *stack) {
     *label = stack->pool[stack->idx].label;
     stack->idx--;
     list_pop_tail(&stack->labels);
-    printf("pop label idx: %ld\n", stack->idx);
+    //printf("pop label idx: %ld\n", stack->idx);
 }
 
 void try_pop_label(label_t *label, stack_t *stack) {
@@ -181,14 +181,14 @@ void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
     list_pop_tail(&stack->frames);
-    printf("pop frame idx: %ld\n", stack->idx);
+    //printf("pop frame idx: %ld\n", stack->idx);
 }
 
 // There is no need to use append when instantiating, since everything we need (functions, imports, etc.) is known to us.
 // see Note of https://webassembly.github.io/spec/core/exec/modules.html#instantiation
 
 // todo: add externval(support imports)
-moduleinst_t *allocmodule(store_t *S, module_t *module, vals_t *vals) {
+moduleinst_t *allocmodule(store_t *S, module_t *module) {
     // allocate moduleinst
     moduleinst_t *moduleinst = malloc(sizeof(moduleinst_t));
     
@@ -211,6 +211,24 @@ moduleinst_t *allocmodule(store_t *S, module_t *module, vals_t *vals) {
         moduleinst->funcaddrs[i] = i;
     }
 
+    // allocate tables
+    uint32_t num_tables = module->tables.n;
+    moduleinst->tableaddrs = malloc(sizeof(tableaddr_t) * num_tables);
+    for(uint32_t i = 0; i < num_tables; i++) {
+        table_t *table = VECTOR_ELEM(&module->tables, i);
+        tableinst_t *tableinst = VECTOR_ELEM(&S->tables, i);
+
+        uint32_t n = table->type.limits.min;
+        tableinst->type = table->type;
+        VECTOR_INIT(&tableinst->elem, n, ref_t);
+
+        // init with ref.null
+        VECTOR_FOR_EACH(elem, &tableinst->elem, ref_t) {
+            *elem = 0;
+        }
+        moduleinst->tableaddrs[i] = i;
+    }
+
     // allocate mems
     uint32_t num_mems = module->mems.n;
     moduleinst->memaddrs = malloc(sizeof(memaddr_t) * num_mems);
@@ -225,25 +243,12 @@ moduleinst_t *allocmodule(store_t *S, module_t *module, vals_t *vals) {
         moduleinst->memaddrs[i] = i;
     }
 
-    // allocate globals
-    uint32_t num_globals = module->globals.n;
-    moduleinst->globaladdrs = malloc(sizeof(globaladdr_t) * num_globals);
-    for(uint32_t i = 0; i < num_globals; i++) {
-        globaltype_t globaltype = VECTOR_ELEM(&module->globals, i)->gt;
-        globalinst_t *globalinst = VECTOR_ELEM(&S->globals, i);
-
-        globalinst->gt = globaltype;
-        globalinst->val = *VECTOR_ELEM(vals, i);
-        moduleinst->globaladdrs[i] = i;
-    }
-
     moduleinst->exports = module->exports.elem;
 
     return moduleinst;
 }
 
-error_t exec_instrs(instr_t * ent, store_t *S);
-
+error_t exec_expr(expr_t * expr, store_t *S);
 error_t instantiate(store_t **S, module_t *module) {
     __try {
         // allocate store
@@ -252,22 +257,74 @@ error_t instantiate(store_t **S, module_t *module) {
         // allocate stack
         new_stack(&store->stack);
         
-        // omit pushing F_init onto the stack
-
         VECTOR_INIT(&store->funcs, module->funcs.n, funcinst_t);
+        VECTOR_INIT(&store->tables, module->tables.n, tableinst_t);
         VECTOR_INIT(&store->mems, module->mems.n, meminst_t);
         VECTOR_INIT(&store->globals, module->globals.n, globalinst_t);
-        
-        // eval init expr for global variables
-        vals_t vals;
-        VECTOR_INIT(&vals, module->globals.n, val_t);
-        size_t idx = 0;        
-        VECTOR_FOR_EACH(g, &module->globals, global_t) {
-            exec_instrs(g->expr, store);
-            pop_val(VECTOR_ELEM(&vals, idx++), store->stack);
+        VECTOR_INIT(&store->elems, module->elems.n, eleminst_t);
+
+        moduleinst_t *moduleinst = allocmodule(store, module);
+
+        // alloc globals
+        frame_t F = {.module = moduleinst, .locals = NULL};
+        push_frame(F, store->stack);
+
+        uint32_t num_globals = module->globals.n;
+        moduleinst->globaladdrs = malloc(sizeof(globaladdr_t) * num_globals);
+        for(uint32_t i = 0; i < num_globals; i++) {
+            global_t *global = VECTOR_ELEM(&module->globals, i);
+            globalinst_t *globalinst = VECTOR_ELEM(&store->globals, i);
+
+            globalinst->gt = global->gt;
+
+            exec_expr(&global->expr, store);
+            pop_val(&globalinst->val, store->stack);
+            
+            moduleinst->globaladdrs[i] = i;
         }
 
-        moduleinst_t *moduleinst = allocmodule(store, module, &vals);
+        // init table if elemmode is active
+        for(uint32_t i = 0; i < module->elems.n; i++) {
+            elem_t *elem = VECTOR_ELEM(&module->elems, i);
+            tableidx_t tableidx = elem->mode.table;
+
+            uint32_t n, s, d;
+            // exec instruction sequence
+            exec_expr(&elem->mode.offset, store);
+            pop_i32(&d, store->stack);
+
+            // exec i32.const 0; i32.const n;
+            n = elem->init.n;
+            s = 0;
+
+            // exec table.init tableidx i
+            while(n--) {
+                tableaddr_t ta = F.module->tableaddrs[tableidx];
+                tableinst_t *tab = VECTOR_ELEM(&store->tables, ta);
+
+                if(s + n > elem->init.n || d + n > tab->elem.n) {
+                    PANIC("trap");
+                }
+
+                // get init expr
+                expr_t *init = VECTOR_ELEM(&elem->init, s);
+
+                // eval init expr
+                exec_expr(init, store);
+                val_t val;
+                pop_val(&val, store->stack);
+
+                // exec table.set tableidx
+                *VECTOR_ELEM(&tab->elem, d) = val.ref;
+
+                // update d, s
+                d++;
+                s++;  
+            }
+        }
+
+        pop_frame(&F, store->stack);
+
         // todo: support start section
     }
     __catch:
@@ -328,14 +385,15 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
 #define I64_TRUNC_SAT_F64(A)    TRUNC_SAT(A, int64_t, -9223372036854777856.0 ,  9223372036854775808.0,  INT64_MIN,  INT64_MAX)
 #define U64_TRUNC_SAT_F64(A)    TRUNC_SAT(A, uint64_t,                  -1.0 , 18446744073709551616.0,       0ULL, UINT64_MAX)
 
-error_t exec_instrs(instr_t * ent, store_t *S) {
-    instr_t *ip = ent;
+error_t exec_expr(expr_t * expr, store_t *S) {
+    instr_t *ip = *expr;
 
     // current frame
     frame_t *F = LIST_TAIL(&S->stack->frames, frame_t, link);
 
     __try {
         while(ip) {
+            //printf("[+] ip = %x\n", ip->op1);
             instr_t *next_ip = ip->next;
             static instr_t end = {.op1 = OP_END};
 
@@ -545,6 +603,37 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     break;
                 }
 
+                case OP_CALL_INDIRECT: {
+                    tableaddr_t ta = F->module->tableaddrs[ip->x];
+                    tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
+
+                    functype_t *ft_expect = &F->module->types[ip->y];
+                    int32_t i;
+                    pop_i32(&i, S->stack);
+                    __throwif(ERR_FAILED, i > tab->elem.n)
+                    ;
+                    ref_t r = *VECTOR_ELEM(&tab->elem, i);
+                    __throwif(ERR_FAILED, r == 0);
+
+                    funcinst_t *f = VECTOR_ELEM(&S->funcs, r);
+                    functype_t *ft_actual = f->type;
+
+                    for(uint32_t i = 0; i < ft_expect->rt1.n; i++) {
+                        valtype_t e = *VECTOR_ELEM(&ft_expect->rt1, i);
+                        valtype_t a = *VECTOR_ELEM(&ft_actual->rt1, i);
+                        __throwif(ERR_FAILED, e != a);
+                    }
+
+                    for(uint32_t i = 0; i < ft_expect->rt2.n; i++) {
+                        valtype_t e = *VECTOR_ELEM(&ft_expect->rt2, i);
+                        valtype_t a = *VECTOR_ELEM(&ft_actual->rt2, i);
+                        __throwif(ERR_FAILED, e != a);
+                    }
+
+                    invoke_func(S, r);
+                    break;
+                }
+
                 case OP_DROP: {
                     val_t val;
                     pop_val(&val, S->stack);
@@ -572,19 +661,19 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     break;
                 }
 
+                case OP_LOCAL_TEE: {
+                    val_t val;
+                    pop_val(&val, S->stack);
+                    push_val(val, S->stack);
+                    push_val(val, S->stack);
+                }
+
                 case OP_LOCAL_SET: {
                     localidx_t x = ip->localidx;
                     val_t val;
                     pop_val(&val, S->stack);
                     F->locals[x] = val;
                     break;
-                }
-
-                case OP_LOCAL_TEE: {
-                    val_t val;
-                    pop_val(&val, S->stack);
-                    push_val(val, S->stack);
-                    push_val(val, S->stack);
                 }
 
                 case OP_GLOBAL_GET: {
@@ -794,6 +883,14 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     }
                     break;
                 }                
+                
+                case OP_MEMORY_GROW: {
+                    // support only memory.grow 0 for now
+                    int32_t n;
+                    pop_i32(&n, S->stack);
+                    push_i32(1, S->stack);
+                    break;
+                }
 
                 case OP_I32_CONST:
                     push_i32(ip->c.i32, S->stack);
@@ -1446,6 +1543,12 @@ error_t exec_instrs(instr_t * ent, store_t *S) {
                     }
                     break;
                 
+                case OP_REF_FUNC: {
+                    funcaddr_t a = F->module->funcaddrs[ip->funcidx];
+                    push_val((val_t){.ref = a}, S->stack);
+                    break;
+                }
+
                 default:
                     PANIC("Exec: unsupported opcode: %x\n", ip->op1);
             }
@@ -1486,7 +1589,7 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
         // enter instr* with label L
         push_label(L, S->stack);
 
-        __throwiferr(exec_instrs(funcinst->code->body ,S));
+        __throwiferr(exec_expr(&funcinst->code->body ,S));
 
         // return from a function("return" instruction)
         vals_t vals;

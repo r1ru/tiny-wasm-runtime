@@ -19,7 +19,7 @@ static inline bool empty(type_stack *stack) {
 static inline void push(valtype_t ty, type_stack *stack) {
     // todo: panic if stack is full?
     stack->pool[++stack->idx] = ty;
-    //printf("push %x\n", ty);
+    //printf("push %x idx: %ld\n", ty, stack->idx);
 }
 
 // Type is not verified if expect is 0.
@@ -27,14 +27,14 @@ static inline error_t try_pop(valtype_t expect, type_stack *stack) {
     __try {
         if(empty(stack)) {
             __throwif(ERR_TYPE_MISMATCH, !stack->polymorphic);
-            //printf("pop %x\n", expect);
+            //printf("pop %x idx: %ld\n", expect, stack->idx);
         }
         else {
             valtype_t ty;
             ty = stack->pool[stack->idx--];
             if(expect)
                 __throwif(ERR_TYPE_MISMATCH, ty != expect);
-            //printf("pop %x\n", expect);
+            //printf("pop %x idx: %ld\n", expect, stack->idx);
         }
     } 
     __catch:
@@ -91,6 +91,7 @@ error_t validate_instrs(context_t *C, instr_t *start, resulttype_t *rt1, resultt
 
 error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
     __try {
+        //printf("[+] ip = %x\n", ip->op1);
         switch(ip->op1) {
             case OP_UNREACHABLE:
                 stack->idx = -1;
@@ -780,7 +781,7 @@ error_t validate_instrs(context_t *C, instr_t *start, resulttype_t *rt1, resultt
         }
 
         // check if stack is empty
-        __throwif(ERR_FAILED, !empty(&stack));
+        __throwif(ERR_TYPE_MISMATCH, !empty(&stack));
     }
     __catch:
         return err;
@@ -795,14 +796,13 @@ error_t validate_expr(context_t *C, expr_t *expr, resulttype_t *rt2) {
             __throwiferr(validate_instr(C, ip, &stack));
             ip = ip->next;
         }
-
         // compare witch expected type
         VECTOR_FOR_EACH_REVERSE(t, rt2, valtype_t) {
             __throwiferr(try_pop(*t, &stack));
         }
 
         // check if stack is empty
-        __throwif(ERR_FAILED, !empty(&stack));
+        __throwif(ERR_TYPE_MISMATCH, !empty(&stack));
     }
     __catch:
         return err;
@@ -863,17 +863,6 @@ error_t validate_mem(context_t *ctx, mem_t *src, mem_t *dst) {
         return err;
 }
 
-error_t validate_global(context_t *ctx, global_t *g, globaltype_t *dst) {
-    resulttype_t rt2 = {.n = 1, .elem = &g->gt.type};
-    __try {
-        __throwiferr(validate_expr(ctx, &g->expr, &rt2));
-        // append 
-        *dst = g->gt;
-    }
-    __catch:
-        return err;
-}
-
 static bool is_constant_expr(expr_t *expr) {
     instr_t *i = *expr;
     while(i->op1 != OP_END) {
@@ -884,6 +873,18 @@ static bool is_constant_expr(expr_t *expr) {
         i = i->next;
     }
     return true;
+}
+
+error_t validate_global(context_t *ctx, global_t *g, globaltype_t *dst) {
+    resulttype_t rt2 = {.n = 1, .elem = &g->gt.type};
+    __try {
+        __throwiferr(validate_expr(ctx, &g->expr, &rt2));
+        __throwif(ERR_FAILED, !is_constant_expr(&g->expr));
+        // append 
+        *dst = g->gt;
+    }
+    __catch:
+        return err;
 }
 
 error_t validate_elemmode(context_t *ctx, elemmode_t *mode, reftype_t expect) {
