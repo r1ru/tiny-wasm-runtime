@@ -6,6 +6,9 @@
 #include "error.h"
 #include "list.h"
 
+// used in select instruction
+#define TYPE_ANY    0
+
 typedef struct {
     list_elem_t     link;
     resulttype_t    ty;

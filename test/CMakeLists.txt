@@ -33,6 +33,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/switch.wast -o ${CMAKE_CURRENT_BINARY_DIR}/switch
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/store.wast -o ${CMAKE_CURRENT_BINARY_DIR}/store
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/block.wast -o ${CMAKE_CURRENT_BINARY_DIR}/block
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/br.wast -o ${CMAKE_CURRENT_BINARY_DIR}/br
 )
 
 add_test(
@@ -164,5 +165,11 @@ add_test(
 add_test(
     NAME block
     COMMAND runtest block
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME br
+    COMMAND runtest br
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

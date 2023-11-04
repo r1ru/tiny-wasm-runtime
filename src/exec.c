@@ -1632,7 +1632,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         //free(args->elem);
         VECTOR_INIT(args, functype->rt2.n, arg_t);
         idx = 0;
-        VECTOR_FOR_EACH(ret, args, arg_t) {
+        VECTOR_FOR_EACH_REVERSE(ret, args, arg_t) {
             ret->type = *VECTOR_ELEM(&functype->rt2, idx++);
             pop_val(&ret->val, S->stack);
         }

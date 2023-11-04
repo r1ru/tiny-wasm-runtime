@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/block.0.wasm", O_RDONLY);
+    int fd = open("./build/test/br.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -152,11 +152,12 @@ int main(int argc, char *argv[]) {
     args_t args = {.n = 0, .elem = NULL};
 
     // invoke
-    err = invoke(S, 20, &args);
+    err = invoke(S, 13, &args);
     if(IS_ERROR(err))
         PANIC("invocation failed");
     
-    printf("result = %ld\n", VECTOR_ELEM(&args, 0)->val.num.i64);
+    printf("result = %lf\n", VECTOR_ELEM(&args, 0)->val.num.f64);
+    printf("result = %lf\n", VECTOR_ELEM(&args, 1)->val.num.f64);
 
     // cleanup
     munmap(head, fsize);

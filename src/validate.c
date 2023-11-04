@@ -33,26 +33,12 @@ static inline error_t try_pop(valtype_t expect, type_stack *stack) {
             valtype_t ty;
             ty = stack->pool[stack->idx--];
             if(expect)
-                __throwif(ERR_TYPE_MISMATCH, ty != expect);
+                __throwif(ERR_TYPE_MISMATCH, ty != expect && ty != TYPE_ANY);
             //printf("pop %x idx: %ld\n", expect, stack->idx);
         }
     } 
     __catch:
         return err;
-}
-
-static inline error_t peek_stack_top(valtype_t *d, type_stack *stack) {
-    __try{
-        if(empty(stack)) {
-            __throwif(ERR_TYPE_MISMATCH, !stack->polymorphic);
-            *d = 0;
-        }
-        else {
-            *d = stack->pool[stack->idx];
-        }
-        __catch:
-            return err;
-    }
 }
 
 error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
@@ -164,7 +150,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             
             case OP_BR: {
                 labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->labelidx);
-                __throwif(ERR_FAILED, !l);
+                __throwif(ERR_UNKNOWN_LABEL, !l);
                 VECTOR_FOR_EACH_REVERSE(t, &l->ty, valtype_t) {
                     __throwiferr(try_pop(*t, stack));
                 }
@@ -264,12 +250,10 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             
             case OP_SELECT: {
-                valtype_t t;
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                __throwiferr(peek_stack_top(&t, stack));
-                __throwiferr(try_pop(t, stack));
-                __throwiferr(try_pop(t, stack));
-                push(t, stack);
+                __throwiferr(try_pop(TYPE_ANY, stack));
+                __throwiferr(try_pop(TYPE_ANY, stack));
+                push(TYPE_ANY, stack);
                 break;
             }
 

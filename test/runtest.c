@@ -28,6 +28,7 @@ static const char *error_msg[] = {
     [-ERR_SUCCESS]  = "",
     [-ERR_FAILED]   = "",
     [-ERR_TYPE_MISMATCH] = "type mismatch",
+    [-ERR_UNKNOWN_LABEL] = "unknown label",
     [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO] = "integer divide by zero",
     [-ERR_TRAP_INTERGET_OVERFLOW] = "integer overflow"
 };
