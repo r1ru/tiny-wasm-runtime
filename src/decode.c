@@ -647,7 +647,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
             __throwiferr(read_u32_leb128(&kind, buf));
             switch(kind) {
                 case 0: {
-                    elem->type = TYPE_REF_FUNC;
+                    elem->type = TYPE_FUNCREF;
 
                     elem->mode.kind = 0; // active
                     elem->mode.table = 0;

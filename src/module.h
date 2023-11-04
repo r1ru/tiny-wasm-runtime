@@ -18,7 +18,8 @@ typedef uint32_t    tableidx_t;
 #define TYPE_NUM_I64    0x7E
 #define TYPE_NUM_F32    0x7D
 #define TYPE_NUM_F64    0x7C
-#define TYPE_REF_FUNC   0x70
+#define TYPE_FUNCREF    0x70
+#define TYPE_EXTENREF   0x6F
 
 typedef VECTOR(valtype_t) resulttype_t;
 

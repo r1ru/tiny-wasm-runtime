@@ -56,6 +56,7 @@ error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
             case TYPE_NUM_I64:
             case TYPE_NUM_F32:
             case TYPE_NUM_F64:
+            case TYPE_EXTENREF:
                 VECTOR_INIT(&ty->rt2, 1, valtype_t);
                 *VECTOR_ELEM(&ty->rt2, 0) = bt.valtype;
                 break;
@@ -175,15 +176,17 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
 
             case OP_BR_TABLE: {
                 labeltype_t *default_label = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->default_label);
-                __throwif(ERR_FAILED, !default_label);
+                __throwif(ERR_UNKNOWN_LABEL, !default_label);
 
                 VECTOR_FOR_EACH(i, &ip->labels, labelidx_t) {
                     labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, *i);
-                    __throwif(ERR_FAILED, !l);
+                    __throwif(ERR_UNKNOWN_LABEL, !l);
 
-                    size_t j = 0;
-                    VECTOR_FOR_EACH(t, &default_label->ty, valtype_t) {
-                        __throwif(ERR_FAILED, *t != *VECTOR_ELEM(&l->ty, j++));
+                    __throwif(ERR_TYPE_MISMATCH, default_label->ty.n != l->ty.n);
+                    for(uint32_t j = 0; j < default_label->ty.n; j++) {
+                        valtype_t t1 =  *VECTOR_ELEM(&default_label->ty, j);
+                        valtype_t t2 =  *VECTOR_ELEM(&l->ty, j);
+                        __throwif(ERR_FAILED, t1 != t1);
                     }
                 }
 
@@ -229,7 +232,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 __throwif(ERR_FAILED, !tt);
 
                 reftype_t t = tt->reftype;
-                __throwif(ERR_FAILED, t != TYPE_REF_FUNC);
+                __throwif(ERR_FAILED, t != TYPE_FUNCREF);
 
                 functype_t *ft = VECTOR_ELEM(&C->types, ip->y);
                 __throwif(ERR_FAILED, !ft);
@@ -269,21 +272,21 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
 
             case OP_LOCAL_GET: {
                 valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
-                __throwif(ERR_FAILED, !t);
+                __throwif(ERR_UNKNOWN_LOCAL, !t);
                 push(*t, stack);
                 break;
             }
 
             case OP_LOCAL_SET: {
                 valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
-                __throwif(ERR_FAILED, !t);
+                __throwif(ERR_UNKNOWN_LOCAL, !t);
                 __throwiferr(try_pop(*t, stack));
                 break;
             }
 
             case OP_LOCAL_TEE: {
                 valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
-                __throwif(ERR_FAILED, !t);
+                __throwif(ERR_UNKNOWN_LOCAL, !t);
                 __throwiferr(try_pop(*t, stack));
                 push(*t, stack);
                 break;
@@ -702,7 +705,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
 
                 if(is_contained) {
                     // valid with type [] -> [funcref]
-                    push(TYPE_REF_FUNC, stack);
+                    push(TYPE_FUNCREF, stack);
                 }
                 else
                     __throw(ERR_FAILED)

@@ -343,6 +343,7 @@ static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
         case TYPE_NUM_I64:
         case TYPE_NUM_F32:
         case TYPE_NUM_F64:
+        case TYPE_EXTENREF:
             VECTOR_INIT(&ty->rt2, 1, valtype_t);
             *VECTOR_ELEM(&ty->rt2, 0) = bt.valtype;
             break;

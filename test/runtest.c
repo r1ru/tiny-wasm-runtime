@@ -28,6 +28,7 @@ static const char *error_msg[] = {
     [-ERR_SUCCESS]  = "",
     [-ERR_FAILED]   = "",
     [-ERR_TYPE_MISMATCH] = "type mismatch",
+    [-ERR_UNKNOWN_LOCAL] = "unknown local",
     [-ERR_UNKNOWN_LABEL] = "unknown label",
     [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO] = "integer divide by zero",
     [-ERR_TRAP_INTERGET_OVERFLOW] = "integer overflow"
@@ -130,6 +131,13 @@ static void convert_to_arg(arg_t *arg, JSON_Object *obj) {
             arg->type = TYPE_NUM_F64;
             arg->val.num.i64 = strtoumax(val, NULL, 0);
         }
+    }
+    else if(strcmp(ty, "externref") == 0) {
+        arg->type = TYPE_EXTENREF;
+        arg->val.num.i32 = strtoimax(val, NULL, 0);
+    }
+    else {
+        PANIC("unknown arg type: %s", ty);
     }
     // todo: add here
 }
@@ -256,13 +264,13 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
             );
 
             // check that validation fails
-            error_t err = validate_module(ctx->mod);
-            __throwif(ERR_FAILED, !IS_ERROR(err));
+            error_t ret = validate_module(ctx->mod);
+            __throwif(ERR_FAILED, !IS_ERROR(ret));
             // check that error messagees match
             __throwif(
                 ERR_FAILED, 
                 strcmp(
-                    error_msg[-err], 
+                    error_msg[-ret], 
                     json_object_get_string(command, "text")
                 ) != 0
             );
