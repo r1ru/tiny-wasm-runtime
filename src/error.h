@@ -13,8 +13,9 @@ typedef int error_t;
 #define ERR_TYPE_MISMATCH                   ERR_CODE(2)
 #define ERR_UNKNOWN_LOCAL                   ERR_CODE(3)
 #define ERR_UNKNOWN_LABEL                   ERR_CODE(4)
+#define ERR_UNKNOWN_FUNC                    ERR_CODE(5)
 
 // runtime error
-#define ERR_TRAP_INTERGER_DIVIDE_BY_ZERO    ERR_CODE(5)
-#define ERR_TRAP_INTERGET_OVERFLOW          ERR_CODE(6)
-#define ERR_TRAP_UNREACHABLE                ERR_CODE(7)
+#define ERR_TRAP_INTERGER_DIVIDE_BY_ZERO    ERR_CODE(6)
+#define ERR_TRAP_INTERGET_OVERFLOW          ERR_CODE(7)
+#define ERR_TRAP_UNREACHABLE                ERR_CODE(8)

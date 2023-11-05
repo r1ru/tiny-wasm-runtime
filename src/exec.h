@@ -78,7 +78,7 @@ typedef struct {
 #define TYPE_LABEL      1
 #define TYPE_FRAME      2
 
-#define STACK_SIZE      (4096 * 2)
+#define STACK_SIZE      (4096 * 16)
 #define NUM_STACK_ENT   (STACK_SIZE / sizeof(obj_t) - 1)
 
 typedef struct {

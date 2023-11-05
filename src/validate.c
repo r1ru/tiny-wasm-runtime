@@ -215,9 +215,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
 
             case OP_CALL: {
                 functype_t *ty = VECTOR_ELEM(&C->funcs, ip->funcidx);
-                __throwif(ERR_FAILED, !ty);
-
-                VECTOR_FOR_EACH(t, &ty->rt1, valtype_t) {
+                __throwif(ERR_UNKNOWN_FUNC, !ty);
+                VECTOR_FOR_EACH_REVERSE(t, &ty->rt1, valtype_t) {
                     __throwiferr(try_pop(*t, stack));
                 }
 
@@ -795,28 +794,21 @@ error_t validate_expr(context_t *C, expr_t *expr, resulttype_t *rt2) {
         return err;
 }
 
-error_t validate_func(context_t *C, func_t *func, functype_t *actual) {
-    context_t ctx = *C;
+error_t validate_func(context_t *C, func_t *func) {
     __try {
         functype_t *expect = VECTOR_ELEM(&C->types, func->type);
-        __throwif(ERR_FAILED, !expect);
 
         // create context C'
-        VECTOR_CONCAT(&ctx.locals, &expect->rt1, &func->locals, valtype_t);
+        VECTOR_CONCAT(&C->locals, &expect->rt1, &func->locals, valtype_t);
 
-        LIST_INIT(&ctx.labels);
         labeltype_t l ={.ty = expect->rt2};
-        list_push_back(&ctx.labels, &l.link);
-        ctx.ret = &expect->rt2;
+        list_push_back(&C->labels, &l.link);
+        C->ret = &expect->rt2;
 
         // validate expr
-        __throwiferr(validate_expr(&ctx, &func->body, &expect->rt2));
-
-        VECTOR_COPY(&actual->rt1, &expect->rt1, valtype_t);
-        VECTOR_COPY(&actual->rt2, &expect->rt2, valtype_t);
+        __throwiferr(validate_expr(C, &func->body, &expect->rt2));
     }
     __catch:
-        VECTOR_DESTORY(&ctx.locals);
         return err;
 }
 
@@ -961,9 +953,17 @@ error_t validate_module(module_t *mod) {
         }
 
         // validte funcs
-        idx = 0;
+        // set expected functypes first
+        for(uint32_t i = 0; i < mod->funcs.n; i++) {
+            functype_t *expect = VECTOR_ELEM(&C.funcs, i);
+            func_t *func = VECTOR_ELEM(&mod->funcs, i);
+            functype_t *functype = VECTOR_ELEM(&C.types, func->type);
+            __throwif(ERR_FAILED, !functype);
+            *expect = *functype;
+        }
+
         VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
-            __throwiferr(validate_func(&C, func, VECTOR_ELEM(&C.funcs, idx++)));
+            __throwiferr(validate_func(&C, func));
         }
     }
     __catch:
