@@ -224,7 +224,7 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
 
         // init with ref.null
         VECTOR_FOR_EACH(elem, &tableinst->elem, ref_t) {
-            *elem = 0;
+            *elem = REF_NULL;
         }
         moduleinst->tableaddrs[i] = i;
     }
@@ -640,7 +640,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     pop_i32(&i, S->stack);
                     __throwif(ERR_TRAP_UNDEFINED_ELEMENT, i >= tab->elem.n);
                     ref_t r = *VECTOR_ELEM(&tab->elem, i);
-                    __throwif(ERR_FAILED, r == REF_NULL);
+                    __throwif(ERR_TRAP_UNINITIALIZED_ELEMENT, r == REF_NULL);
 
                     funcinst_t *f = VECTOR_ELEM(&S->funcs, r);
                     functype_t *ft_actual = f->type;
@@ -648,13 +648,13 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     for(uint32_t i = 0; i < ft_expect->rt1.n; i++) {
                         valtype_t e = *VECTOR_ELEM(&ft_expect->rt1, i);
                         valtype_t a = *VECTOR_ELEM(&ft_actual->rt1, i);
-                        __throwif(ERR_FAILED, e != a);
+                        __throwif(ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH, e != a);
                     }
 
                     for(uint32_t i = 0; i < ft_expect->rt2.n; i++) {
                         valtype_t e = *VECTOR_ELEM(&ft_expect->rt2, i);
                         valtype_t a = *VECTOR_ELEM(&ft_actual->rt2, i);
-                        __throwif(ERR_FAILED, e != a);
+                        __throwif(ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH, e != a);
                     }
 
                     invoke_func(S, r);

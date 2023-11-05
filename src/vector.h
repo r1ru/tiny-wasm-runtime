@@ -33,6 +33,13 @@
         0 <= __i && __i <= ((vec)->n - 1) ? &(vec)->elem[__i] : NULL;           \
     })
 
+// todo: fix this
+#define VECTOR_ELEM_M(vec, idx)                                                         \
+    ({                                                                                  \
+        size_t __i = (idx);                                                             \
+        (vec)->n != 0 && 0 <= __i && __i <= ((vec)->n - 1) ? &(vec)->elem[__i] : NULL;  \
+    })
+
 #define VECTOR_COPY(dst, src, type)                                             \
     do {                                                                        \
         (dst)->n = (src)->n;                                                    \

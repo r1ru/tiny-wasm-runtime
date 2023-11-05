@@ -675,6 +675,39 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     break;
                 }
 
+                case 2: {                    
+                    elem->type = TYPE_FUNCREF;
+
+                    elem->mode.kind = 0; // active
+                    __throwiferr(read_u32_leb128(&elem->mode.table, buf));
+                    __throwiferr(decode_expr(&elem->mode.offset, buf));
+
+                    uint8_t et;
+                    __throwiferr(read_byte(&et, buf));
+                    __throwif(ERR_FAILED, et != 0);
+
+                    uint32_t n;
+                    __throwiferr(read_u32_leb128(&n, buf));
+
+                    // create init exprs
+                    VECTOR_INIT(&elem->init, n, expr_t);
+                    static instr_t end = {.op1 = OP_END};
+
+                    VECTOR_FOR_EACH(e, &elem->init, expr_t) {
+                        funcidx_t x;
+                        __throwiferr(read_u32_leb128(&x, buf));
+                        expr_t init = malloc(sizeof(instr_t));
+                        *init = (instr_t) {
+                            .op1        = OP_REF_FUNC,
+                            .funcidx    = x,
+                            .next       = &end
+                        };
+
+                        *e = init;
+                    }
+                    break;
+                }
+
                 default:
                     PANIC("unsupported element: %x", kind);
             }

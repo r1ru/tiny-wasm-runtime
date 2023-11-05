@@ -227,14 +227,14 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             }
             
             case OP_CALL_INDIRECT: {
-                tabletype_t *tt = VECTOR_ELEM(&C->tables, ip->x);
-                __throwif(ERR_FAILED, !tt);
+                tabletype_t *tt = VECTOR_ELEM_M(&C->tables, ip->x);
+                __throwif(ERR_UNKNOWN_TABLE, !tt);
 
                 reftype_t t = tt->reftype;
                 __throwif(ERR_FAILED, t != TYPE_FUNCREF);
 
                 functype_t *ft = VECTOR_ELEM(&C->types, ip->y);
-                __throwif(ERR_FAILED, !ft);
+                __throwif(ERR_UNKNOWN_TYPE, !ft);
                 
                 // valid with type [t1* i32] -> [t2*]
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
@@ -693,8 +693,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             
             case OP_REF_FUNC: {
-                functype_t *ty = VECTOR_ELEM(&C->funcs, ip->funcidx);
-                __throwif(ERR_FAILED, !ty);
+                functype_t *ty = VECTOR_ELEM_M(&C->funcs, ip->funcidx);
+                __throwif(ERR_UNKNOWN_FUNC, !ty);
 
                 bool is_contained = false;
                 VECTOR_FOR_EACH(ref, &C->refs, funcidx_t) {
