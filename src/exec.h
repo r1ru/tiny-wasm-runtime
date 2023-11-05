@@ -30,6 +30,7 @@ typedef struct {
     func_t          *code;
 } funcinst_t;
 
+#define REF_NULL    -1
 typedef uint32_t    ref_t;
 typedef struct {
     tabletype_t     type;

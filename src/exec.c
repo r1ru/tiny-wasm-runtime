@@ -362,6 +362,27 @@ static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
 // ref: https://en.wikipedia.org/wiki/Circular_shift
 static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
 
+#define TRUNC(A, TYPE, RMIN, RMAX)                              \
+    ({                                                          \
+        if(isnan(A)) {                                          \
+            __throw(ERR_TRAP_INVALID_CONVERSION_TO_INTERGER);   \
+        }                                                       \
+        if(A <= RMIN || A >= RMAX) {                            \
+            __throw(ERR_TRAP_INTERGET_OVERFLOW);                \
+        }                                                       \
+        (TYPE)A;                                                \
+    })
+
+#define I32_TRUNC_F32(A)    TRUNC(A, int32_t, -2147483904.0f, 2147483648.0f)
+#define U32_TRUNC_F32(A)    TRUNC(A, uint32_t,         -1.0f, 4294967296.0f)
+#define I32_TRUNC_F64(A)    TRUNC(A, int32_t, -2147483649.0 , 2147483648.0 )
+#define U32_TRUNC_F64(A)    TRUNC(A, uint32_t,         -1.0 , 4294967296.0 )
+
+#define I64_TRUNC_F32(A)    TRUNC(A, int64_t, -9223373136366403584.0f,  9223372036854775808.0f)
+#define U64_TRUNC_F32(A)    TRUNC(A, uint64_t,                  -1.0f, 18446744073709551616.0f)
+#define I64_TRUNC_F64(A)    TRUNC(A, int64_t, -9223372036854777856.0 ,  9223372036854775808.0 )
+#define U64_TRUNC_F64(A)    TRUNC(A, uint64_t,                  -1.0 , 18446744073709551616.0 )
+
 #define TRUNC_SAT(A, TYPE, RMIN, RMAX, IMIN, IMAX)          \
     ({                                                      \
         TYPE __val;                                         \
@@ -617,10 +638,9 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     functype_t *ft_expect = &F->module->types[ip->y];
                     int32_t i;
                     pop_i32(&i, S->stack);
-                    __throwif(ERR_FAILED, i > tab->elem.n)
-                    ;
+                    __throwif(ERR_TRAP_UNDEFINED_ELEMENT, i >= tab->elem.n);
                     ref_t r = *VECTOR_ELEM(&tab->elem, i);
-                    __throwif(ERR_FAILED, r == 0);
+                    __throwif(ERR_FAILED, r == REF_NULL);
 
                     funcinst_t *f = VECTOR_ELEM(&S->funcs, r);
                     functype_t *ft_actual = f->type;
@@ -1389,20 +1409,21 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     push_i32(lhs_i64 & 0xffffffff, S->stack);
                     break;
 
-                case OP_I32_TRUNC_F32_S:
-                    push_i32((int32_t)lhs_f32, S->stack);
+                case OP_I32_TRUNC_F32_S: {
+                    push_i32(I32_TRUNC_F32(lhs_f32), S->stack);
                     break;
+                }
                 
                 case OP_I32_TRUNC_F32_U:
-                    push_i32((int32_t)(uint32_t)lhs_f32, S->stack);
+                    push_i32(U32_TRUNC_F32(lhs_f32), S->stack);
                     break;
                 
                 case OP_I32_TRUNC_F64_S:
-                    push_i32((int32_t)lhs_f64, S->stack);
+                    push_i32(I32_TRUNC_F64(lhs_f64), S->stack);
                     break;
                 
                 case OP_I32_TRUNC_F64_U:
-                    push_i32((int32_t)(uint32_t)lhs_f64, S->stack);
+                    push_i32(U32_TRUNC_F64(lhs_f64), S->stack);
                     break;
                 
                 case OP_I64_EXTEND_I32_S:
@@ -1414,19 +1435,19 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     break;
 
                 case OP_I64_TRUNC_F32_S:
-                    push_i64((int64_t)lhs_f32, S->stack);
+                    push_i64(I64_TRUNC_F32(lhs_f32), S->stack);
                     break;
                 
                 case OP_I64_TRUNC_F32_U:
-                    push_i64((int64_t)(uint64_t)lhs_f32, S->stack);
+                    push_i64(U64_TRUNC_F32(lhs_f32), S->stack);
                     break;
                 
                 case OP_I64_TRUNC_F64_S:
-                    push_i64((int64_t)lhs_f64, S->stack);
+                    push_i64(I64_TRUNC_F64(lhs_f64), S->stack);
                     break;
                 
                 case OP_I64_TRUNC_F64_U:
-                    push_i64((int64_t)(uint64_t)lhs_f64, S->stack);
+                    push_i64(U64_TRUNC_F64(lhs_f64), S->stack);
                     break;
                 
                 case OP_F32_CONVERT_I32_S:

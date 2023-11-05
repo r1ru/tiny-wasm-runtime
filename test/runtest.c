@@ -25,14 +25,16 @@ typedef struct {
 } test_ctx_t;
 
 static const char *error_msg[] = {
-    [-ERR_SUCCESS]                      = "",
-    [-ERR_FAILED]                       = "",
-    [-ERR_TYPE_MISMATCH]                = "type mismatch",
-    [-ERR_UNKNOWN_LOCAL]                = "unknown local",
-    [-ERR_UNKNOWN_LABEL]                = "unknown label",
-    [-ERR_UNKNOWN_FUNC]                 = "unknown function",
-    [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO] = "integer divide by zero",
-    [-ERR_TRAP_INTERGET_OVERFLOW]       = "integer overflow"
+    [-ERR_SUCCESS]                              = "",
+    [-ERR_FAILED]                               = "",
+    [-ERR_TYPE_MISMATCH]                        = "type mismatch",
+    [-ERR_UNKNOWN_LOCAL]                        = "unknown local",
+    [-ERR_UNKNOWN_LABEL]                        = "unknown label",
+    [-ERR_UNKNOWN_FUNC]                         = "unknown function",
+    [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]         = "integer divide by zero",
+    [-ERR_TRAP_INTERGET_OVERFLOW]               = "integer overflow",
+    [-ERR_TRAP_INVALID_CONVERSION_TO_INTERGER]  = "invalid conversion to integer",
+    [-ERR_TRAP_UNDEFINED_ELEMENT]               = "undefined element"
 };
 
 // helpers
@@ -236,15 +238,15 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                         }
                     }
                 } else {
-                    error_t err = invoke(ctx->store, addr, &args);
+                    error_t ret = invoke(ctx->store, addr, &args);
                     // check that invocation fails
-                    __throwif(ERR_FAILED, !IS_ERROR(err));
+                    __throwif(ERR_FAILED, !IS_ERROR(ret));
 
                     // check that error messagees match
                     __throwif(
                         ERR_FAILED, 
                         strcmp(
-                            error_msg[-err], 
+                            error_msg[-ret], 
                             json_object_get_string(command, "text")
                         ) != 0
                     );
