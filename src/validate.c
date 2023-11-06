@@ -65,8 +65,8 @@ error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
                 // treat as typeidx
                 functype_t *type = VECTOR_ELEM(&C->types, bt.typeidx);
                 __throwif(ERR_FAILED, !type);
-                VECTOR_COPY(&ty->rt1, &type->rt1, valtype_t);
-                VECTOR_COPY(&ty->rt2, &type->rt2, valtype_t);
+                VECTOR_COPY(&ty->rt1, &type->rt1);
+                VECTOR_COPY(&ty->rt2, &type->rt2);
                 break;
         }
     }
@@ -227,7 +227,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             }
             
             case OP_CALL_INDIRECT: {
-                tabletype_t *tt = VECTOR_ELEM_M(&C->tables, ip->x);
+                tabletype_t *tt = VECTOR_ELEM(&C->tables, ip->x);
                 __throwif(ERR_UNKNOWN_TABLE, !tt);
 
                 reftype_t t = tt->reftype;
@@ -693,7 +693,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             
             case OP_REF_FUNC: {
-                functype_t *ty = VECTOR_ELEM_M(&C->funcs, ip->funcidx);
+                functype_t *ty = VECTOR_ELEM(&C->funcs, ip->funcidx);
                 __throwif(ERR_UNKNOWN_FUNC, !ty);
 
                 bool is_contained = false;
@@ -909,7 +909,7 @@ error_t validate_module(module_t *mod) {
     __try {
         // create context C
         context_t C;
-        VECTOR_COPY(&C.types, &mod->types, functype_t);
+        VECTOR_COPY(&C.types, &mod->types);
         VECTOR_INIT(&C.funcs, mod->funcs.n, functype_t);
         VECTOR_INIT(&C.tables, mod->tables.n, tabletype_t);
         VECTOR_INIT(&C.mems, mod->mems.n, mem_t);

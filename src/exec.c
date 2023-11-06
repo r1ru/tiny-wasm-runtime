@@ -636,6 +636,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
 
                     functype_t *ft_expect = &F->module->types[ip->y];
+
                     int32_t i;
                     pop_i32(&i, S->stack);
                     __throwif(ERR_TRAP_UNDEFINED_ELEMENT, i >= tab->elem.n);
@@ -644,6 +645,11 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                     funcinst_t *f = VECTOR_ELEM(&S->funcs, r);
                     functype_t *ft_actual = f->type;
+
+                    __throwif(
+                        ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH, 
+                        ft_expect->rt1.n != ft_actual->rt1.n || ft_expect->rt2.n != ft_actual->rt2.n
+                    );
 
                     for(uint32_t i = 0; i < ft_expect->rt1.n; i++) {
                         valtype_t e = *VECTOR_ELEM(&ft_expect->rt1, i);
