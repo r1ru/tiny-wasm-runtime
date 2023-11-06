@@ -38,6 +38,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/br_table.wast -o ${CMAKE_CURRENT_BINARY_DIR}/br_table
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/call.wast -o ${CMAKE_CURRENT_BINARY_DIR}/call
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/call_indirect.wast -o ${CMAKE_CURRENT_BINARY_DIR}/call_indirect
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/if.wast -o ${CMAKE_CURRENT_BINARY_DIR}/if    
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/load.wast -o ${CMAKE_CURRENT_BINARY_DIR}/load
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/local_tee.wast -o ${CMAKE_CURRENT_BINARY_DIR}/local_tee
 )
@@ -201,6 +202,12 @@ add_test(
 add_test(
     NAME call_indirect
     COMMAND runtest call_indirect
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME if
+    COMMAND runtest if
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 

@@ -155,18 +155,10 @@ void pop_vals_n(vals_t *vals, size_t n, stack_t *stack) {
     }
 }
 
-// pop while stack top is not a frame
-void pop_while_not_frame(stack_t *stack) {
-    while(stack->pool[stack->idx].type != TYPE_FRAME) {
-        stack->idx--;
-    }
-}
-
 void pop_label(label_t *label, stack_t *stack) {
     *label = stack->pool[stack->idx].label;
     stack->idx--;
     list_pop_tail(&stack->labels);
-    //printf("pop label idx: %ld\n", stack->idx);
 }
 
 void try_pop_label(label_t *label, stack_t *stack) {
@@ -182,6 +174,27 @@ void pop_frame(frame_t *frame, stack_t *stack) {
     stack->idx--;
     list_pop_tail(&stack->frames);
     //printf("pop frame idx: %ld\n", stack->idx);
+}
+
+// pop while stack top is not a frame
+void pop_while_not_frame(stack_t *stack) {
+    while(stack->pool[stack->idx].type != TYPE_FRAME) {
+        switch(stack->pool[stack->idx].type) {
+            case TYPE_VAL:
+                stack->idx--;
+                break;
+            case TYPE_FRAME: {
+                frame_t tmp;
+                pop_frame(&tmp, stack);
+                break;
+            }
+            case TYPE_LABEL: {
+                label_t tmp;
+                pop_label(&tmp, stack);
+                break;
+            }
+        }
+    }
 }
 
 // There is no need to use append when instantiating, since everything we need (functions, imports, etc.) is known to us.
@@ -542,7 +555,11 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     else if(ip->in2) {
                         next_ip = ip->in2;
                     }
-
+                    else {
+                        // exec end instruction
+                        static instr_t end = {.op1 = OP_END};
+                        next_ip = &end;
+                    }
                     break;
                 }
 

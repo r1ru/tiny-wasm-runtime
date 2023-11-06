@@ -204,7 +204,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_RETURN: {
                 resulttype_t *ty = C->ret;
                 __throwif(ERR_FAILED, !ty);
-                VECTOR_FOR_EACH(t, ty, valtype_t) {
+                VECTOR_FOR_EACH_REVERSE(t, ty, valtype_t) {
                     __throwiferr(try_pop(*t, stack));
                 }
                 // empty the stack
