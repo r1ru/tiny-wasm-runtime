@@ -790,6 +790,8 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
 
             if(id <= 11 && decoders[id])
                 __throwiferr(decoders[id](m, sec));
+            else
+                PANIC("unknown section id: %x", id);
         }
     }
     __catch:
