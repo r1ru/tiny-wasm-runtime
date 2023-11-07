@@ -38,6 +38,7 @@ static const char *error_msg[] = {
     [-ERR_TRAP_INTERGET_OVERFLOW]                       = "integer overflow",
     [-ERR_TRAP_INVALID_CONVERSION_TO_INTERGER]          = "invalid conversion to integer",
     [-ERR_TRAP_UNDEFINED_ELEMENT]                       = "undefined element",
+    [-ERR_TRAP_UNREACHABLE]                             = "unreachable",
     [-ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH]             = "indirect call type mismatch",
     [-ERR_TRAP_UNINITIALIZED_ELEMENT]                   = "uninitialized element",
     [-ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS]             = "out of bounds memory access",
