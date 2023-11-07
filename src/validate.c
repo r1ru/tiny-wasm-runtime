@@ -41,6 +41,20 @@ static inline error_t try_pop(valtype_t expect, type_stack *stack) {
         return err;
 }
 
+static inline error_t peek_stack_top(valtype_t *t, type_stack *stack) {
+    __try {
+        if(empty(stack)) {
+            __throwif(ERR_TYPE_MISMATCH, !stack->polymorphic);
+            *t = TYPE_ANY;
+        }
+        else {
+            *t = stack->pool[stack->idx];
+        }
+    }
+    __catch:
+        return err;
+}
+
 error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
     // blocktype is expected to be [] -> [t*]
     // todo: consider the case where blocktype is typeidx
@@ -57,6 +71,7 @@ error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
             case TYPE_NUM_F32:
             case TYPE_NUM_F64:
             case TYPE_EXTENREF:
+            case TYPE_FUNCREF:
                 VECTOR_INIT(&ty->rt2, 1, valtype_t);
                 *VECTOR_ELEM(&ty->rt2, 0) = bt.valtype;
                 break;
@@ -253,9 +268,11 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             
             case OP_SELECT: {
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                __throwiferr(try_pop(TYPE_ANY, stack));
-                __throwiferr(try_pop(TYPE_ANY, stack));
-                push(TYPE_ANY, stack);
+                valtype_t t;
+                __throwiferr(peek_stack_top(&t, stack));
+                __throwiferr(try_pop(t, stack));
+                __throwiferr(try_pop(t, stack));
+                push(t, stack);
                 break;
             }
 
@@ -293,14 +310,14 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
 
             case OP_GLOBAL_GET: {
                 globaltype_t *gt = VECTOR_ELEM(&C->globals, ip->globalidx);
-                __throwif(ERR_FAILED, !gt);
+                __throwif(ERR_UNKNOWN_GLOBAL, !gt);
                 push(gt->type, stack);
                 break;
             }
 
              case OP_GLOBAL_SET: {
                 globaltype_t *gt = VECTOR_ELEM(&C->globals, ip->globalidx);
-                __throwif(ERR_FAILED, !gt);
+                __throwif(ERR_UNKNOWN_GLOBAL, !gt);
                 __throwif(ERR_FAILED, !gt->mut);
                 __throwiferr(try_pop(gt->type, stack));
                 break;
@@ -690,6 +707,10 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_F64_PROMOTE_F32:
                 __throwiferr(try_pop(TYPE_NUM_F32, stack));
                 push(TYPE_NUM_F64, stack);
+                break;
+            
+            case OP_REF_NULL:
+                push(ip->t, stack);
                 break;
             
             case OP_REF_FUNC: {

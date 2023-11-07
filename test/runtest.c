@@ -33,6 +33,7 @@ static const char *error_msg[] = {
     [-ERR_UNKNOWN_FUNC]                                 = "unknown function",
     [-ERR_UNKNOWN_TABLE]                                = "unknown table",
     [-ERR_UNKNOWN_TYPE]                                 = "unknown type",
+    [-ERR_UNKNOWN_GLOBAL]                               = "unknown global",
     [-ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL]    = "alignment must not be larger than natural",
     [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]                 = "integer divide by zero",
     [-ERR_TRAP_INTERGET_OVERFLOW]                       = "integer overflow",

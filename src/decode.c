@@ -168,6 +168,8 @@ error_t read_bt(blocktype_t *bt, buffer_t *buf) {
             case TYPE_NUM_I64:
             case TYPE_NUM_F32:
             case TYPE_NUM_F64:
+            case TYPE_EXTENREF:
+            case TYPE_FUNCREF:
                 __throwiferr(read_byte(&bt->valtype, buf));
                 break;
             
@@ -589,6 +591,10 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_I64_EXTEND8_S:
             case OP_I64_EXTEND16_S:
             case OP_I64_EXTEND32_S:
+                break;
+            
+            case OP_REF_NULL:
+                __throwiferr(read_byte(&i->t, buf));
                 break;
             
             case OP_TRUNC_SAT:

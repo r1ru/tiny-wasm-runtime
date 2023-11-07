@@ -7,6 +7,7 @@
 #include "vector.h"
 
 typedef uint8_t     valtype_t;
+typedef uint8_t     reftype_t;
 typedef uint32_t    typeidx_t;
 typedef uint32_t    funcidx_t;
 typedef uint32_t    labelidx_t;
@@ -206,6 +207,7 @@ enum op {
     OP_I64_EXTEND8_S        = 0xC2,
     OP_I64_EXTEND16_S       = 0xC3,
     OP_I64_EXTEND32_S       = 0xC4,
+    OP_REF_NULL             = 0xD0,
     OP_REF_FUNC             = 0xD2,
     OP_TRUNC_SAT            = 0xFC,
 };
@@ -252,6 +254,8 @@ typedef struct instr {
         };
         // select(0x1c)
         VECTOR(valtype_t)       types;
+        // ref.null
+        reftype_t               t;
         memarg_t                m;
         labelidx_t              globalidx;
         labelidx_t              labelidx;
@@ -282,7 +286,6 @@ typedef struct {
     uint32_t    max;
 } limits_t;
 
-typedef uint8_t reftype_t;
 typedef struct {
     reftype_t   reftype;
     limits_t    limits;
