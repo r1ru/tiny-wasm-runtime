@@ -58,6 +58,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/unreached-invalid.wast -o ${CMAKE_CURRENT_BINARY_DIR}/unreached-invalid
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/unwind.wast -o ${CMAKE_CURRENT_BINARY_DIR}/unwind
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/ref_null.wast -o ${CMAKE_CURRENT_BINARY_DIR}/ref_null
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/traps.wast -o ${CMAKE_CURRENT_BINARY_DIR}/traps
 )
 
 add_test(
@@ -314,5 +315,11 @@ add_test(
 add_test(
     NAME ref_null
     COMMAND runtest ref_null
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME traps
+    COMMAND runtest traps
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
