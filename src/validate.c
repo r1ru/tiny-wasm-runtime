@@ -713,6 +713,11 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 push(ip->t, stack);
                 break;
             
+            case OP_REF_IS_NULL:
+                __throwiferr(try_pop(TYPE_ANY, stack));
+                push(TYPE_NUM_I32, stack);
+                break;
+            
             case OP_REF_FUNC: {
                 functype_t *ty = VECTOR_ELEM(&C->funcs, ip->funcidx);
                 __throwif(ERR_UNKNOWN_FUNC, !ty);

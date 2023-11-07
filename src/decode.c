@@ -597,6 +597,9 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 __throwiferr(read_byte(&i->t, buf));
                 break;
             
+            case OP_REF_IS_NULL:
+                break;
+            
             case OP_TRUNC_SAT:
                 __throwiferr(read_byte(&i->op2, buf));
                 break;
