@@ -37,7 +37,7 @@ void push_val(val_t val, stack_t *stack) {
         .type   = TYPE_VAL,
         .val    = val 
     };
-    printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
+    //printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
 }
 
 static inline void push_i32(int32_t val, stack_t *stack) {
@@ -79,7 +79,7 @@ void push_label(label_t label, stack_t *stack) {
         .label  = label 
     };
     list_push_back(&stack->labels, &obj->label.link);
-    printf("push label idx: %ld\n", stack->idx);
+    //printf("push label idx: %ld\n", stack->idx);
 }
 
 void push_frame(frame_t frame, stack_t *stack) {
@@ -93,13 +93,13 @@ void push_frame(frame_t frame, stack_t *stack) {
         .frame  = frame 
     };
     list_push_back(&stack->frames, &obj->frame.link);
-    printf("push frame idx: %ld\n", stack->idx);
+    //printf("push frame idx: %ld\n", stack->idx);
 }
 
 void pop_val(val_t *val, stack_t *stack) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
-    printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
+    //printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
 }
 
 static inline void pop_i32(int32_t *val, stack_t *stack) {
@@ -173,7 +173,7 @@ void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
     list_pop_tail(&stack->frames);
-    printf("pop frame idx: %ld\n", stack->idx);
+    //printf("pop frame idx: %ld\n", stack->idx);
 }
 
 // pop while stack top is not a frame
@@ -428,7 +428,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
     __try {
         while(ip) {
-            printf("[+] ip = %x\n", ip->op1);
+            //printf("[+] ip = %x\n", ip->op1);
             instr_t *next_ip = ip->next;
             static instr_t end = {.op1 = OP_END};
 
@@ -854,6 +854,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 }
 
                 case OP_I32_STORE:
+                case OP_I64_STORE:
                 case OP_F32_STORE:
                 case OP_F64_STORE:
                 case OP_I32_STORE8:
@@ -908,6 +909,9 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     switch(ip->op1) {
                         case OP_I32_STORE:
                             *(int32_t *)(base + offs) = c.num.i32;
+                            break;
+                        case OP_I64_STORE:
+                            *(int64_t *)(base + offs) = c.num.i64;
                             break;
                         case OP_F32_STORE:
                             *(float *)(base + offs) = c.num.f32;
