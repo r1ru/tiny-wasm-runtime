@@ -210,7 +210,7 @@ enum op {
     OP_REF_NULL             = 0xD0,
     OP_REF_IS_NULL          = 0xD1,
     OP_REF_FUNC             = 0xD2,
-    OP_TRUNC_SAT            = 0xFC,
+    OP_0XFC                 = 0xFC,
 };
 
 typedef union {
