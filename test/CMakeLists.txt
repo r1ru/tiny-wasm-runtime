@@ -40,6 +40,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/br_table.wast -o ${CMAKE_CURRENT_BINARY_DIR}/br_table
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/call.wast -o ${CMAKE_CURRENT_BINARY_DIR}/call
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/call_indirect.wast -o ${CMAKE_CURRENT_BINARY_DIR}/call_indirect
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/return.wast -o ${CMAKE_CURRENT_BINARY_DIR}/return
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/if.wast -o ${CMAKE_CURRENT_BINARY_DIR}/if
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/loop.wast -o ${CMAKE_CURRENT_BINARY_DIR}/loop
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/load.wast -o ${CMAKE_CURRENT_BINARY_DIR}/load
@@ -47,6 +48,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/func.wast -o ${CMAKE_CURRENT_BINARY_DIR}/func
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/endianness.wast -o ${CMAKE_CURRENT_BINARY_DIR}/endianness
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/align.wast -o ${CMAKE_CURRENT_BINARY_DIR}/align
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/left-to-right.wast -o ${CMAKE_CURRENT_BINARY_DIR}/left-to-right
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/left-to-right.wast -o ${CMAKE_CURRENT_BINARY_DIR}/left-to-right
 )
 
@@ -221,6 +223,12 @@ add_test(
 add_test(
     NAME call_indirect
     COMMAND runtest call_indirect
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME return
+    COMMAND runtest return
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
