@@ -165,7 +165,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->labelidx);
                 __throwif(ERR_UNKNOWN_LABEL, !l);
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                VECTOR_FOR_EACH(t, &l->ty, valtype_t) {
+                VECTOR_FOR_EACH_REVERSE(t, &l->ty, valtype_t) {
                     __throwiferr(try_pop(*t, stack));
                 }
                 VECTOR_FOR_EACH(t, &l->ty, valtype_t) {
@@ -191,7 +191,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 }
 
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                VECTOR_FOR_EACH(t, &default_label->ty, valtype_t) {
+                VECTOR_FOR_EACH_REVERSE(t, &default_label->ty, valtype_t) {
                     __throwiferr(try_pop(*t, stack));
                 }
 
@@ -958,7 +958,7 @@ error_t validate_module(module_t *mod) {
             functype_t *expect = VECTOR_ELEM(&C.funcs, i);
             func_t *func = VECTOR_ELEM(&mod->funcs, i);
             functype_t *functype = VECTOR_ELEM(&C.types, func->type);
-            __throwif(ERR_FAILED, !functype);
+            __throwif(ERR_UNKNOWN_TYPE, !functype);
             *expect = *functype;
         }
 

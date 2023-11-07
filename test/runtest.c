@@ -256,6 +256,9 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                     );
                 }
             }
+            else {
+                PANIC("unknown action: %s", action_type);
+            }
         }
         else if(strcmp(type, "assert_invalid") == 0) {
             const char *fpath = json_object_get_string(command, "filename");

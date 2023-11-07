@@ -42,6 +42,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/loop.wast -o ${CMAKE_CURRENT_BINARY_DIR}/loop
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/load.wast -o ${CMAKE_CURRENT_BINARY_DIR}/load
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/local_tee.wast -o ${CMAKE_CURRENT_BINARY_DIR}/local_tee
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/func.wast -o ${CMAKE_CURRENT_BINARY_DIR}/func
 )
 
 add_test(
@@ -221,5 +222,11 @@ add_test(
 add_test(
     NAME local_tee
     COMMAND runtest local_tee
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME func
+    COMMAND runtest func
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

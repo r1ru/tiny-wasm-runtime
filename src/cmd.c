@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/if.0.wasm", O_RDONLY);
+    int fd = open("./build/test/func.2.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -149,12 +149,11 @@ int main(int argc, char *argv[]) {
         PANIC("insntiation failed");
 
     args_t args;
-    VECTOR_INIT(&args, 2, arg_t);
-    *VECTOR_ELEM(&args, 0) = (arg_t) {.type = TYPE_NUM_I64, .val.num.i64 = 0};
-    *VECTOR_ELEM(&args, 1) = (arg_t) {.type = TYPE_NUM_I64, .val.num.i64 = 0};
+    VECTOR_INIT(&args, 1, arg_t);
+    *VECTOR_ELEM(&args, 0) = (arg_t) {.type = TYPE_NUM_I32, .val.num.i32 = 0};
 
     // invoke
-    err = invoke(S, 50, &args);
+    err = invoke(S, 2, &args);
     if(IS_ERROR(err))
         PANIC("invocation faile: %d", err);
     
