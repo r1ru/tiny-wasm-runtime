@@ -12,6 +12,7 @@ target_link_libraries(runtest tiny_wasm_runtime)
 add_custom_target(
     tests ALL
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/comments.wast -o ${CMAKE_CURRENT_BINARY_DIR}/comments
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/inline-module.wast -o ${CMAKE_CURRENT_BINARY_DIR}/inline-module
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/int_literals.wast -o ${CMAKE_CURRENT_BINARY_DIR}/int_literals
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/i32.wast -o ${CMAKE_CURRENT_BINARY_DIR}/i32
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/i64.wast -o ${CMAKE_CURRENT_BINARY_DIR}/i64
@@ -51,6 +52,12 @@ add_custom_target(
 add_test(
     NAME comments
     COMMAND runtest comments
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME inline-module
+    COMMAND runtest inline-module
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
