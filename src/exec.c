@@ -791,7 +791,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     }
 
                     if(ea + n > WASM_MEM_SIZE) {
-                        PANIC("out of range");
+                        __throw(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS);
                     }
 
                     int32_t idx = ea >> 12;
@@ -894,7 +894,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     }
 
                     if(ea + n > WASM_MEM_SIZE) {
-                        PANIC("out of range");
+                        __throw(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS);
                     }
 
                     int32_t idx = ea >> 12;

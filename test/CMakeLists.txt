@@ -44,6 +44,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/local_tee.wast -o ${CMAKE_CURRENT_BINARY_DIR}/local_tee
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/func.wast -o ${CMAKE_CURRENT_BINARY_DIR}/func
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/endianness.wast -o ${CMAKE_CURRENT_BINARY_DIR}/endianness
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/align.wast -o ${CMAKE_CURRENT_BINARY_DIR}/align
 )
 
 add_test(
@@ -235,5 +236,11 @@ add_test(
 add_test(
     NAME endianness
     COMMAND runtest endianness
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME align
+    COMMAND runtest align
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

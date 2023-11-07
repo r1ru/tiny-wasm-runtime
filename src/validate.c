@@ -347,7 +347,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         n = 2;
                         break;
                 }
-                __throwif(ERR_FAILED, (1 << ip->m.align) > n);
+                __throwif(ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL, (1 << ip->m.align) > n);
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 valtype_t t;
                 switch(ip->op1) {
@@ -408,7 +408,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         n = 2;
                         break;
                 }
-                __throwif(ERR_FAILED, (1 << ip->m.align) > n);
+                __throwif(ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL, (1 << ip->m.align) > n);
                 valtype_t t;
                 switch(ip->op1) {
                     case OP_I32_STORE:

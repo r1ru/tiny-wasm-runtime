@@ -25,20 +25,22 @@ typedef struct {
 } test_ctx_t;
 
 static const char *error_msg[] = {
-    [-ERR_SUCCESS]                              = "",
-    [-ERR_FAILED]                               = "",
-    [-ERR_TYPE_MISMATCH]                        = "type mismatch",
-    [-ERR_UNKNOWN_LOCAL]                        = "unknown local",
-    [-ERR_UNKNOWN_LABEL]                        = "unknown label",
-    [-ERR_UNKNOWN_FUNC]                         = "unknown function",
-    [-ERR_UNKNOWN_TABLE]                        = "unknown table",
-    [-ERR_UNKNOWN_TYPE]                         = "unknown type",
-    [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]         = "integer divide by zero",
-    [-ERR_TRAP_INTERGET_OVERFLOW]               = "integer overflow",
-    [-ERR_TRAP_INVALID_CONVERSION_TO_INTERGER]  = "invalid conversion to integer",
-    [-ERR_TRAP_UNDEFINED_ELEMENT]               = "undefined element",
-    [-ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH]     = "indirect call type mismatch",
-    [-ERR_TRAP_UNINITIALIZED_ELEMENT]           = "uninitialized element"
+    [-ERR_SUCCESS]                                      = "",
+    [-ERR_FAILED]                                       = "",
+    [-ERR_TYPE_MISMATCH]                                = "type mismatch",
+    [-ERR_UNKNOWN_LOCAL]                                = "unknown local",
+    [-ERR_UNKNOWN_LABEL]                                = "unknown label",
+    [-ERR_UNKNOWN_FUNC]                                 = "unknown function",
+    [-ERR_UNKNOWN_TABLE]                                = "unknown table",
+    [-ERR_UNKNOWN_TYPE]                                 = "unknown type",
+    [-ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL]    = "alignment must not be larger than natural",
+    [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]                 = "integer divide by zero",
+    [-ERR_TRAP_INTERGET_OVERFLOW]                       = "integer overflow",
+    [-ERR_TRAP_INVALID_CONVERSION_TO_INTERGER]          = "invalid conversion to integer",
+    [-ERR_TRAP_UNDEFINED_ELEMENT]                       = "undefined element",
+    [-ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH]             = "indirect call type mismatch",
+    [-ERR_TRAP_UNINITIALIZED_ELEMENT]                   = "uninitialized element",
+    [-ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS]             = "out of bounds memory access",
 };
 
 // helpers
