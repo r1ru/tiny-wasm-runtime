@@ -56,6 +56,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/unreachable.wast -o ${CMAKE_CURRENT_BINARY_DIR}/unreachable
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/unreached-valid.wast -o ${CMAKE_CURRENT_BINARY_DIR}/unreached-valid
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/unreached-invalid.wast -o ${CMAKE_CURRENT_BINARY_DIR}/unreached-invalid
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/unwind.wast -o ${CMAKE_CURRENT_BINARY_DIR}/unwind
 )
 
 add_test(
@@ -300,5 +301,11 @@ add_test(
 add_test(
     NAME unreached-invalid
     COMMAND runtest unreached-invalid
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME unwind
+    COMMAND runtest unwind
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
