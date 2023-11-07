@@ -725,6 +725,18 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     break;
                 }
 
+                case 5: {
+                    __throwiferr(read_byte(&elem->type, buf));
+                    uint32_t n;
+                    __throwiferr(read_u32_leb128(&n, buf));
+                    VECTOR_INIT(&elem->init, n, expr_t);
+                    VECTOR_FOR_EACH(e, &elem->init, expr_t) {
+                        __throwiferr(decode_expr(e, buf));
+                    }
+                    elem->mode.kind = 1; // passive
+                    break;
+                }
+
                 default:
                     PANIC("unsupported element: %x", kind);
             }
