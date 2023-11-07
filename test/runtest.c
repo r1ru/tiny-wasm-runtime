@@ -145,7 +145,17 @@ static void convert_to_arg(arg_t *arg, JSON_Object *obj) {
     }
     else if(strcmp(ty, "externref") == 0) {
         arg->type = TYPE_EXTENREF;
-        arg->val.num.i32 = strtoimax(val, NULL, 0);
+        if(strcmp(val, "null") == 0)
+            arg->val.ref = -1;
+        else
+            arg->val.ref = strtoimax(val, NULL, 0);
+    }
+    else if(strcmp(ty, "funcref") == 0) {
+        arg->type = TYPE_FUNCREF;
+        if(strcmp(val, "null") == 0)
+            arg->val.ref = -1;
+        else
+            arg->val.ref = strtoimax(val, NULL, 0);
     }
     else {
         PANIC("unknown arg type: %s", ty);
@@ -242,7 +252,17 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                             case TYPE_NUM_F64:
                                 __throwif(ERR_FAILED, ret->val.num.i64 != expect->val.num.i64);
                                 break;
+                            
+                            case TYPE_EXTENREF:
+                                __throwif(ERR_FAILED, ret->val.ref != expect->val.ref);
+                                break;
+
+                            case TYPE_FUNCREF:
+                                 __throwif(ERR_FAILED, ret->val.ref != expect->val.ref);
+                                break;
                             // todo: add here
+                            default:
+                                PANIC("unknown type: %x", expect->type);
                         }
                     }
                 } else {

@@ -872,7 +872,8 @@ static bool is_constant_expr(expr_t *expr) {
     instr_t *i = *expr;
     while(i->op1 != OP_END) {
         // return false if i is not t.const
-        if((i->op1 < 0x41 || 0x44 < i->op1) && (i->op1 != OP_REF_FUNC)) {
+        if((i->op1 < 0x41 || 0x44 < i->op1) && (i->op1 != OP_REF_FUNC) && (i->op1 != OP_REF_NULL)) {
+            WARN("not constant: %x", i->op1);
             return false;
         }
         i = i->next;

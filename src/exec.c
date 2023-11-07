@@ -1561,6 +1561,10 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 case OP_I64_EXTEND32_S: 
                     push_i64((int64_t)(int32_t)lhs_i64, S->stack);
                     break;
+                
+                case OP_REF_NULL:
+                    push_val((val_t){.ref = REF_NULL}, S->stack);
+                    break;
 
                 case OP_TRUNC_SAT:
                     switch(ip->op2) {
