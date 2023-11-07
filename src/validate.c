@@ -737,7 +737,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             }
             
-            case OP_TRUNC_SAT:
+            case OP_0XFC:
                 switch(ip->op2) {
                     case 0x00:
                     case 0x01:
@@ -762,6 +762,23 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         __throwiferr(try_pop(TYPE_NUM_F64, stack));
                         push(TYPE_NUM_I64, stack);
                         break;
+                    
+                    // table.copy
+                    case 0x0E: {
+                        tabletype_t *tt1 = VECTOR_ELEM(&C->tables, ip->x);
+                        __throwif(ERR_UNKNOWN_TABLE, !tt1);
+                        tabletype_t *tt2 = VECTOR_ELEM(&C->tables, ip->y);
+                        __throwif(ERR_UNKNOWN_TABLE, !tt2);
+                        __throwif(ERR_TYPE_MISMATCH, tt1->reftype != tt2->reftype);
+                        // validt with type [i32 i32 i32] -> []
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        break;
+                    }
+
+                    default:
+                        PANIC("Validation: unsupported opcode: 0x7c %x", ip->op2);
                 }
                 break;
             
