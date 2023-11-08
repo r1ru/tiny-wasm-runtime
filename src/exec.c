@@ -62,7 +62,7 @@ static inline void push_f64(double val, stack_t *stack) {
 
 // todo: fix this?
 void push_vals(vals_t vals, stack_t *stack) {
-    size_t num_vals = vals.n;
+    size_t num_vals = vals.len;
     for(int32_t i = (num_vals - 1); 0 <= i; i--) {
         push_val(vals.elem[i], stack);
     }
@@ -209,7 +209,7 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
 
     // allocate funcs
     // In this implementation, the index always matches the address.
-    uint32_t num_funcs = module->funcs.n;
+    uint32_t num_funcs = module->funcs.len;
     moduleinst->funcaddrs = malloc(sizeof(funcaddr_t) * num_funcs);
     for(uint32_t i = 0; i < num_funcs; i++) {
         func_t *func = VECTOR_ELEM(&module->funcs, i);
@@ -225,7 +225,7 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
     }
 
     // allocate tables
-    uint32_t num_tables = module->tables.n;
+    uint32_t num_tables = module->tables.len;
     moduleinst->tableaddrs = malloc(sizeof(tableaddr_t) * num_tables);
     for(uint32_t i = 0; i < num_tables; i++) {
         table_t *table = VECTOR_ELEM(&module->tables, i);
@@ -243,7 +243,7 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
     }
 
     // allocate mems
-    uint32_t num_mems = module->mems.n;
+    uint32_t num_mems = module->mems.len;
     moduleinst->memaddrs = malloc(sizeof(memaddr_t) * num_mems);
     for(uint32_t i = 0; i < num_mems; i++) {
         mem_t *mem = VECTOR_ELEM(&module->mems, i);
@@ -270,11 +270,11 @@ error_t instantiate(store_t **S, module_t *module) {
         // allocate stack
         new_stack(&store->stack);
         
-        VECTOR_NEW(&store->funcs, module->funcs.n);
-        VECTOR_NEW(&store->tables, module->tables.n);
-        VECTOR_NEW(&store->mems, module->mems.n);
-        VECTOR_NEW(&store->globals, module->globals.n);
-        VECTOR_NEW(&store->elems, module->elems.n);
+        VECTOR_NEW(&store->funcs, module->funcs.len);
+        VECTOR_NEW(&store->tables, module->tables.len);
+        VECTOR_NEW(&store->mems, module->mems.len);
+        VECTOR_NEW(&store->globals, module->globals.len);
+        VECTOR_NEW(&store->elems, module->elems.len);
 
         moduleinst_t *moduleinst = allocmodule(store, module);
 
@@ -282,7 +282,7 @@ error_t instantiate(store_t **S, module_t *module) {
         frame_t F = {.module = moduleinst, .locals = NULL};
         push_frame(F, store->stack);
 
-        uint32_t num_globals = module->globals.n;
+        uint32_t num_globals = module->globals.len;
         moduleinst->globaladdrs = malloc(sizeof(globaladdr_t) * num_globals);
         for(uint32_t i = 0; i < num_globals; i++) {
             global_t *global = VECTOR_ELEM(&module->globals, i);
@@ -297,7 +297,7 @@ error_t instantiate(store_t **S, module_t *module) {
         }
 
         // init table if elemmode is active
-        for(uint32_t i = 0; i < module->elems.n; i++) {
+        for(uint32_t i = 0; i < module->elems.len; i++) {
             elem_t *elem = VECTOR_ELEM(&module->elems, i);
             tableidx_t tableidx = elem->mode.table;
 
@@ -307,7 +307,7 @@ error_t instantiate(store_t **S, module_t *module) {
             pop_i32(&d, store->stack);
 
             // exec i32.const 0; i32.const n;
-            n = elem->init.n;
+            n = elem->init.len;
             s = 0;
 
             // exec table.init tableidx i
@@ -315,7 +315,7 @@ error_t instantiate(store_t **S, module_t *module) {
                 tableaddr_t ta = F.module->tableaddrs[tableidx];
                 tableinst_t *tab = VECTOR_ELEM(&store->tables, ta);
 
-                if(s + n > elem->init.n || d + n > tab->elem.n) {
+                if(s + n > elem->init.len || d + n > tab->elem.len) {
                     PANIC("trap");
                 }
 
@@ -345,11 +345,11 @@ error_t instantiate(store_t **S, module_t *module) {
 }
 
 static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
-    ty->rt1 = (resulttype_t){.n = 0, .elem = NULL};
+    ty->rt1 = (resulttype_t){.len = 0, .elem = NULL};
 
     switch(bt.valtype) {
         case 0x40:
-            ty->rt2 = (resulttype_t){.n = 0, .elem = NULL};
+            ty->rt2 = (resulttype_t){.len = 0, .elem = NULL};
             break;
 
         case TYPE_NUM_I32:
@@ -505,12 +505,12 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     functype_t ty;
                     expand_F(&ty, ip->bt, F);
                     label_t L = {
-                        .arity  = ty.rt2.n,
+                        .arity  = ty.rt2.len,
                         .parent = ip,
                         .continuation = &end,
                     };
                     vals_t vals;
-                    pop_vals_n(&vals, ty.rt1.n, S->stack);
+                    pop_vals_n(&vals, ty.rt1.len, S->stack);
                     push_label(L, S->stack);
                     push_vals(vals, S->stack);
                     next_ip = ip->in1;
@@ -521,12 +521,12 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     functype_t ty;
                     expand_F(&ty, ip->bt, F);
                     label_t L = {
-                        .arity = ty.rt1.n,
+                        .arity = ty.rt1.len,
                         .parent = ip,
                         .continuation = ip,
                     };
                     vals_t vals;
-                    pop_vals_n(&vals, ty.rt1.n, S->stack);
+                    pop_vals_n(&vals, ty.rt1.len, S->stack);
                     push_label(L, S->stack);
                     push_vals(vals, S->stack);
                     next_ip = ip->in1;
@@ -540,12 +540,12 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     functype_t ty;
                     expand_F(&ty, ip->bt, F);
                     label_t L = {
-                        .arity = ty.rt2.n,
+                        .arity = ty.rt2.len,
                         .parent = ip,
                         .continuation = &end,
                     };
                     vals_t vals;
-                    pop_vals_n(&vals, ty.rt1.n, S->stack);
+                    pop_vals_n(&vals, ty.rt1.len, S->stack);
                     push_label(L, S->stack);
                     push_vals(vals, S->stack);
 
@@ -595,7 +595,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                 case OP_BR_TABLE:
                     pop_i32(&c, S->stack);
-                    if(c < ip->labels.n) {
+                    if(c < ip->labels.len) {
                         idx = ip->labels.elem[c];
                     }
                     else {
@@ -656,7 +656,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                     int32_t i;
                     pop_i32(&i, S->stack);
-                    __throwif(ERR_TRAP_UNDEFINED_ELEMENT, i >= tab->elem.n);
+                    __throwif(ERR_TRAP_UNDEFINED_ELEMENT, i >= tab->elem.len);
                     ref_t r = *VECTOR_ELEM(&tab->elem, i);
                     __throwif(ERR_TRAP_UNINITIALIZED_ELEMENT, r == REF_NULL);
 
@@ -665,16 +665,16 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                     __throwif(
                         ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH, 
-                        ft_expect->rt1.n != ft_actual->rt1.n || ft_expect->rt2.n != ft_actual->rt2.n
+                        ft_expect->rt1.len != ft_actual->rt1.len || ft_expect->rt2.len != ft_actual->rt2.len
                     );
 
-                    for(uint32_t i = 0; i < ft_expect->rt1.n; i++) {
+                    for(uint32_t i = 0; i < ft_expect->rt1.len; i++) {
                         valtype_t e = *VECTOR_ELEM(&ft_expect->rt1, i);
                         valtype_t a = *VECTOR_ELEM(&ft_actual->rt1, i);
                         __throwif(ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH, e != a);
                     }
 
-                    for(uint32_t i = 0; i < ft_expect->rt2.n; i++) {
+                    for(uint32_t i = 0; i < ft_expect->rt2.len; i++) {
                         valtype_t e = *VECTOR_ELEM(&ft_expect->rt2, i);
                         valtype_t a = *VECTOR_ELEM(&ft_actual->rt2, i);
                         __throwif(ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH, e != a);
@@ -747,7 +747,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     tableinst_t *tab = VECTOR_ELEM(&S->tables, a);
                     int32_t i;
                     pop_i32(&i, S->stack);
-                    __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, !(i < tab->elem.n));
+                    __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, !(i < tab->elem.len));
                     val_t val;
                     val.ref = *VECTOR_ELEM(&tab->elem, i);
                     push_val(val, S->stack);
@@ -761,7 +761,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     pop_val(&val, S->stack);
                     int32_t i;
                     pop_i32(&i, S->stack);
-                    __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, !(i < tab->elem.n));
+                    __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, !(i < tab->elem.len));
                     *VECTOR_ELEM(&tab->elem, i) = val.ref;
                     break;
                 }
@@ -1643,7 +1643,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             pop_i32(&i, S->stack);
 
                             while(1) {
-                                __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, i + n > tab->elem.n);
+                                __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, i + n > tab->elem.len);
 
                                 if(n == 0)
                                     break;
@@ -1686,22 +1686,22 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
 
     // create new frame
     frame_t frame;
-    uint32_t num_locals = functype->rt1.n + funcinst->code->locals.n;
+    uint32_t num_locals = functype->rt1.len + funcinst->code->locals.len;
     frame.module = funcinst->module;
     frame.locals = malloc(sizeof(val_t) * num_locals);
 
     // pop args
-    for(int32_t i = (functype->rt1.n - 1); 0 <= i; i--) {
+    for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
         pop_val(&frame.locals[i], S->stack);
     }
 
     // push activation frame
-    frame.arity  = functype->rt2.n;
+    frame.arity  = functype->rt2.len;
     push_frame(frame, S->stack);
 
     // create label L
     static instr_t end = {.op1 = OP_END, .next = NULL};
-    label_t L = {.arity = functype->rt2.n, .parent = NULL, .continuation = &end};
+    label_t L = {.arity = functype->rt2.len, .parent = NULL, .continuation = &end};
 
     __try {
         // enter instr* with label L
@@ -1728,7 +1728,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         __throwif(ERR_FAILED, !funcinst);
 
         functype_t *functype = funcinst->type;
-        __throwif(ERR_FAILED, args->n != functype->rt1.n);
+        __throwif(ERR_FAILED, args->len != functype->rt1.len);
 
         size_t idx = 0;
         VECTOR_FOR_EACH(arg, args) {
@@ -1748,7 +1748,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
 
         // reuse args to return results since it is no longer used.
         //free(args->elem);
-        VECTOR_NEW(args, functype->rt2.n);
+        VECTOR_NEW(args, functype->rt2.len);
         idx = 0;
         VECTOR_FOR_EACH_REVERSE(ret, args) {
             ret->type = *VECTOR_ELEM(&functype->rt2, idx++);

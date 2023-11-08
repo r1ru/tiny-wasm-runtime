@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 typedef struct {
-    size_t  n;
+    size_t  len;
     void    *elem;
 } vector_t;
 
@@ -16,8 +16,8 @@ error_t vector_concat(vector_t *dst, vector_t *src1, vector_t *src2, size_t ent_
 // useful macros
 #define VECTOR(type)                                                                    \
     struct {                                                                            \
-        size_t    n;                                                                    \
-        type        *elem;                                                              \
+        size_t    len;                                                                  \
+        type      *elem;                                                                \
     }
  
 #define VECTOR_INIT(vec)                                                                \
@@ -39,18 +39,18 @@ error_t vector_concat(vector_t *dst, vector_t *src1, vector_t *src2, size_t ent_
 
 #define VECTOR_FOR_EACH(iter, vec)                                                      \
     for(__typeof__((vec)->elem) iter = &(vec)->elem[0];                                 \
-        iter != &(vec)->elem[(vec)->n];                                                 \
+        iter != &(vec)->elem[(vec)->len];                                               \
         iter++                                                                          \
     )
 
 #define VECTOR_FOR_EACH_REVERSE(iter, vec)                                              \
-    for(__typeof__((vec)->elem) iter = &(vec)->elem[(vec)->n - 1];                      \
-        (vec)->n != 0 &&  iter != &(vec)->elem[-1];                                     \
+    for(__typeof__((vec)->elem) iter = &(vec)->elem[(vec)->len - 1];                    \
+        (vec)->len != 0 &&  iter != &(vec)->elem[-1];                                   \
         iter--                                                                          \
     )
 
 #define VECTOR_ELEM(vec, idx)                                                           \
     ({                                                                                  \
         size_t __i = (idx);                                                             \
-        (vec)->n != 0 && 0 <= __i && __i <= ((vec)->n - 1) ? &(vec)->elem[__i] : NULL;  \
+        (vec)->len != 0 && 0 <= __i && __i <= ((vec)->len - 1) ? &(vec)->elem[__i] : NULL;  \
     })
