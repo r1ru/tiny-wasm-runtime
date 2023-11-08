@@ -197,7 +197,7 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
             // instantiate
             __throwif(ERR_FAILED, IS_ERROR(instantiate(&ctx->store, ctx->mod)));
         }
-        else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0) {
+        else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0 || strcmp(type, "action") == 0) {
             JSON_Object *action = json_object_get_object(command, "action");
             const char *action_type = json_object_get_string(action, "type");
 
@@ -266,6 +266,8 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                                 PANIC("unknown type: %x", expect->type);
                         }
                     }
+                } else if(strcmp(type, "action") == 0) {
+                    __throwif(ERR_FAILED, IS_ERROR(invoke(ctx->store, addr, &args)));
                 } else {
                     error_t ret = invoke(ctx->store, addr, &args);
                     // check that invocation fails
