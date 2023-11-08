@@ -165,7 +165,7 @@ static void convert_to_arg(arg_t *arg, JSON_Object *obj) {
 }
 
 static void convert_to_args(args_t *args, JSON_Array *array) {
-    VECTOR_INIT(args, json_array_get_count(array), arg_t);
+    VECTOR_NEW(args, json_array_get_count(array));
 
     size_t idx = 0;
     VECTOR_FOR_EACH(arg, args) {

@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
         PANIC("insntiation failed");
 
     args_t args;
-    VECTOR_INIT(&args, 3, arg_t);
+    VECTOR_NEW(&args, 3);
     *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 8};
     *VECTOR_ELEM(&args, 1) = (arg_t){.type = TYPE_EXTENREF, .val.ref = 4};
     *VECTOR_ELEM(&args, 2) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 2};

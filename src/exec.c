@@ -137,7 +137,7 @@ void pop_vals(vals_t *vals, stack_t *stack) {
     }
     
     // init vector
-    VECTOR_INIT(vals, num_vals, val_t);
+    VECTOR_NEW(vals, num_vals);
     
     // pop values
     VECTOR_FOR_EACH(val, vals) {
@@ -147,7 +147,7 @@ void pop_vals(vals_t *vals, stack_t *stack) {
 
 void pop_vals_n(vals_t *vals, size_t n, stack_t *stack) {
     // init vector
-    VECTOR_INIT(vals, n, val_t);
+    VECTOR_NEW(vals, n);
     
     // pop values
     VECTOR_FOR_EACH(val, vals) {
@@ -233,7 +233,7 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
 
         uint32_t n = table->type.limits.min;
         tableinst->type = table->type;
-        VECTOR_INIT(&tableinst->elem, n, ref_t);
+        VECTOR_NEW(&tableinst->elem, n);
 
         // init with ref.null
         VECTOR_FOR_EACH(elem, &tableinst->elem) {
@@ -270,11 +270,11 @@ error_t instantiate(store_t **S, module_t *module) {
         // allocate stack
         new_stack(&store->stack);
         
-        VECTOR_INIT(&store->funcs, module->funcs.n, funcinst_t);
-        VECTOR_INIT(&store->tables, module->tables.n, tableinst_t);
-        VECTOR_INIT(&store->mems, module->mems.n, meminst_t);
-        VECTOR_INIT(&store->globals, module->globals.n, globalinst_t);
-        VECTOR_INIT(&store->elems, module->elems.n, eleminst_t);
+        VECTOR_NEW(&store->funcs, module->funcs.n);
+        VECTOR_NEW(&store->tables, module->tables.n);
+        VECTOR_NEW(&store->mems, module->mems.n);
+        VECTOR_NEW(&store->globals, module->globals.n);
+        VECTOR_NEW(&store->elems, module->elems.n);
 
         moduleinst_t *moduleinst = allocmodule(store, module);
 
@@ -357,7 +357,7 @@ static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
         case TYPE_NUM_F32:
         case TYPE_NUM_F64:
         case TYPE_EXTENREF:
-            VECTOR_INIT(&ty->rt2, 1, valtype_t);
+            VECTOR_NEW(&ty->rt2, 1);
             *VECTOR_ELEM(&ty->rt2, 0) = bt.valtype;
             break;
 
@@ -1748,7 +1748,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
 
         // reuse args to return results since it is no longer used.
         //free(args->elem);
-        VECTOR_INIT(args, functype->rt2.n, arg_t);
+        VECTOR_NEW(args, functype->rt2.n);
         idx = 0;
         VECTOR_FOR_EACH_REVERSE(ret, args) {
             ret->type = *VECTOR_ELEM(&functype->rt2, idx++);

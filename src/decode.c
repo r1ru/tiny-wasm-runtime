@@ -201,7 +201,7 @@ error_t decode_typesec(module_t *mod, buffer_t*buf) {
         uint32_t n1;
         __throwiferr(read_u32_leb128(&n1, buf));
 
-        VECTOR_INIT(&mod->types, n1, functype_t);
+        VECTOR_NEW(&mod->types, n1);
 
         VECTOR_FOR_EACH(functype, &mod->types) {
             // expected to be 0x60
@@ -212,14 +212,14 @@ error_t decode_typesec(module_t *mod, buffer_t*buf) {
             // decode parameter types
             uint32_t n2;
             __throwiferr(read_u32_leb128(&n2, buf));
-            VECTOR_INIT(&functype->rt1, n2, valtype_t);
+            VECTOR_NEW(&functype->rt1, n2);
             VECTOR_FOR_EACH(valtype, &functype->rt1) {
                 __throwiferr(read_byte(valtype, buf));
             }
 
             // decode return types
             __throwiferr(read_u32_leb128(&n2, buf));
-            VECTOR_INIT(&functype->rt2, n2, valtype_t);
+            VECTOR_NEW(&functype->rt2, n2);
             VECTOR_FOR_EACH(valtype, &functype->rt2) {
                 __throwiferr(read_byte(valtype, buf));
             }
@@ -234,7 +234,7 @@ error_t decode_funcsec(module_t *mod, buffer_t *buf) {
         uint32_t n;
         __throwiferr(read_u32_leb128(&n, buf));
 
-        VECTOR_INIT(&mod->funcs, n, func_t);
+        VECTOR_NEW(&mod->funcs, n);
 
         VECTOR_FOR_EACH(func, &mod->funcs) {
             __throwiferr(read_u32_leb128(&func->type, buf));
@@ -265,7 +265,7 @@ error_t decode_tablesec(module_t *mod, buffer_t *buf) {
         uint32_t n;
         __throwiferr(read_u32_leb128(&n, buf));
 
-        VECTOR_INIT(&mod->tables, n, table_t);
+        VECTOR_NEW(&mod->tables, n);
         
         VECTOR_FOR_EACH(table, &mod->tables) {
             __throwiferr(read_byte(&table->type.reftype, buf));
@@ -281,7 +281,7 @@ error_t decode_memsec(module_t *mod, buffer_t *buf) {
         uint32_t n;
         __throwiferr(read_u32_leb128(&n, buf));
 
-        VECTOR_INIT(&mod->mems, n, mem_t);
+        VECTOR_NEW(&mod->mems, n);
         
         uint8_t has_max;
         VECTOR_FOR_EACH(mem, &mod->mems) {
@@ -296,7 +296,7 @@ error_t decode_exportsec(module_t *mod, buffer_t *buf) {
     __try {
         uint32_t n;
         __throwiferr(read_u32_leb128(&n, buf));
-        VECTOR_INIT(&mod->exports, n, export_t);
+        VECTOR_NEW(&mod->exports, n);
 
         VECTOR_FOR_EACH(export, &mod->exports) {
             __throwiferr(read_bytes(&export->name, buf));
@@ -363,7 +363,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_BR_TABLE: {
                 uint32_t n;
                 __throwiferr(read_u32_leb128(&n, buf));
-                VECTOR_INIT(&i->labels, n, labelidx_t);
+                VECTOR_NEW(&i->labels, n);
                 VECTOR_FOR_EACH(l, &i->labels) {
                     __throwiferr(read_u32_leb128(l, buf));
                 }
@@ -390,7 +390,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_SELECT_T: {
                 uint32_t n;
                 __throwiferr(read_u32_leb128(&n, buf));
-                VECTOR_INIT(&i->types, n, valtype_t);
+                VECTOR_NEW(&i->types, n);
                 VECTOR_FOR_EACH(t, &i->types) {
                     __throwiferr(read_byte(t, buf));
                 }
@@ -666,7 +666,7 @@ error_t decode_globalsec(module_t *mod, buffer_t *buf) {
         uint32_t n;
         __throwiferr(read_u32_leb128(&n, buf));
 
-        VECTOR_INIT(&mod->globals, n, global_t);
+        VECTOR_NEW(&mod->globals, n);
         
         VECTOR_FOR_EACH(g, &mod->globals) {
             __throwiferr(read_byte(&g->gt.type, buf));
@@ -683,7 +683,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
         uint32_t n;
         __throwiferr(read_u32_leb128(&n, buf));
 
-        VECTOR_INIT(&mod->elems, n,elem_t);
+        VECTOR_NEW(&mod->elems, n);
 
         uint32_t kind;
         VECTOR_FOR_EACH(elem, &mod->elems) {
@@ -700,7 +700,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     __throwiferr(read_u32_leb128(&n, buf));
 
                     // create init exprs
-                    VECTOR_INIT(&elem->init, n, expr_t);
+                    VECTOR_NEW(&elem->init, n);
                     static instr_t end = {.op1 = OP_END};
 
                     VECTOR_FOR_EACH(e, &elem->init) {
@@ -733,7 +733,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     __throwiferr(read_u32_leb128(&n, buf));
 
                     // create init exprs
-                    VECTOR_INIT(&elem->init, n, expr_t);
+                    VECTOR_NEW(&elem->init, n);
                     static instr_t end = {.op1 = OP_END};
 
                     VECTOR_FOR_EACH(e, &elem->init) {
@@ -755,7 +755,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     __throwiferr(read_byte(&elem->type, buf));
                     uint32_t n;
                     __throwiferr(read_u32_leb128(&n, buf));
-                    VECTOR_INIT(&elem->init, n, expr_t);
+                    VECTOR_NEW(&elem->init, n);
                     VECTOR_FOR_EACH(e, &elem->init) {
                         __throwiferr(decode_expr(e, buf));
                     }
@@ -788,7 +788,7 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
             uint32_t n2;
 
             __throwiferr(read_u32_leb128(&n2, buf));
-            VECTOR_INIT(&localses, n2, locals_t);
+            VECTOR_NEW(&localses, n2);
 
             // count local variables
             uint32_t num_locals = 0;
@@ -800,7 +800,7 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
 
             // create vec(valtype)
             size_t i = 0;
-            VECTOR_INIT(&func->locals, num_locals, valtype_t);
+            VECTOR_NEW(&func->locals, num_locals);
             VECTOR_FOR_EACH(locals, &localses) {
                 for(uint32_t j = 0; j < locals->n; j++) {
                     func->locals.elem[i++] = locals->type;
@@ -826,13 +826,13 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
 
         // init
         module_t *m = *mod = malloc(sizeof(module_t));
-        VECTOR_INIT(&m->types, 0, functype_t);
-        VECTOR_INIT(&m->funcs, 0, func_t);
-        VECTOR_INIT(&m->tables, 0, table_t);
-        VECTOR_INIT(&m->mems, 0, mem_t);
-        VECTOR_INIT(&m->globals, 0, global_t);
-        VECTOR_INIT(&m->elems, 0, elem_t);
-        VECTOR_INIT(&m->exports, 0, export_t);
+        VECTOR_INIT(&m->types);
+        VECTOR_INIT(&m->funcs);
+        VECTOR_INIT(&m->tables);
+        VECTOR_INIT(&m->mems);
+        VECTOR_INIT(&m->globals);
+        VECTOR_INIT(&m->elems);
+        VECTOR_INIT(&m->exports);
 
         while(!eof(buf)) {
             uint8_t id;

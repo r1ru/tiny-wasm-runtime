@@ -72,7 +72,7 @@ error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
             case TYPE_NUM_F64:
             case TYPE_EXTENREF:
             case TYPE_FUNCREF:
-                VECTOR_INIT(&ty->rt2, 1, valtype_t);
+                VECTOR_NEW(&ty->rt2, 1);
                 *VECTOR_ELEM(&ty->rt2, 0) = bt.valtype;
                 break;
 
@@ -1007,16 +1007,16 @@ error_t validate_module(module_t *mod) {
         // create context C
         context_t C;
         VECTOR_COPY(&C.types, &mod->types);
-        VECTOR_INIT(&C.funcs, mod->funcs.n, functype_t);
-        VECTOR_INIT(&C.tables, mod->tables.n, tabletype_t);
-        VECTOR_INIT(&C.mems, mod->mems.n, mem_t);
-        VECTOR_INIT(&C.globals, mod->globals.n, globaltype_t);
-        VECTOR_INIT(&C.elems, mod->elems.n, reftype_t);
-        VECTOR_INIT(&C.locals, 0, valtype_t);
+        VECTOR_NEW(&C.funcs, mod->funcs.n);
+        VECTOR_NEW(&C.tables, mod->tables.n);
+        VECTOR_NEW(&C.mems, mod->mems.n);
+        VECTOR_NEW(&C.globals, mod->globals.n);
+        VECTOR_NEW(&C.elems, mod->elems.n);
+        VECTOR_INIT(&C.locals);
         LIST_INIT(&C.labels);
         C.ret = NULL;
 
-        VECTOR_INIT(&C.refs, mod->funcs.n, funcidx_t);
+        VECTOR_NEW(&C.refs, mod->funcs.n);
         size_t idx = 0;
         VECTOR_FOR_EACH(x, &C.refs) {
             *x = idx++;
