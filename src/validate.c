@@ -315,11 +315,27 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             }
 
-             case OP_GLOBAL_SET: {
+            case OP_GLOBAL_SET: {
                 globaltype_t *gt = VECTOR_ELEM(&C->globals, ip->globalidx);
                 __throwif(ERR_UNKNOWN_GLOBAL, !gt);
                 __throwif(ERR_FAILED, !gt->mut);
                 __throwiferr(try_pop(gt->type, stack));
+                break;
+            }
+
+            case OP_TABLE_GET: {
+                tabletype_t *t = VECTOR_ELEM(&C->tables, ip->x);
+                __throwif(ERR_UNKNOWN_TABLE, !t);
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                push(t->reftype, stack);
+                break;
+            }
+
+            case OP_TABLE_SET: {
+                tabletype_t *t = VECTOR_ELEM(&C->tables, ip->x);
+                __throwif(ERR_UNKNOWN_TABLE, !t);
+                __throwiferr(try_pop(t->reftype, stack));
+                __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 break;
             }
 
