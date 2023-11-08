@@ -28,3 +28,4 @@ typedef int error_t;
 #define ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH            ERR_CODE(15)
 #define ERR_TRAP_UNINITIALIZED_ELEMENT                  ERR_CODE(16)
 #define ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS            ERR_CODE(17)
+#define ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS             ERR_CODE(18)

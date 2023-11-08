@@ -60,6 +60,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/ref_null.wast -o ${CMAKE_CURRENT_BINARY_DIR}/ref_null
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/traps.wast -o ${CMAKE_CURRENT_BINARY_DIR}/traps
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table-sub.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table-sub
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_set.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_set
 )
 
 add_test(
@@ -328,5 +329,11 @@ add_test(
 add_test(
     NAME table-sub
     COMMAND runtest table-sub
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME table_set
+    COMMAND runtest table_set
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

@@ -43,6 +43,7 @@ static const char *error_msg[] = {
     [-ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH]             = "indirect call type mismatch",
     [-ERR_TRAP_UNINITIALIZED_ELEMENT]                   = "uninitialized element",
     [-ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS]             = "out of bounds memory access",
+    [-ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS]              = "out of bounds table access",
 };
 
 // helpers

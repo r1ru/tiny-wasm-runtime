@@ -747,7 +747,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     tableinst_t *tab = VECTOR_ELEM(&S->tables, a);
                     int32_t i;
                     pop_i32(&i, S->stack);
-                    __throwif(ERR_FAILED, !(i < tab->elem.n));
+                    __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, !(i < tab->elem.n));
                     val_t val;
                     val.ref = *VECTOR_ELEM(&tab->elem, i);
                     push_val(val, S->stack);
@@ -761,7 +761,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     pop_val(&val, S->stack);
                     int32_t i;
                     pop_i32(&i, S->stack);
-                    __throwif(ERR_FAILED, !(i < tab->elem.n));
+                    __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, !(i < tab->elem.n));
                     *VECTOR_ELEM(&tab->elem, i) = val.ref;
                     break;
                 }
@@ -1589,7 +1589,14 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 case OP_REF_NULL:
                     push_val((val_t){.ref = REF_NULL}, S->stack);
                     break;
-
+                
+                case OP_REF_IS_NULL: {
+                    val_t val;
+                    pop_val(&val, S->stack);
+                    push_i32(val.ref == REF_NULL, S->stack);
+                    break;
+                }
+                
                 case OP_0XFC:
                     switch(ip->op2) {
                         case 0x00:
