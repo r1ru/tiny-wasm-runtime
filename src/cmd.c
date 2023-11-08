@@ -23,13 +23,13 @@ static void fatal(const char *msg) {
 void print_type(functype_t *func) {
     printf("args: ");
 
-    VECTOR_FOR_EACH(valtype, &func->rt1, valtype_t) {
+    VECTOR_FOR_EACH(valtype, &func->rt1) {
         printf("%x ", *valtype);
     }
     putchar('\n');
 
     printf("returns: ");
-    VECTOR_FOR_EACH(valtype, &func->rt2, valtype_t) {
+    VECTOR_FOR_EACH(valtype, &func->rt2) {
         printf("%x ", *valtype);
     }
     putchar('\n');
@@ -39,7 +39,7 @@ void print_func(func_t *func) {
     printf("type: %x\n", func->type);
     printf("locals: ");
 
-    VECTOR_FOR_EACH(valtype, &func->locals, valtype_t) {
+    VECTOR_FOR_EACH(valtype, &func->locals) {
         printf("%x ", *valtype);
     }
     putchar('\n');
@@ -104,37 +104,37 @@ int main(int argc, char *argv[]) {
         PANIC("decoding failed");
     
     puts("[types]");
-    VECTOR_FOR_EACH(type, &mod->types, functype_t) {
+    VECTOR_FOR_EACH(type, &mod->types) {
         print_type(type);
     }
     putchar('\n');
 
     puts("[funcs]");
-    VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
+    VECTOR_FOR_EACH(func, &mod->funcs) {
         print_func(func);
     }
     putchar('\n');
 
     puts("[tables]");
-    VECTOR_FOR_EACH(table, &mod->tables, table_t) {
+    VECTOR_FOR_EACH(table, &mod->tables) {
         print_table(table);
     }
     putchar('\n');
     
     puts("[mems]");
-    VECTOR_FOR_EACH(mem, &mod->mems, mem_t) {
+    VECTOR_FOR_EACH(mem, &mod->mems) {
         print_mem(mem);
     }
     putchar('\n');
 
     puts("[globals]");
-    VECTOR_FOR_EACH(g, &mod->globals, global_t) {
+    VECTOR_FOR_EACH(g, &mod->globals) {
         print_global(g);
     }
     putchar('\n');
 
     puts("[exports]");
-    VECTOR_FOR_EACH(export, &mod->exports, export_t) {
+    VECTOR_FOR_EACH(export, &mod->exports) {
         print_export(export);
     }
     putchar('\n');
@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("invocation fail: %d", err);
 
-    
+
     // cleanup
     munmap(head, fsize);
     close(fd);

@@ -140,7 +140,7 @@ void pop_vals(vals_t *vals, stack_t *stack) {
     VECTOR_INIT(vals, num_vals, val_t);
     
     // pop values
-    VECTOR_FOR_EACH(val, vals, val_t) {
+    VECTOR_FOR_EACH(val, vals) {
         pop_val(val, stack);
     }
 }
@@ -150,7 +150,7 @@ void pop_vals_n(vals_t *vals, size_t n, stack_t *stack) {
     VECTOR_INIT(vals, n, val_t);
     
     // pop values
-    VECTOR_FOR_EACH(val, vals, val_t) {
+    VECTOR_FOR_EACH(val, vals) {
         pop_val(val, stack);
     }
 }
@@ -236,7 +236,7 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
         VECTOR_INIT(&tableinst->elem, n, ref_t);
 
         // init with ref.null
-        VECTOR_FOR_EACH(elem, &tableinst->elem, ref_t) {
+        VECTOR_FOR_EACH(elem, &tableinst->elem) {
             *elem = REF_NULL;
         }
         moduleinst->tableaddrs[i] = i;
@@ -1731,7 +1731,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         __throwif(ERR_FAILED, args->n != functype->rt1.n);
 
         size_t idx = 0;
-        VECTOR_FOR_EACH(arg, args, arg_t) {
+        VECTOR_FOR_EACH(arg, args) {
             __throwif(ERR_FAILED, arg->type != *VECTOR_ELEM(&functype->rt1, idx++));
         }
 
@@ -1739,7 +1739,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         // ref: https://github.com/WebAssembly/spec/issues/1690
         
         // push args
-        VECTOR_FOR_EACH(arg, args, arg_t) {
+        VECTOR_FOR_EACH(arg, args) {
             push_val(arg->val, S->stack);
         }
 
@@ -1750,7 +1750,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         //free(args->elem);
         VECTOR_INIT(args, functype->rt2.n, arg_t);
         idx = 0;
-        VECTOR_FOR_EACH_REVERSE(ret, args, arg_t) {
+        VECTOR_FOR_EACH_REVERSE(ret, args) {
             ret->type = *VECTOR_ELEM(&functype->rt2, idx++);
             pop_val(&ret->val, S->stack);
         }

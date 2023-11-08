@@ -5,7 +5,7 @@
 // useful macros
 #define VECTOR(type)                                                                    \
     struct {                                                                            \
-        uint32_t    n;                                                                  \
+        size_t    n;                                                                    \
         type        *elem;                                                              \
     }
 
@@ -15,14 +15,14 @@
         (vec)->elem = malloc(sizeof(type) * (len));                                     \
     })
 
-#define VECTOR_FOR_EACH(iter, vec, type)                                                \
-    for(type *iter = &(vec)->elem[0];                                                   \
+#define VECTOR_FOR_EACH(iter, vec)                                                      \
+    for(__typeof__((vec)->elem) iter = &(vec)->elem[0];                                 \
         iter != &(vec)->elem[(vec)->n];                                                 \
         iter++                                                                          \
     )
 
-#define VECTOR_FOR_EACH_REVERSE(iter, vec, type)                                        \
-    for(type *iter = &(vec)->elem[(vec)->n - 1];                                        \
+#define VECTOR_FOR_EACH_REVERSE(iter, vec)                                              \
+    for(__typeof__((vec)->elem) iter = &(vec)->elem[(vec)->n - 1];                      \
         (vec)->n != 0 &&  iter != &(vec)->elem[-1];                                     \
         iter--                                                                          \
     )

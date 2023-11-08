@@ -49,7 +49,7 @@ static const char *error_msg[] = {
 // helpers
 // todo: consider the case where funcidx != funcaddr
 error_t lookup_func_by_name(funcaddr_t *addr, const char *name, module_t *mod) {
-    VECTOR_FOR_EACH(export, &mod->exports, export_t) {
+    VECTOR_FOR_EACH(export, &mod->exports) {
         if(strcmp(export->name, name) == 0 && export->exportdesc.kind == 0) {
             *addr = export->exportdesc.funcidx;
             return ERR_SUCCESS;
@@ -168,7 +168,7 @@ static void convert_to_args(args_t *args, JSON_Array *array) {
     VECTOR_INIT(args, json_array_get_count(array), arg_t);
 
     size_t idx = 0;
-    VECTOR_FOR_EACH(arg, args, arg_t) {
+    VECTOR_FOR_EACH(arg, args) {
         convert_to_arg(arg, json_array_get_object(array, idx++));
     }
 }
@@ -222,7 +222,7 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                     convert_to_args(&expects, json_object_get_array(command, "expected"));
                     
                     size_t idx = 0;
-                    VECTOR_FOR_EACH(expect, &expects, arg_t) {
+                    VECTOR_FOR_EACH(expect, &expects) {
                         // todo: validate type?
                         arg_t *ret = VECTOR_ELEM(&args, idx++);
 

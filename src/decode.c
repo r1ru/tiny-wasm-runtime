@@ -203,7 +203,7 @@ error_t decode_typesec(module_t *mod, buffer_t*buf) {
 
         VECTOR_INIT(&mod->types, n1, functype_t);
 
-        VECTOR_FOR_EACH(functype, &mod->types, functype_t) {
+        VECTOR_FOR_EACH(functype, &mod->types) {
             // expected to be 0x60
             uint8_t magic;
             __throwiferr(read_byte(&magic, buf));
@@ -213,14 +213,14 @@ error_t decode_typesec(module_t *mod, buffer_t*buf) {
             uint32_t n2;
             __throwiferr(read_u32_leb128(&n2, buf));
             VECTOR_INIT(&functype->rt1, n2, valtype_t);
-            VECTOR_FOR_EACH(valtype, &functype->rt1, valtype_t) {
+            VECTOR_FOR_EACH(valtype, &functype->rt1) {
                 __throwiferr(read_byte(valtype, buf));
             }
 
             // decode return types
             __throwiferr(read_u32_leb128(&n2, buf));
             VECTOR_INIT(&functype->rt2, n2, valtype_t);
-            VECTOR_FOR_EACH(valtype, &functype->rt2, valtype_t) {
+            VECTOR_FOR_EACH(valtype, &functype->rt2) {
                 __throwiferr(read_byte(valtype, buf));
             }
         }
@@ -236,7 +236,7 @@ error_t decode_funcsec(module_t *mod, buffer_t *buf) {
 
         VECTOR_INIT(&mod->funcs, n, func_t);
 
-        VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
+        VECTOR_FOR_EACH(func, &mod->funcs) {
             __throwiferr(read_u32_leb128(&func->type, buf));
         }
     }
@@ -267,7 +267,7 @@ error_t decode_tablesec(module_t *mod, buffer_t *buf) {
 
         VECTOR_INIT(&mod->tables, n, table_t);
         
-        VECTOR_FOR_EACH(table, &mod->tables, table_t) {
+        VECTOR_FOR_EACH(table, &mod->tables) {
             __throwiferr(read_byte(&table->type.reftype, buf));
             __throwiferr(decode_limits(&table->type.limits, buf));
         }
@@ -284,7 +284,7 @@ error_t decode_memsec(module_t *mod, buffer_t *buf) {
         VECTOR_INIT(&mod->mems, n, mem_t);
         
         uint8_t has_max;
-        VECTOR_FOR_EACH(mem, &mod->mems, mem_t) {
+        VECTOR_FOR_EACH(mem, &mod->mems) {
             __throwiferr(decode_limits(&mem->type, buf));
         }
     }
@@ -298,7 +298,7 @@ error_t decode_exportsec(module_t *mod, buffer_t *buf) {
         __throwiferr(read_u32_leb128(&n, buf));
         VECTOR_INIT(&mod->exports, n, export_t);
 
-        VECTOR_FOR_EACH(export, &mod->exports, export_t) {
+        VECTOR_FOR_EACH(export, &mod->exports) {
             __throwiferr(read_bytes(&export->name, buf));
             __throwiferr(read_byte(&export->exportdesc.kind, buf));
             __throwiferr(read_u32_leb128(&export->exportdesc.funcidx, buf));
@@ -364,7 +364,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 uint32_t n;
                 __throwiferr(read_u32_leb128(&n, buf));
                 VECTOR_INIT(&i->labels, n, labelidx_t);
-                VECTOR_FOR_EACH(l, &i->labels, labelidx_t) {
+                VECTOR_FOR_EACH(l, &i->labels) {
                     __throwiferr(read_u32_leb128(l, buf));
                 }
                 __throwiferr(read_u32_leb128(&i->default_label, buf));
@@ -391,7 +391,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 uint32_t n;
                 __throwiferr(read_u32_leb128(&n, buf));
                 VECTOR_INIT(&i->types, n, valtype_t);
-                VECTOR_FOR_EACH(t, &i->types, valtype_t) {
+                VECTOR_FOR_EACH(t, &i->types) {
                     __throwiferr(read_byte(t, buf));
                 }
                 break;
@@ -668,7 +668,7 @@ error_t decode_globalsec(module_t *mod, buffer_t *buf) {
 
         VECTOR_INIT(&mod->globals, n, global_t);
         
-        VECTOR_FOR_EACH(g, &mod->globals, global_t) {
+        VECTOR_FOR_EACH(g, &mod->globals) {
             __throwiferr(read_byte(&g->gt.type, buf));
             __throwiferr(read_byte(&g->gt.mut, buf));
             __throwiferr(decode_expr(&g->expr, buf));
@@ -686,7 +686,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
         VECTOR_INIT(&mod->elems, n,elem_t);
 
         uint32_t kind;
-        VECTOR_FOR_EACH(elem, &mod->elems, elem_t) {
+        VECTOR_FOR_EACH(elem, &mod->elems) {
             __throwiferr(read_u32_leb128(&kind, buf));
             switch(kind) {
                 case 0: {
@@ -703,7 +703,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     VECTOR_INIT(&elem->init, n, expr_t);
                     static instr_t end = {.op1 = OP_END};
 
-                    VECTOR_FOR_EACH(e, &elem->init, expr_t) {
+                    VECTOR_FOR_EACH(e, &elem->init) {
                         funcidx_t x;
                         __throwiferr(read_u32_leb128(&x, buf));
                         expr_t init = malloc(sizeof(instr_t));
@@ -736,7 +736,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     VECTOR_INIT(&elem->init, n, expr_t);
                     static instr_t end = {.op1 = OP_END};
 
-                    VECTOR_FOR_EACH(e, &elem->init, expr_t) {
+                    VECTOR_FOR_EACH(e, &elem->init) {
                         funcidx_t x;
                         __throwiferr(read_u32_leb128(&x, buf));
                         expr_t init = malloc(sizeof(instr_t));
@@ -756,7 +756,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     uint32_t n;
                     __throwiferr(read_u32_leb128(&n, buf));
                     VECTOR_INIT(&elem->init, n, expr_t);
-                    VECTOR_FOR_EACH(e, &elem->init, expr_t) {
+                    VECTOR_FOR_EACH(e, &elem->init) {
                         __throwiferr(decode_expr(e, buf));
                     }
                     elem->mode.kind = 1; // passive
@@ -779,7 +779,7 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
 
         // assert(n1 == mod->funcs.n)
 
-        VECTOR_FOR_EACH(func, &mod->funcs, func_t) {
+        VECTOR_FOR_EACH(func, &mod->funcs) {
             // size is unused
             uint32_t size;
             __throwiferr(read_u32_leb128(&size, buf));
@@ -792,7 +792,7 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
 
             // count local variables
             uint32_t num_locals = 0;
-            VECTOR_FOR_EACH(locals, &localses, locals_t) {
+            VECTOR_FOR_EACH(locals, &localses) {
                 __throwiferr(read_u32_leb128(&locals->n, buf));
                 __throwiferr(read_byte(&locals->type, buf));
                 num_locals += locals->n;
@@ -801,7 +801,7 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
             // create vec(valtype)
             size_t i = 0;
             VECTOR_INIT(&func->locals, num_locals, valtype_t);
-            VECTOR_FOR_EACH(locals, &localses, locals_t) {
+            VECTOR_FOR_EACH(locals, &localses) {
                 for(uint32_t j = 0; j < locals->n; j++) {
                     func->locals.elem[i++] = locals->type;
                 }
