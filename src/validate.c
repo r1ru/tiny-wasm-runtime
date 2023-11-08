@@ -805,6 +805,26 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         break;
                     }
 
+                    // table.grow
+                    case 0x0F: {
+                        tabletype_t *tt = VECTOR_ELEM(&C->tables, ip->x);
+                        __throwif(ERR_UNKNOWN_TABLE, !tt);
+                        // valid with type [t i32] -> [i32]
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(tt->reftype, stack));
+                        push(TYPE_NUM_I32, stack);
+                        break;
+                    }
+
+                    // table.size
+                    case 0x10: {
+                        tabletype_t *tt = VECTOR_ELEM(&C->tables, ip->x);
+                        __throwif(ERR_UNKNOWN_TABLE, !tt);
+                        // valid with type [] -> [i32]
+                        push(TYPE_NUM_I32, stack);
+                        break;
+                    }
+
                     // table.fill
                     case 0x11: {
                          tabletype_t *t = VECTOR_ELEM(&C->tables, ip->x);
