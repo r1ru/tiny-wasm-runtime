@@ -627,7 +627,11 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                         __throwiferr(read_u32_leb128(&i->x, buf));
                         __throwiferr(read_u32_leb128(&i->y, buf));
                         break;
-
+                    
+                    case 0x0F:
+                        // table.grow
+                    case 0x10:
+                        // table.size
                     case 0x11:
                         // table.fill
                         __throwiferr(read_u32_leb128(&i->x, buf));
