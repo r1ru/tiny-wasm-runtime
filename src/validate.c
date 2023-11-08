@@ -882,7 +882,7 @@ error_t validate_func(context_t *C, func_t *func) {
         functype_t *expect = VECTOR_ELEM(&C->types, func->type);
 
         // create context C'
-        VECTOR_CONCAT(&C->locals, &expect->rt1, &func->locals, valtype_t);
+        VECTOR_CONCAT(&C->locals, &expect->rt1, &func->locals);
 
         labeltype_t l ={.ty = expect->rt2};
         list_push_back(&C->labels, &l.link);
