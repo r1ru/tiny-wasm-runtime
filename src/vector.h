@@ -12,6 +12,7 @@ void vector_init(vector_t *vec);
 error_t vector_new(vector_t *vec, size_t ent_size, size_t n);
 void vector_copy(vector_t *dst, vector_t *src);
 error_t vector_concat(vector_t *dst, vector_t *src1, vector_t *src2, size_t ent_size);
+void *vector_elem(vector_t *vec, size_t idx);
 
 // useful macros
 #define VECTOR(type)                                                                    \
@@ -52,5 +53,5 @@ error_t vector_concat(vector_t *dst, vector_t *src1, vector_t *src2, size_t ent_
 #define VECTOR_ELEM(vec, idx)                                                           \
     ({                                                                                  \
         size_t __i = (idx);                                                             \
-        (vec)->len != 0 && 0 <= __i && __i <= ((vec)->len - 1) ? &(vec)->elem[__i] : NULL;  \
+        (vec)->len != 0 && __i < (vec)->len ? &(vec)->elem[__i] : NULL;                 \
     })

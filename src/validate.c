@@ -56,14 +56,12 @@ static inline error_t peek_stack_top(valtype_t *t, type_stack *stack) {
 }
 
 error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
-    // blocktype is expected to be [] -> [t*]
-    // todo: consider the case where blocktype is typeidx
     __try {
-        ty->rt1 = (resulttype_t){.len = 0, .elem = NULL};
+        VECTOR_INIT(&ty->rt1);
 
         switch(bt.valtype) {
             case 0x40:
-                ty->rt2 = (resulttype_t){.len = 0, .elem = NULL};
+                VECTOR_INIT(&ty->rt2);
                 break;
 
             case TYPE_NUM_I32:
