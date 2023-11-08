@@ -14,6 +14,8 @@ typedef uint32_t    labelidx_t;
 typedef uint32_t    funcidx_t;
 typedef uint32_t    localidx_t;
 typedef uint32_t    tableidx_t;
+typedef uint32_t    elemidx_t;
+typedef uint32_t    idx_t;
 
 #define TYPE_NUM_I32    0x7F
 #define TYPE_NUM_I64    0x7E
@@ -250,8 +252,8 @@ typedef struct instr {
         };
         // call_indirect
         struct {
-            typeidx_t           y;
-            tableidx_t          x;
+            idx_t               y;
+            idx_t               x;
         };
         // select(0x1c)
         VECTOR(valtype_t)       types;

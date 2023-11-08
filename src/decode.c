@@ -603,12 +603,17 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_0XFC:
                 __throwiferr(read_byte(&i->op2, buf));
                 switch(i->op2) {
+                    case 0xC:
+                        __throwiferr(read_u32_leb128(&i->y, buf));
+                        __throwiferr(read_u32_leb128(&i->x, buf));
+                        break;
+                    
                     case 0xE:
                         __throwiferr(read_u32_leb128(&i->x, buf));
                         __throwiferr(read_u32_leb128(&i->y, buf));
                         break;
                     default:
-                        PANIC("Decode: unsupported opcode: 0x7c %x", i->op2);
+                        PANIC("Decode: unsupported opcode: 0xfc %x", i->op2);
                 }
                 break;
             

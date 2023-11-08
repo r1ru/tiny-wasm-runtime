@@ -763,13 +763,27 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         push(TYPE_NUM_I64, stack);
                         break;
                     
+                    // table.init
+                    case 0x0C: {
+                        tabletype_t *t1 = VECTOR_ELEM(&C->tables, ip->x);
+                        __throwif(ERR_UNKNOWN_TABLE, !t1);
+                        reftype_t *t2 = VECTOR_ELEM(&C->elems, ip->y);
+                        __throwif(ERR_FAILED, !t2);
+                        __throwif(ERR_TYPE_MISMATCH, t1->reftype != *t2);
+                        // validt with type [i32 i32 i32] -> []
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        break;
+                    }
+
                     // table.copy
                     case 0x0E: {
-                        tabletype_t *tt1 = VECTOR_ELEM(&C->tables, ip->x);
-                        __throwif(ERR_UNKNOWN_TABLE, !tt1);
-                        tabletype_t *tt2 = VECTOR_ELEM(&C->tables, ip->y);
-                        __throwif(ERR_UNKNOWN_TABLE, !tt2);
-                        __throwif(ERR_TYPE_MISMATCH, tt1->reftype != tt2->reftype);
+                        tabletype_t *t1 = VECTOR_ELEM(&C->tables, ip->x);
+                        __throwif(ERR_UNKNOWN_TABLE, !t1);
+                        tabletype_t *t2 = VECTOR_ELEM(&C->tables, ip->y);
+                        __throwif(ERR_UNKNOWN_TABLE, !t2);
+                        __throwif(ERR_TYPE_MISMATCH, t1->reftype != t2->reftype);
                         // validt with type [i32 i32 i32] -> []
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
@@ -912,18 +926,31 @@ error_t validate_global(context_t *ctx, global_t *g, globaltype_t *dst) {
 
 error_t validate_elemmode(context_t *ctx, elemmode_t *mode, reftype_t expect) {
     __try {
-        tabletype_t *tt = VECTOR_ELEM(&ctx->tables, mode->table);
-        __throwif(ERR_FAILED, !tt);
+        switch(mode->kind) {
+            // active
+            case 0x00:
+                tabletype_t *tt = VECTOR_ELEM(&ctx->tables, mode->table);
+                __throwif(ERR_FAILED, !tt);
 
-        // expr must be valid with result type [i32]
-        valtype_t type_i32 = TYPE_NUM_I32;
-        resulttype_t rt2 = {.n = 1, .elem = &type_i32};
-        __throwiferr(validate_expr(ctx, &mode->offset, &rt2));
+                // expr must be valid with result type [i32]
+                valtype_t type_i32 = TYPE_NUM_I32;
+                resulttype_t rt2 = {.n = 1, .elem = &type_i32};
+                __throwiferr(validate_expr(ctx, &mode->offset, &rt2));
 
-        // expr must be constant
-        __throwif(ERR_FAILED, !is_constant_expr(&mode->offset));
+                // expr must be constant
+                __throwif(ERR_FAILED, !is_constant_expr(&mode->offset));
 
-        __throwif(ERR_FAILED, tt->reftype != expect);
+                __throwif(ERR_FAILED, tt->reftype != expect);
+                
+                break;
+            // passive
+            case 0x01:
+                // valid with any reftype
+                break;
+            
+            default:
+                PANIC("unsupported elemmode %x", mode->kind);
+        }
     }
     __catch:
         return err;
