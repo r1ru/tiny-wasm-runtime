@@ -10,6 +10,7 @@ typedef struct {
 
 void vector_init(vector_t *vec);
 error_t vector_new(vector_t *vec, size_t ent_size, size_t n);
+void vector_copy(vector_t *dst, vector_t *src);
 
 // useful macros
 #define VECTOR(type)                                                                    \
@@ -23,6 +24,9 @@ error_t vector_new(vector_t *vec, size_t ent_size, size_t n);
 
 #define VECTOR_NEW(vec, n)                                                              \
     vector_new((vector_t *)vec, sizeof(__typeof__((vec)->elem[0])), n)
+
+#define VECTOR_COPY(dst, src)                                                           \
+    vector_copy((vector_t *)dst, (vector_t *)src)
 
 #define VECTOR_FOR_EACH(iter, vec)                                                      \
     for(__typeof__((vec)->elem) iter = &(vec)->elem[0];                                 \
@@ -41,12 +45,6 @@ error_t vector_new(vector_t *vec, size_t ent_size, size_t n);
         size_t __i = (idx);                                                             \
         (vec)->n != 0 && 0 <= __i && __i <= ((vec)->n - 1) ? &(vec)->elem[__i] : NULL;  \
     })
-
-#define VECTOR_COPY(dst, src)                                                           \
-    do {                                                                                \
-        (dst)->n = (src)->n;                                                            \
-        (dst)->elem = (src)->elem;                                                      \
-    } while(0)
 
 #define VECTOR_CONCAT(dst, src1, src2, type)                                            \
     do {                                                                                \

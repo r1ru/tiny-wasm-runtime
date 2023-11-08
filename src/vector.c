@@ -16,3 +16,8 @@ error_t vector_new(vector_t *vec, size_t ent_size, size_t n) {
     __catch:
         return err;
 }
+
+void vector_copy(vector_t *dst, vector_t *src) {
+    dst->n  = src->n;
+    dst->elem = src->elem;
+}
