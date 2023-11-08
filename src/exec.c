@@ -742,6 +742,30 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     break;
                 }
 
+                case OP_TABLE_GET: {
+                    tableaddr_t a = F->module->tableaddrs[ip->x];
+                    tableinst_t *tab = VECTOR_ELEM(&S->tables, a);
+                    int32_t i;
+                    pop_i32(&i, S->stack);
+                    __throwif(ERR_FAILED, !(i < tab->elem.n));
+                    val_t val;
+                    val.ref = *VECTOR_ELEM(&tab->elem, i);
+                    push_val(val, S->stack);
+                    break;
+                }
+
+                case OP_TABLE_SET: {
+                    tableaddr_t a = F->module->tableaddrs[ip->x];
+                    tableinst_t *tab = VECTOR_ELEM(&S->tables, a);
+                    val_t val;
+                    pop_val(&val, S->stack);
+                    int32_t i;
+                    pop_i32(&i, S->stack);
+                    __throwif(ERR_FAILED, !(i < tab->elem.n));
+                    *VECTOR_ELEM(&tab->elem, i) = val.ref;
+                    break;
+                }
+
 
                 case OP_I32_LOAD:
                 case OP_I64_LOAD:
