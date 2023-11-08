@@ -807,6 +807,16 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         break;
                     }
 
+                    // table.fill
+                    case 0x11: {
+                         tabletype_t *t = VECTOR_ELEM(&C->tables, ip->x);
+                        __throwif(ERR_UNKNOWN_TABLE, !t);
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(t->reftype, stack));
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        break;
+                    }
+
                     default:
                         PANIC("Validation: unsupported opcode: 0x7c %x", ip->op2);
                 }

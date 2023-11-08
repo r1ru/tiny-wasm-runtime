@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/table-sub.0.wasm", O_RDONLY);
+    int fd = open("./build/test/table_fill.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -149,15 +149,17 @@ int main(int argc, char *argv[]) {
         PANIC("insntiation failed");
 
     args_t args;
-    VECTOR_INIT(&args, 0, arg_t);
+    VECTOR_INIT(&args, 3, arg_t);
+    *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 8};
+    *VECTOR_ELEM(&args, 1) = (arg_t){.type = TYPE_EXTENREF, .val.ref = 4};
+    *VECTOR_ELEM(&args, 2) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 2};
 
     // invoke
-    err = invoke(S, 2, &args);
+    err = invoke(S, 0, &args);
     if(IS_ERROR(err))
-        PANIC("invocation faile: %d", err);
-    
-    printf("result = %lx\n", VECTOR_ELEM(&args, 0)->val.num.i64);
+        PANIC("invocation fail: %d", err);
 
+    
     // cleanup
     munmap(head, fsize);
     close(fd);

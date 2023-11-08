@@ -1629,7 +1629,32 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                         case 0x07:
                             push_i64(U64_TRUNC_SAT_F64(lhs_f64), S->stack);
-                            break;         
+                            break;
+
+                        // table.fill
+                        case 0x11: {
+                            tableaddr_t ta = F->module->tableaddrs[ip->x];
+                            tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
+                            int32_t n, i;
+                            val_t val;
+
+                            pop_i32(&n, S->stack);
+                            pop_val(&val, S->stack);
+                            pop_i32(&i, S->stack);
+
+                            while(1) {
+                                __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, i + n > tab->elem.n);
+
+                                if(n == 0)
+                                    break;
+                                
+                                // table.set
+                                *VECTOR_ELEM(&tab->elem, i) = val.ref;
+                                i++;
+                                n--;
+                            }
+                            break;
+                        }
                         
                         default:
                             PANIC("Exec: unsupported opcode: 0xfc %x", ip->op2);           
