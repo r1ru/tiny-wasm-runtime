@@ -408,6 +408,11 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 __throwiferr(read_u32_leb128(&i->globalidx, buf));
                 break;
             
+            case OP_TABLE_GET:
+            case OP_TABLE_SET:
+                __throwiferr(read_u32_leb128(&i->x, buf));
+                break;
+
             case OP_I32_LOAD:
             case OP_I64_LOAD:
             case OP_F32_LOAD:

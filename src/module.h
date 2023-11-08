@@ -53,6 +53,8 @@ enum op {
     OP_LOCAL_TEE            = 0x22,
     OP_GLOBAL_GET           = 0x23,
     OP_GLOBAL_SET           = 0x24,
+    OP_TABLE_GET            = 0x25,
+    OP_TABLE_SET            = 0x26,
     OP_I32_LOAD             = 0x28,
     OP_I64_LOAD             = 0x29,
     OP_F32_LOAD             = 0x2A,
