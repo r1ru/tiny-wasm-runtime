@@ -459,7 +459,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                OP_I64_TRUNC_F32_S <= ip->op1 && ip->op1 <= OP_I64_TRUNC_F32_U ||
                ip->op1 == OP_F64_PROMOTE_F32 || 
                ip->op1 == OP_I32_REINTERPRET_F32 ||
-               ip->op1 == OP_TRUNC_SAT && (ip->op2 == 0 || ip->op2 == 1 || ip->op2 == 4 || ip->op2 == 5)) {
+               ip->op1 == OP_0XFC && (ip->op2 == 0 || ip->op2 == 1 || ip->op2 == 4 || ip->op2 == 5)) {
                 pop_f32(&lhs_f32, S->stack);
             }
             if(OP_F64_ABS <= ip->op1 && ip->op1 <= OP_F64_SQRT ||
@@ -467,7 +467,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                OP_I64_TRUNC_F64_S <= ip->op1 && ip->op1 <= OP_I64_TRUNC_F64_U || 
                ip->op1 == OP_F32_DEMOTE_F64 || 
                ip->op1 == OP_I64_REINTERPRET_F64 ||
-               ip->op1 == OP_TRUNC_SAT && (ip->op2 == 2 || ip->op2 == 3 || ip->op2 == 6 || ip->op2 == 7)) {
+               ip->op1 == OP_0XFC && (ip->op2 == 2 || ip->op2 == 3 || ip->op2 == 6 || ip->op2 == 7)) {
                 pop_f64(&lhs_f64, S->stack);
             }
             
@@ -1566,7 +1566,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     push_val((val_t){.ref = REF_NULL}, S->stack);
                     break;
 
-                case OP_TRUNC_SAT:
+                case OP_0XFC:
                     switch(ip->op2) {
                         case 0x00:
                             push_i32(I32_TRUNC_SAT_F32(lhs_f32), S->stack);
@@ -1598,7 +1598,10 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                         case 0x07:
                             push_i64(U64_TRUNC_SAT_F64(lhs_f64), S->stack);
-                            break;                    
+                            break;         
+                        
+                        default:
+                            PANIC("Exec: unsupported opcode: 0xfc %x", ip->op2);           
                     }
                     break;
                 
