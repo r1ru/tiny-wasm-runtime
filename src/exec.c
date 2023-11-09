@@ -37,7 +37,7 @@ void push_val(val_t val, stack_t *stack) {
         .type   = TYPE_VAL,
         .val    = val 
     };
-    //printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
+    printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
 }
 
 static inline void push_i32(int32_t val, stack_t *stack) {
@@ -79,7 +79,7 @@ void push_label(label_t label, stack_t *stack) {
         .label  = label 
     };
     list_push_back(&stack->labels, &obj->label.link);
-    //printf("push label idx: %ld\n", stack->idx);
+    printf("push label idx: %ld\n", stack->idx);
 }
 
 void push_frame(frame_t frame, stack_t *stack) {
@@ -93,13 +93,13 @@ void push_frame(frame_t frame, stack_t *stack) {
         .frame  = frame 
     };
     list_push_back(&stack->frames, &obj->frame.link);
-    //printf("push frame idx: %ld\n", stack->idx);
+    printf("push frame idx: %ld\n", stack->idx);
 }
 
 void pop_val(val_t *val, stack_t *stack) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
-    //printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
+    printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
 }
 
 static inline void pop_i32(int32_t *val, stack_t *stack) {
@@ -173,7 +173,7 @@ void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
     list_pop_tail(&stack->frames);
-    //printf("pop frame idx: %ld\n", stack->idx);
+    printf("pop frame idx: %ld\n", stack->idx);
 }
 
 // pop while stack top is not a frame
@@ -428,7 +428,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
     __try {
         while(ip) {
-            //printf("[+] ip = %x\n", ip->op1);
+            printf("[+] ip = %x\n", ip->op1);
             instr_t *next_ip = ip->next;
             static instr_t end = {.op1 = OP_END};
 
@@ -1630,6 +1630,37 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                         case 0x07:
                             push_i64(U64_TRUNC_SAT_F64(lhs_f64), S->stack);
                             break;
+
+                        // table.grow
+                        case 0x0F: {
+                            tableaddr_t ta = F->module->tableaddrs[ip->x];
+                            tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
+                            int32_t sz = tab->elem.len;
+                            int32_t n;
+                            val_t val;
+                            pop_i32(&n, S->stack);
+                            pop_val(&val, S->stack);
+
+                            if(!IS_ERROR(VECTOR_GROW(&tab->elem, n))) {
+                                // init
+                                for(int i = sz; i < tab->elem.len; i++) {
+                                    *VECTOR_ELEM(&tab->elem, i) = val.ref;
+                                }
+                                push_i32(sz, S->stack);
+                            }
+                            else {
+                                push_i32(-1, S->stack);
+                            }
+                            break;
+                        }
+
+                        // table.size
+                        case 0x10: {
+                            tableaddr_t ta = F->module->tableaddrs[ip->x];
+                            tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
+                            push_i32(tab->elem.len, S->stack);
+                            break;
+                        }
 
                         // table.fill
                         case 0x11: {
