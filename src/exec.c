@@ -37,7 +37,7 @@ void push_val(val_t val, stack_t *stack) {
         .type   = TYPE_VAL,
         .val    = val 
     };
-    printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
+    //printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
 }
 
 static inline void push_i32(int32_t val, stack_t *stack) {
@@ -79,7 +79,7 @@ void push_label(label_t label, stack_t *stack) {
         .label  = label 
     };
     list_push_back(&stack->labels, &obj->label.link);
-    printf("push label idx: %ld\n", stack->idx);
+    //printf("push label idx: %ld\n", stack->idx);
 }
 
 void push_frame(frame_t frame, stack_t *stack) {
@@ -93,13 +93,13 @@ void push_frame(frame_t frame, stack_t *stack) {
         .frame  = frame 
     };
     list_push_back(&stack->frames, &obj->frame.link);
-    printf("push frame idx: %ld\n", stack->idx);
+    //printf("push frame idx: %ld\n", stack->idx);
 }
 
 void pop_val(val_t *val, stack_t *stack) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
-    printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
+    //printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
 }
 
 static inline void pop_i32(int32_t *val, stack_t *stack) {
@@ -173,7 +173,7 @@ void pop_frame(frame_t *frame, stack_t *stack) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
     list_pop_tail(&stack->frames);
-    printf("pop frame idx: %ld\n", stack->idx);
+    //printf("pop frame idx: %ld\n", stack->idx);
 }
 
 // pop while stack top is not a frame
@@ -296,9 +296,32 @@ error_t instantiate(store_t **S, module_t *module) {
             moduleinst->globaladdrs[i] = i;
         }
 
+        // alloc elems
+        uint32_t num_elems = module->elems.len;
+        moduleinst->elemaddrs = malloc(sizeof(elemaddr_t) * num_elems);
+        for(uint32_t i = 0; i < num_elems; i++) {
+            elem_t *elem = VECTOR_ELEM(&module->elems, i);
+            eleminst_t *eleminst = VECTOR_ELEM(&store->elems, i);
+            VECTOR_NEW(&eleminst->elem, elem->init.len);
+
+            for(uint32_t j = 0; j < elem->init.len; j++) {
+                expr_t *init = VECTOR_ELEM(&elem->init, j);
+                exec_expr(init, store);
+                val_t val;
+                pop_val(&val, store->stack);
+                *VECTOR_ELEM(&eleminst->elem, j) = val.ref;
+            }
+
+            moduleinst->elemaddrs[i] = i;
+        }
+
         // init table if elemmode is active
         for(uint32_t i = 0; i < module->elems.len; i++) {
             elem_t *elem = VECTOR_ELEM(&module->elems, i);
+            
+            if(elem->mode.kind != 0)
+                continue;
+            
             tableidx_t tableidx = elem->mode.table;
 
             uint32_t n, s, d;
@@ -428,7 +451,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
     __try {
         while(ip) {
-            printf("[+] ip = %x\n", ip->op1);
+            //printf("[+] ip = %x\n", ip->op1);
             instr_t *next_ip = ip->next;
             static instr_t end = {.op1 = OP_END};
 
@@ -1693,7 +1716,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     break;
                 
                 case OP_REF_FUNC: {
-                    funcaddr_t a = F->module->funcaddrs[ip->funcidx];
+                    funcaddr_t a = F->module->funcaddrs[ip->x];
                     push_val((val_t){.ref = a}, S->stack);
                     break;
                 }

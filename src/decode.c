@@ -605,6 +605,11 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             case OP_REF_IS_NULL:
                 break;
             
+            case OP_REF_FUNC: {
+                __throwiferr(read_u32_leb128(&i->x, buf));
+                break;
+            }
+
             case OP_0XFC:
                 __throwiferr(read_byte(&i->op2, buf));
                 switch(i->op2) {
@@ -713,7 +718,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                         expr_t init = malloc(sizeof(instr_t));
                         *init = (instr_t) {
                             .op1        = OP_REF_FUNC,
-                            .funcidx    = x,
+                            .x          = x,
                             .next       = &end
                         };
 
@@ -722,17 +727,21 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     break;
                 }
 
-                case 2: {                    
-                    elem->type = TYPE_FUNCREF;
-
-                    elem->mode.kind = 0; // active
+                case 2: {
                     __throwiferr(read_u32_leb128(&elem->mode.table, buf));
                     __throwiferr(decode_expr(&elem->mode.offset, buf));
 
+                case 3:
+                    if(kind == 2)
+                        elem->mode.kind = 0; // active
+                    else
+                        elem->mode.kind = 2; // declarative
+                    
                     uint8_t et;
                     __throwiferr(read_byte(&et, buf));
                     __throwif(ERR_FAILED, et != 0);
-
+                    elem->type = TYPE_FUNCREF;
+                    
                     uint32_t n;
                     __throwiferr(read_u32_leb128(&n, buf));
 
@@ -746,7 +755,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                         expr_t init = malloc(sizeof(instr_t));
                         *init = (instr_t) {
                             .op1        = OP_REF_FUNC,
-                            .funcidx    = x,
+                            .x          = x,
                             .next       = &end
                         };
 

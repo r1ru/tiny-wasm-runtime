@@ -987,11 +987,12 @@ error_t validate_elemmode(context_t *ctx, elemmode_t *mode, reftype_t expect) {
                 __throwif(ERR_FAILED, tt->reftype != expect);
                 
                 break;
-            // passive
-            case 0x01:
-                // valid with any reftype
-                break;
             
+            // passive and declarative
+            case 0x01:
+            case 0x02:
+                break;
+                    
             default:
                 PANIC("unsupported elemmode %x", mode->kind);
         }
