@@ -65,6 +65,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/ref_is_null.wast -o ${CMAKE_CURRENT_BINARY_DIR}/ref_is_null
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_fill.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_fill
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_grow.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_grow
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_size.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_size
 )
 
 add_test(
@@ -363,5 +364,11 @@ add_test(
 add_test(
     NAME table_grow
     COMMAND runtest table_grow
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME table_size
+    COMMAND runtest table_size
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
