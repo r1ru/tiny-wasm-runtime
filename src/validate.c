@@ -733,12 +733,12 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             
             case OP_REF_FUNC: {
-                functype_t *ty = VECTOR_ELEM(&C->funcs, ip->funcidx);
+                functype_t *ty = VECTOR_ELEM(&C->funcs, ip->x);
                 __throwif(ERR_UNKNOWN_FUNC, !ty);
 
                 bool is_contained = false;
                 VECTOR_FOR_EACH(ref, &C->refs) {
-                    if(*ref == ip->funcidx)
+                    if(*ref == ip->x)
                         is_contained = true;
                 }
 

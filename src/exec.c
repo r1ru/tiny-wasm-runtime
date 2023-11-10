@@ -1664,6 +1664,11 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             pop_i32(&n, S->stack);
                             pop_val(&val, S->stack);
 
+                            if(tab->type.limits.max && n + tab->elem.len > tab->type.limits.max) {
+                                push_i32(-1, S->stack);
+                                break;
+                            }
+
                             if(!IS_ERROR(VECTOR_GROW(&tab->elem, n))) {
                                 // init
                                 for(int i = sz; i < tab->elem.len; i++) {

@@ -39,6 +39,9 @@ error_t vector_concat(vector_t *dst, vector_t *src1, vector_t *src2, size_t ent_
 
 error_t vector_grow(vector_t *vec, size_t ent_size, size_t n) {
     __try {
+        if(n == 0)
+            __throw(ERR_SUCCESS);
+        
         void *new = realloc(vec->elem, ent_size * (n + vec->len));
         __throwif(ERR_FAILED, !new);
         vec->elem = new;
