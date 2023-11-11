@@ -13,6 +13,7 @@ typedef uint32_t    tableaddr_t;
 typedef uint32_t    memaddr_t;
 typedef uint32_t    globaladdr_t;
 typedef uint32_t    elemaddr_t;
+typedef uint32_t    dataaddr_t;
 
 typedef struct {
     functype_t      *types;
@@ -21,6 +22,7 @@ typedef struct {
     memaddr_t       *memaddrs;
     globaladdr_t    *globaladdrs;
     elemaddr_t      *elemaddrs;
+    dataaddr_t       *dataaddrs;
     exportinst_t    *exports;
 } moduleinst_t;
 
@@ -106,12 +108,17 @@ typedef  struct {
 } eleminst_t;
 
 typedef struct {
+    VECTOR(byte_t)      data;
+} datains_t;
+
+typedef struct {
     stack_t                 *stack;
     VECTOR(funcinst_t)      funcs;
     VECTOR(tableinst_t)     tables;
     VECTOR(meminst_t)       mems;
     VECTOR(globalinst_t)    globals;
     VECTOR(eleminst_t)      elems;
+    VECTOR(datains_t)       datas;
 } store_t;
 
 typedef struct {

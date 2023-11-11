@@ -1,6 +1,7 @@
 #include "exec.h"
 #include "print.h"
 #include "exception.h"
+#include "memory.h"
 
 // todo: fix this?
 #include <math.h>
@@ -256,7 +257,18 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
         moduleinst->memaddrs[i] = i;
     }
 
+    // allocate datas
+    uint32_t num_datas = module->datas.len;
     moduleinst->exports = module->exports.elem;
+    moduleinst->dataaddrs = malloc(sizeof(dataaddr_t) * num_datas);
+    for(uint32_t i = 0; i < num_datas; i++) {
+        data_t *data = VECTOR_ELEM(&module->datas, i);
+        datains_t *datainst = VECTOR_ELEM(&S->datas, i);
+
+        VECTOR_COPY(&datainst->data, &data->init);
+
+        moduleinst->dataaddrs[i] = i;
+    }
 
     return moduleinst;
 }
@@ -275,6 +287,7 @@ error_t instantiate(store_t **S, module_t *module) {
         VECTOR_NEW(&store->mems, module->mems.len);
         VECTOR_NEW(&store->globals, module->globals.len);
         VECTOR_NEW(&store->elems, module->elems.len);
+        VECTOR_NEW(&store->datas, module->datas.len);
 
         moduleinst_t *moduleinst = allocmodule(store, module);
 
@@ -357,6 +370,29 @@ error_t instantiate(store_t **S, module_t *module) {
                 d++;
                 s++;  
             }
+        }
+
+        // init memory if datamode is active
+        for(uint32_t i = 0; i < module->datas.len; i++) {
+            data_t *data = VECTOR_ELEM(&module->datas, i);
+
+            if(data->mode.kind != DATA_MODE_ACTIVE)
+                continue;
+            
+            __throwif(ERR_FAILED, data->mode.memory != 0);
+
+            exec_expr(&data->mode.offset, store);
+            // i32.const 0
+            push_i32(0, store->stack);
+            // i32.const n
+            push_i32(data->init.len, store->stack);
+
+            // memory.init i
+            instr_t memory_init = {
+                .op1 = OP_0XFC, .op2 = 8, .x = i, .next = NULL
+            };
+            expr_t expr = &memory_init;
+            exec_expr(&expr, store);
         }
 
         pop_frame(&F, store->stack);
@@ -809,7 +845,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                     int32_t i;
                     pop_i32(&i, S->stack);
-                    int32_t ea = ip->m.offset + i;
+                    uint64_t ea = (uint32_t)i;
+                    ea += ip->m.offset;
 
                     int32_t n;
                     switch(ip->op1) {
@@ -846,7 +883,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                     // todo: fix this?
                     if(!mem->base[idx]) {
-                        mem->base[idx] = malloc(4096);
+                        mem->base[idx] = calloc(4096, 1);
                     }
 
                     uint8_t *base = mem->base[idx];
@@ -917,7 +954,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     pop_val(&c, S->stack);
                     pop_i32(&i, S->stack);
 
-                    int32_t ea = ip->m.offset + i;
+                    uint64_t ea = (uint32_t)i;
+                    ea += ip->m.offset;
 
                     int32_t n;
                     switch(ip->op1) {
@@ -948,7 +986,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     int32_t offs = ea - 0x1000 * idx;
 
                     if(!mem->base[idx]) {
-                        mem->base[idx] = malloc(4096);
+                        mem->base[idx] = calloc(4096, 1);
                     }
 
                     uint8_t *base = mem->base[idx];
@@ -1653,6 +1691,40 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                         case 0x07:
                             push_i64(U64_TRUNC_SAT_F64(lhs_f64), S->stack);
                             break;
+                        
+                        // mememory.init
+                        case 0x08: {
+                            memaddr_t ma = F->module->memaddrs[0];
+                            meminst_t *mem = VECTOR_ELEM(&S->mems, ma);
+                            dataaddr_t da = F->module->dataaddrs[ip->x];
+                            datains_t *data = VECTOR_ELEM(&S->datas, da);
+
+                            int32_t n, s, d;
+                            pop_i32(&n, S->stack);
+                            pop_i32(&s, S->stack);
+                            pop_i32(&d, S->stack);
+
+                            // todo: fix this
+                            __throwif(ERR_FAILED, s + n > data->data.len || d + n > WASM_MEM_SIZE);
+                            
+
+                            while(n--) {
+                                byte_t b = *VECTOR_ELEM(&data->data, s);
+                                
+                                push_i32(d, S->stack);
+                                push_i32((int32_t)b, S->stack);
+
+                                instr_t i32_store8 = {
+                                    .op1 = OP_I32_STORE8, .next = NULL, 
+                                    .m = (memarg_t){.offset = 0, .align = 0}
+                                };
+                                expr_t expr = &i32_store8;
+                                exec_expr(&expr, S);
+                                s++;
+                                d++;
+                            }
+                            break;
+                        }
 
                         // table.grow
                         case 0x0F: {

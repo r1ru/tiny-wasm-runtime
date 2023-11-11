@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/table_grow.2.wasm", O_RDONLY);
+    int fd = open("./build/test/address.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -154,10 +154,11 @@ int main(int argc, char *argv[]) {
     *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 0};
 
     // invoke
-    err = invoke(S, 0, &args);
+    err = invoke(S, 14, &args);
     if(IS_ERROR(err))
         PANIC("invocation fail: %d", err);
 
+    printf("ret = %d\n", VECTOR_ELEM(&args, 0)->val.num.i32);
 
     // cleanup
     munmap(head, fsize);
