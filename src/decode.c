@@ -837,24 +837,30 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
         VECTOR_NEW(&mod->datas, n1);
 
         byte_t kind;
-        byte_t kinds[3] = {DATA_MODE_ACTIVE, DATA_MODE_PASSIVE, DATA_MODE_ACTIVE};
         VECTOR_FOR_EACH(data, &mod->datas) {
             __throwiferr(read_byte(&kind, buf));
             switch(kind) {
-                case 2:
-                    __throwiferr(read_u32_leb128(&data->mode.memory, buf));
                 case 0:
+                    data->mode.kind = DATA_MODE_ACTIVE;
+                    data->mode.memory = 0;
                     __throwiferr(decode_expr(&data->mode.offset, buf));
+                    break;
                 case 1:
-                    uint32_t n2;
-                    __throwiferr(read_u32_leb128(&n2, buf));
-                    VECTOR_NEW(&data->init, n2);
-                    VECTOR_FOR_EACH(byte, &data->init) {
-                        __throwiferr(read_byte(byte, buf));
-                    }
-                    data->mode.kind = kinds[kind];
+                    data->mode.kind = DATA_MODE_PASSIVE;
+                    break;
+                case 2:
+                    data->mode.kind = DATA_MODE_ACTIVE;
+                    __throwiferr(read_u32_leb128(&data->mode.memory, buf));
+                    __throwiferr(decode_expr(&data->mode.offset, buf));
                     break;
             }
+            uint32_t n2;
+            __throwiferr(read_u32_leb128(&n2, buf));
+            VECTOR_NEW(&data->init, n2);
+            VECTOR_FOR_EACH(byte, &data->init) {
+                __throwiferr(read_byte(byte, buf));
+            }
+            break;
         }
     }
     __catch:
