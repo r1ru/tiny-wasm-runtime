@@ -1068,6 +1068,26 @@ error_t validate_module(module_t *mod) {
             __throwiferr(validate_elem(&C, elem, VECTOR_ELEM(&C.elems, idx++)));
         }
 
+        // validate datas
+        VECTOR_FOR_EACH(data, &mod->datas) {
+            switch(data->mode.kind) {
+                case DATA_MODE_ACTIVE:
+                    mem_t *m = VECTOR_ELEM(&C.mems, data->mode.memory);
+                    __throwif(ERR_FAILED, !m);
+
+                     // expr must be valid with result type [i32]
+                    valtype_t type_i32 = TYPE_NUM_I32;
+                    resulttype_t rt2 = {.len = 1, .elem = &type_i32};
+                    __throwiferr(validate_expr(&C, &data->mode.offset, &rt2));
+
+                    // expr must be constant
+                    __throwif(ERR_FAILED, !is_constant_expr(&data->mode.offset));
+                    break;
+                case DATA_MODE_PASSIVE:
+                    break;
+            }
+        }
+
         // validte funcs
         // set expected functypes first
         for(uint32_t i = 0; i < mod->funcs.len; i++) {
