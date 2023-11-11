@@ -185,7 +185,7 @@ error_t read_bt(blocktype_t *bt, buffer_t *buf) {
 // useful macros
 typedef error_t (*decoder_t) (module_t *mod, buffer_t *buf);
 
-static decoder_t decoders[11] = {
+static decoder_t decoders[13] = {
     [1]     = decode_typesec,
     [3]     = decode_funcsec,
     [4]     = decode_tablesec,
@@ -194,6 +194,7 @@ static decoder_t decoders[11] = {
     [7]     = decode_exportsec,
     [9]     = decode_elemsec,
     [10]    = decode_codesec,
+    [11]    = decode_datasec,
 };
 
 error_t decode_typesec(module_t *mod, buffer_t*buf) {
@@ -828,6 +829,38 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
         return err;
 }
 
+error_t decode_datasec(module_t *mod, buffer_t *buf) {
+    __try {
+        uint32_t n1;
+        __throwiferr(read_u32_leb128(&n1, buf));
+
+        VECTOR_NEW(&mod->datas, n1);
+
+        byte_t kind;
+        byte_t kinds[3] = {DATA_MODE_ACTIVE, DATA_MODE_PASSIVE, DATA_MODE_ACTIVE};
+        VECTOR_FOR_EACH(data, &mod->datas) {
+            __throwiferr(read_byte(&kind, buf));
+            switch(kind) {
+                case 2:
+                    __throwiferr(read_u32_leb128(&data->mode.memory, buf));
+                case 0:
+                    __throwiferr(decode_expr(&data->mode.offset, buf));
+                case 1:
+                    uint32_t n2;
+                    __throwiferr(read_u32_leb128(&n2, buf));
+                    VECTOR_NEW(&data->init, n2);
+                    VECTOR_FOR_EACH(byte, &data->init) {
+                        __throwiferr(read_byte(byte, buf));
+                    }
+                    data->mode.kind = kinds[kind];
+                    break;
+            }
+        }
+    }
+    __catch:
+        return err;
+}
+
 error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
     __try {    
         buffer_t *buf;
@@ -845,6 +878,7 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         VECTOR_INIT(&m->mems);
         VECTOR_INIT(&m->globals);
         VECTOR_INIT(&m->elems);
+        VECTOR_INIT(&m->datas);
         VECTOR_INIT(&m->exports);
 
         while(!eof(buf)) {

@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "vector.h"
 
+typedef uint8_t     byte_t;
 typedef uint8_t     valtype_t;
 typedef uint8_t     reftype_t;
 typedef uint32_t    typeidx_t;
@@ -15,6 +16,7 @@ typedef uint32_t    funcidx_t;
 typedef uint32_t    localidx_t;
 typedef uint32_t    tableidx_t;
 typedef uint32_t    elemidx_t;
+typedef uint32_t    memidx_t;
 typedef uint32_t    idx_t;
 
 #define TYPE_NUM_I32    0x7F
@@ -329,6 +331,19 @@ typedef struct {
     elemmode_t      mode;
 } elem_t;
 
+#define DATA_MODE_PASSIVE   0
+#define DATA_MODE_ACTIVE    1
+typedef struct {
+    uint8_t         kind;
+    memidx_t        memory;
+    expr_t          offset;
+} datamode_t;
+
+typedef struct {
+    VECTOR(byte_t)  init;
+    datamode_t      mode;
+} data_t;
+
 typedef struct {
     uint8_t     kind;
     union {
@@ -349,5 +364,6 @@ typedef struct {
     VECTOR(mem_t)       mems;
     VECTOR(global_t)    globals;
     VECTOR(elem_t)      elems;
+    VECTOR(data_t)      datas;
     VECTOR(export_t)    exports;
 } module_t;
