@@ -67,6 +67,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_grow.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_grow
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_size.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_size
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/address.wast -o ${CMAKE_CURRENT_BINARY_DIR}/address
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/float_exprs.wast -o ${CMAKE_CURRENT_BINARY_DIR}/float_exprs
 )
 
 add_test(
@@ -377,5 +378,11 @@ add_test(
 add_test(
     NAME address
     COMMAND runtest address
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME float_exprs
+    COMMAND runtest float_exprs
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
