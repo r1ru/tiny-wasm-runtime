@@ -759,8 +759,11 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     __throwiferr(read_u32_leb128(&elem->mode.table, buf));
                     __throwiferr(decode_expr(&elem->mode.offset, buf));
 
+                case 1:
                 case 3:
-                    if(kind == 2)
+                    if (kind == 1)
+                        elem->mode.kind = 1; // passive
+                    else if(kind == 2)
                         elem->mode.kind = 0; // active
                     else
                         elem->mode.kind = 2; // declarative
