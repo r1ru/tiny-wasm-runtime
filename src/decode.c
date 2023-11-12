@@ -862,7 +862,6 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
             VECTOR_FOR_EACH(byte, &data->init) {
                 __throwiferr(read_byte(byte, buf));
             }
-            break;
         }
     }
     __catch:
