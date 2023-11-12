@@ -625,20 +625,39 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                     case 0x07:
                         break;
                     
+                    // memory.init
+                    case 0x08: {
+                        uint32_t zero;
+                        __throwiferr(read_u32_leb128(&i->x, buf));
+                        __throwiferr(read_u32_leb128(&zero, buf));
+                        break;
+                    }
+
                     case 0xC:
                         __throwiferr(read_u32_leb128(&i->y, buf));
                         __throwiferr(read_u32_leb128(&i->x, buf));
                         break;
                     
                     // memory.copy
-                    case 0xA:
+                    case 0xA: {
+                        uint32_t zero;
+                        __throwiferr(read_u32_leb128(&zero, buf));
+                        __throwiferr(read_u32_leb128(&zero, buf));
+                        break;
+                    }
+
                     case 0xE:
                         __throwiferr(read_u32_leb128(&i->x, buf));
                         __throwiferr(read_u32_leb128(&i->y, buf));
                         break;
 
                     // memory.fill
-                    case 0x0B:
+                    case 0x0B: {
+                        uint32_t zero;
+                        __throwiferr(read_u32_leb128(&zero, buf));
+                        break;
+                    }
+
                     // table.grow
                     case 0x0F:
                     // table.size

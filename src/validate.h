@@ -14,6 +14,8 @@ typedef struct {
     resulttype_t    ty;
 } labeltype_t;
 
+typedef uint8_t ok_t;
+
 typedef struct {
     VECTOR(functype_t)      types;
     VECTOR(functype_t)      funcs;
@@ -21,6 +23,7 @@ typedef struct {
     VECTOR(mem_t)           mems;
     VECTOR(globaltype_t)    globals;
     VECTOR(reftype_t)       elems;
+    VECTOR(ok_t)            datas;
     VECTOR(valtype_t)       locals;
     list_t                  labels;
     resulttype_t            *ret;

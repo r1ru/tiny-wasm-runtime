@@ -777,11 +777,23 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         push(TYPE_NUM_I64, stack);
                         break;
                     
+                    // memory.init
+                    case 0x08: {
+                        mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                        __throwif(ERR_UNKNOWN_MEMORY_0, !mem);
+                        ok_t *data = VECTOR_ELEM(&C->datas, ip->x);
+                        __throwif(ERR_UNKNOWN_MEMORY_0, !data);
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        break;
+                    }
+                    
                     // memory.copy
                     case 0x0A:
                     // memory.fill
                     case 0x0B: {
-                        mem_t *mem = VECTOR_ELEM(&C->mems, ip->x);
+                        mem_t *mem = VECTOR_ELEM(&C->mems, 0);
                         __throwif(ERR_UNKNOWN_MEMORY_0, !mem);
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
@@ -1043,6 +1055,7 @@ error_t validate_module(module_t *mod) {
         VECTOR_NEW(&C.mems, mod->mems.len);
         VECTOR_NEW(&C.globals, mod->globals.len);
         VECTOR_NEW(&C.elems, mod->elems.len);
+        VECTOR_NEW(&C.datas, mod->datas.len);
         VECTOR_INIT(&C.locals);
         LIST_INIT(&C.labels);
         C.ret = NULL;
