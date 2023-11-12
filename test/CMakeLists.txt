@@ -50,7 +50,6 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/endianness.wast -o ${CMAKE_CURRENT_BINARY_DIR}/endianness
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/align.wast -o ${CMAKE_CURRENT_BINARY_DIR}/align
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/left-to-right.wast -o ${CMAKE_CURRENT_BINARY_DIR}/left-to-right
-    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/left-to-right.wast -o ${CMAKE_CURRENT_BINARY_DIR}/left-to-right
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/stack.wast -o ${CMAKE_CURRENT_BINARY_DIR}/stack
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/unreachable.wast -o ${CMAKE_CURRENT_BINARY_DIR}/unreachable
@@ -76,6 +75,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_grow.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_grow
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_size.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_size
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_trap.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_trap
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/nop.wast -o ${CMAKE_CURRENT_BINARY_DIR}/nop
 )
 
 add_test(
@@ -440,5 +440,11 @@ add_test(
 add_test(
     NAME memory_trap
     COMMAND runtest memory_trap
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME nop
+    COMMAND runtest nop
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
