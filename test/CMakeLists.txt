@@ -70,6 +70,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/float_exprs.wast -o ${CMAKE_CURRENT_BINARY_DIR}/float_exprs
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/float_memory.wast -o ${CMAKE_CURRENT_BINARY_DIR}/float_memory
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_redundancy.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_redundancy
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_fill.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_fill
 )
 
 add_test(
@@ -398,5 +399,11 @@ add_test(
 add_test(
     NAME memory_redundancy
     COMMAND runtest memory_redundancy
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME memory_fill
+    COMMAND runtest memory_fill
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
