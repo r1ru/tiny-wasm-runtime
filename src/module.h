@@ -80,6 +80,7 @@ enum op {
     OP_I64_STORE8           = 0x3C,
     OP_I64_STORE16          = 0x3D,
     OP_I64_STORE32          = 0x3E,
+    OP_MEMORY_SIZE          = 0x3F,
     OP_MEMORY_GROW          = 0x40,
     OP_I32_CONST            = 0x41,
     OP_I64_CONST            = 0x42,

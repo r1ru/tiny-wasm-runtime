@@ -442,6 +442,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 __throwiferr(read_u32_leb128(&i->m.offset, buf));
                 break;
             
+            case OP_MEMORY_SIZE:
             case OP_MEMORY_GROW: {
                 uint32_t zero;
                 __throwiferr(read_u32_leb128(&zero, buf));

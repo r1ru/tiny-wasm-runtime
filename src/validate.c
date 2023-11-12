@@ -465,6 +465,14 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 break;
             }
 
+            case OP_MEMORY_SIZE: {
+                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                __throwif(ERR_UNKNOWN_MEMORY_0, !mem);
+                // valid with [] -> [i32]
+                push(TYPE_NUM_I32, stack);
+                break;
+            }
+
             case OP_MEMORY_GROW: {
                 mem_t *mem = VECTOR_ELEM(&C->mems, 0);
                 __throwif(ERR_FAILED, !mem);

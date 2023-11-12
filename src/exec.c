@@ -1037,6 +1037,13 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     break;
                 }                
                 
+                case OP_MEMORY_SIZE: {
+                    memaddr_t ma = F->module->memaddrs[0];
+                    meminst_t *mem = VECTOR_ELEM(&S->mems, ma);
+                    push_i32(mem->num_pages, S->stack);
+                    break;
+                }
+
                 case OP_MEMORY_GROW: {
                     // support only memory.grow 0 for now
                     int32_t n;
