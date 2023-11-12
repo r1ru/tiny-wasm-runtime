@@ -73,6 +73,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_fill.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_fill
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_copy.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_copy
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_init.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_init
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_grow.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_grow
 )
 
 add_test(
@@ -419,5 +420,11 @@ add_test(
 add_test(
     NAME memory_init
     COMMAND runtest memory_init
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME memory_grow
+    COMMAND runtest memory_grow
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
