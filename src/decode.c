@@ -195,6 +195,7 @@ static decoder_t decoders[13] = {
     [9]     = decode_elemsec,
     [10]    = decode_codesec,
     [11]    = decode_datasec,
+    [12]    = decode_datacountsec,
 };
 
 error_t decode_typesec(module_t *mod, buffer_t*buf) {
@@ -870,6 +871,16 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
         return err;
 }
 
+error_t decode_datacountsec(module_t *mod, buffer_t *buf) {
+    // ignore data count section for now
+    __try {
+        uint32_t num_datas;
+        __throwiferr(read_u32_leb128(&num_datas, buf));
+    }
+    __catch:
+        return err;
+}
+
 error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
     __try {    
         buffer_t *buf;
@@ -899,7 +910,7 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
             buffer_t *sec;
             __throwiferr(read_buffer(&sec, size, buf));
 
-            if(id <= 11 && decoders[id])
+            if(id <= 12 && decoders[id])
                 __throwiferr(decoders[id](m, sec));
             else
                 PANIC("unknown section id: %x", id);
