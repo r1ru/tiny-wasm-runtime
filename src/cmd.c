@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/memory_fill.74.wasm", O_RDONLY);
+    int fd = open("./build/test/memory_copy.1.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -150,11 +150,9 @@ int main(int argc, char *argv[]) {
         PANIC("insntiation failed");
 
     args_t args;
-    VECTOR_NEW(&args, 3);
+    VECTOR_NEW(&args, 1);
 
-    *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 65279};
-    *VECTOR_ELEM(&args, 1) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 37};
-    *VECTOR_ELEM(&args, 2) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 4294967295};
+    *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 12};
 
     // invoke
     err = invoke(S, 1, &args);
@@ -162,7 +160,7 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("invocation fail: %d", err);
 
-    //printf("ret = %d\n", VECTOR_ELEM(&args, 0)->val.num.i32);
+    printf("ret = %d\n", VECTOR_ELEM(&args, 0)->val.num.i32);
 
     // cleanup
     munmap(head, fsize);

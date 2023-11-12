@@ -1725,6 +1725,52 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             }
                             break;
                         }
+                        // memory.copy
+                        case 0x0A: {
+                            memaddr_t ma = F->module->memaddrs[0];
+                            meminst_t *mem = VECTOR_ELEM(&S->mems, ma);
+                            int32_t n, s, d;
+                            pop_i32(&n, S->stack);
+                            pop_i32(&s, S->stack);
+                            pop_i32(&d, S->stack);
+                            printf("n = %d s = %d d = %d\n", n, s, d);
+                            uint64_t ea1 = (uint32_t)s, ea2 = (uint32_t)d;
+                            ea1 += (uint32_t)n;
+                            ea2 += (uint32_t)n;
+                            __throwif(
+                                ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, 
+                                ea1 > WASM_MEM_SIZE || ea2 > WASM_MEM_SIZE
+                            );
+                            instr_t i32_store8 = {
+                                .op1 = OP_I32_STORE8, .next = NULL, 
+                                .m = (memarg_t){.offset = 0, .align = 0}
+                            };
+                            instr_t i32_load8_u = {
+                                .op1 = OP_I32_LOAD8_U, .next = &i32_store8, 
+                                .m = (memarg_t){.offset = 0, .align = 0}
+                            }; 
+                            expr_t expr = &i32_load8_u;
+                            
+                            while(1) {
+                                if(n == 0)
+                                    break;
+                                
+                                if(d <= s) {
+                                    push_i32(d, S->stack);
+                                    push_i32(s, S->stack);
+                                    exec_expr(&expr, S);
+                                    d++;
+                                    s++;
+                                }
+                                else {
+                                    push_i32(d + n - 1, S->stack);
+                                    push_i32(s + n - 1, S->stack);
+                                    exec_expr(&expr, S);
+                                }
+                                n--;
+                            }
+                            break;
+                        }
 
                         // memory.fill
                         case 0x0B: {
@@ -1736,7 +1782,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             pop_i32(&d, S->stack);
                             uint64_t ea = (uint32_t)d;
                             ea += (uint32_t)n;
-                            
+
                             __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, ea > WASM_MEM_SIZE);
 
                             while(n--) {

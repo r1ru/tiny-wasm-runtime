@@ -629,19 +629,21 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                         __throwiferr(read_u32_leb128(&i->x, buf));
                         break;
                     
+                    // memory.copy
+                    case 0xA:
                     case 0xE:
                         __throwiferr(read_u32_leb128(&i->x, buf));
                         __throwiferr(read_u32_leb128(&i->y, buf));
                         break;
 
+                    // memory.fill
                     case 0x0B:
-                        // memory.fill
+                    // table.grow
                     case 0x0F:
-                        // table.grow
+                    // table.size
                     case 0x10:
-                        // table.size
+                    // table.fill
                     case 0x11:
-                        // table.fill
                         __throwiferr(read_u32_leb128(&i->x, buf));
                         break;
                     

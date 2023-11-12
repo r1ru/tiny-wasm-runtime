@@ -777,6 +777,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         push(TYPE_NUM_I64, stack);
                         break;
                     
+                    // memory.copy
+                    case 0x0A:
                     // memory.fill
                     case 0x0B: {
                         mem_t *mem = VECTOR_ELEM(&C->mems, ip->x);
