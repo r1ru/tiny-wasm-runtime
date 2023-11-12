@@ -1726,6 +1726,34 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             break;
                         }
 
+                        // memory.fill
+                        case 0x0B: {
+                            memaddr_t ma = F->module->memaddrs[0];
+                            meminst_t *mem = VECTOR_ELEM(&S->mems, ma);
+                            int32_t n, val, d;
+                            pop_i32(&n, S->stack);
+                            pop_i32(&val, S->stack);
+                            pop_i32(&d, S->stack);
+                            uint64_t ea = (uint32_t)d;
+                            ea += (uint32_t)n;
+                            
+                            __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, ea > WASM_MEM_SIZE);
+
+                            while(n--) {
+                                push_i32(d, S->stack);
+                                push_i32(val, S->stack);
+
+                                instr_t i32_store8 = {
+                                    .op1 = OP_I32_STORE8, .next = NULL, 
+                                    .m = (memarg_t){.offset = 0, .align = 0}
+                                };
+                                expr_t expr = &i32_store8;
+                                exec_expr(&expr, S);
+                                d++;
+                            }
+                            break;
+                        }
+
                         // table.grow
                         case 0x0F: {
                             tableaddr_t ta = F->module->tableaddrs[ip->x];

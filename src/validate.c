@@ -777,6 +777,16 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         push(TYPE_NUM_I64, stack);
                         break;
                     
+                    // memory.fill
+                    case 0x0B: {
+                        mem_t *mem = VECTOR_ELEM(&C->mems, ip->x);
+                        __throwif(ERR_UNKNOWN_MEMORY_0, !mem);
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        break;
+                    }
+
                     // table.init
                     case 0x0C: {
                         tabletype_t *t1 = VECTOR_ELEM(&C->tables, ip->x);
