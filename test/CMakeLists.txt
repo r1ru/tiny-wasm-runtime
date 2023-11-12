@@ -76,6 +76,8 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_size.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_size
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory_trap.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory_trap
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/nop.wast -o ${CMAKE_CURRENT_BINARY_DIR}/nop
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/select.wast -o ${CMAKE_CURRENT_BINARY_DIR}/select
+    COMMAND cp -f ${CMAKE_CURRENT_SOURCE_DIR}/select.2.wasm ${CMAKE_CURRENT_BINARY_DIR}/select.2.wasm
 )
 
 add_test(
@@ -446,5 +448,11 @@ add_test(
 add_test(
     NAME nop
     COMMAND runtest nop
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME select
+    COMMAND runtest select
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

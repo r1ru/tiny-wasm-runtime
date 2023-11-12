@@ -268,6 +268,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 valtype_t t;
                 __throwiferr(peek_stack_top(&t, stack));
+                // reftype is not allowed
+                __throwif(ERR_TYPE_MISMATCH, t == TYPE_EXTENREF || t == TYPE_FUNCREF);
                 __throwiferr(try_pop(t, stack));
                 __throwiferr(try_pop(t, stack));
                 push(t, stack);
@@ -275,7 +277,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             }
 
             case OP_SELECT_T: {
-                __throwif(ERR_FAILED, ip->types.len != 1);
+                __throwif(ERR_INVALID_RESULT_ARITY, ip->types.len != 1);
                 valtype_t t = ip->types.elem[0];
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
                 __throwiferr(try_pop(t, stack));

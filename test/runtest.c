@@ -37,6 +37,7 @@ static const char *error_msg[] = {
     [-ERR_UNKNOWN_MEMORY_0]                             = "unknown memory 0",
     [-ERR_UNKNOWN_DARA_SEGMENT]                         = "unknown data segment",
     [-ERR_UNKNOWN_DARA_SEGMENT_1]                       = "unknown data segment 1",
+    [-ERR_INVALID_RESULT_ARITY]                         = "invalid result arity",
     [-ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL]    = "alignment must not be larger than natural",
     [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]                 = "integer divide by zero",
     [-ERR_TRAP_INTERGET_OVERFLOW]                       = "integer overflow",
