@@ -199,7 +199,7 @@ void pop_while_not_frame(stack_t *stack) {
 }
 
 // memory
-// 32bit address space
+// 33bit address space
 typedef uint64_t    eaddr_t;
 typedef uint64_t    paddr_t;
 static paddr_t eaddr_to_paddr(meminst_t *meminst, eaddr_t eaddr) {
@@ -1045,10 +1045,21 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 }
 
                 case OP_MEMORY_GROW: {
-                    // support only memory.grow 0 for now
+                    memaddr_t ma = F->module->memaddrs[0];
+                    meminst_t *mem = VECTOR_ELEM(&S->mems, ma);
+
+                    int32_t sz = mem->num_pages;
                     int32_t n;
                     pop_i32(&n, S->stack);
-                    push_i32(1, S->stack);
+
+                    if((mem->type.max && n + mem->num_pages > mem->type.max) || \
+                        mem->num_pages + n > NUM_PAGE_MAX) {
+                        push_i32(-1, S->stack);
+                    } else {
+                        // grow n page(always success)
+                        mem->num_pages += n;
+                        push_i32(sz, S->stack);
+                    }
                     break;
                 }
 

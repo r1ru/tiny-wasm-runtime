@@ -93,6 +93,8 @@ typedef struct {
 
 #define PAGE_SIZE       (4096)
 #define WASM_PAGE_SIZE  (PAGE_SIZE * 16)
+#define NUM_PAGE_MAX    (65536)
+
 typedef struct {
     memtype_t       type;
     size_t          num_pages;
