@@ -1705,9 +1705,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             pop_i32(&d, S->stack);
 
                             // todo: fix this
-                            __throwif(ERR_FAILED, s + n > data->data.len || d + n > WASM_MEM_SIZE);
+                            __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, s + n > data->data.len || d + n > WASM_MEM_SIZE);
                             
-
                             while(n--) {
                                 byte_t b = *VECTOR_ELEM(&data->data, s);
                                 
