@@ -782,13 +782,20 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         mem_t *mem = VECTOR_ELEM(&C->mems, 0);
                         __throwif(ERR_UNKNOWN_MEMORY_0, !mem);
                         ok_t *data = VECTOR_ELEM(&C->datas, ip->x);
-                        __throwif(ERR_UNKNOWN_MEMORY_0, !data);
+                        __throwif(ERR_FAILED, !data);
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
                         break;
                     }
                     
+                    // data.drop
+                    case 0x09: {
+                        ok_t *data = VECTOR_ELEM(&C->datas, ip->x);
+                        __throwif(ERR_FAILED, !data);
+                        break;
+                    }
+
                     // memory.copy
                     case 0x0A:
                     // memory.fill

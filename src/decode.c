@@ -658,6 +658,8 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                         break;
                     }
 
+                    // data.drop
+                    case 0x09:
                     // table.grow
                     case 0x0F:
                     // table.size

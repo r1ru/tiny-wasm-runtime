@@ -1725,6 +1725,15 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             }
                             break;
                         }
+
+                        // data.drop
+                        case 0x09: {
+                            dataaddr_t a = F->module->dataaddrs[ip->x];
+                            datains_t *data = VECTOR_ELEM(&S->datas, a);
+                            VECTOR_INIT(&data->data);
+                            break;
+                        }
+
                         // memory.copy
                         case 0x0A: {
                             memaddr_t ma = F->module->memaddrs[0];
@@ -1733,7 +1742,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             pop_i32(&n, S->stack);
                             pop_i32(&s, S->stack);
                             pop_i32(&d, S->stack);
-                            printf("n = %d s = %d d = %d\n", n, s, d);
+                            
                             uint64_t ea1 = (uint32_t)s, ea2 = (uint32_t)d;
                             ea1 += (uint32_t)n;
                             ea2 += (uint32_t)n;
