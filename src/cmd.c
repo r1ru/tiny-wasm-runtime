@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/memory_copy.1.wasm", O_RDONLY);
+    int fd = open("./build/test/address.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -152,10 +152,10 @@ int main(int argc, char *argv[]) {
     args_t args;
     VECTOR_NEW(&args, 1);
 
-    *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 12};
+    *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 65507};
 
     // invoke
-    err = invoke(S, 1, &args);
+    err = invoke(S, 0, &args);
 
     if(IS_ERROR(err))
         PANIC("invocation fail: %d", err);

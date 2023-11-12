@@ -198,6 +198,37 @@ void pop_while_not_frame(stack_t *stack) {
     }
 }
 
+// memory
+// 32bit address space
+typedef uint64_t    eaddr_t;
+typedef uint64_t    paddr_t;
+static paddr_t eaddr_to_paddr(meminst_t *meminst, eaddr_t eaddr) {
+    uint32_t vpn2 = (eaddr) >> 30 & 0x3;
+    uint32_t vpn1 = (eaddr) >> 21 & 0x1ff;
+    uint32_t vpn0 = (eaddr) >> 12 & 0x1ff;
+
+    if(meminst->table2[vpn2] == NULL) {
+        meminst->table2[vpn2] = malloc(4096);
+        memset(meminst->table2[vpn2], 0, 4096);
+    }
+    
+    uint8_t ***table1 = meminst->table2[vpn2];
+
+    if(table1[vpn1] == NULL) {
+        table1[vpn1] = malloc(4096);
+        memset(table1[vpn1], 0, 4096);
+    }
+
+    uint8_t **table0 = table1[vpn1];
+
+    if(table0[vpn0] == NULL) {
+        table0[vpn0] = aligned_alloc(4096, 4096);
+        memset(table0[vpn0], 0, 4096);
+    }
+
+    return (uint64_t)table0[vpn0] | (eaddr & 0xfff);
+}
+
 // There is no need to use append when instantiating, since everything we need (functions, imports, etc.) is known to us.
 // see Note of https://webassembly.github.io/spec/core/exec/modules.html#instantiation
 
@@ -244,17 +275,14 @@ moduleinst_t *allocmodule(store_t *S, module_t *module) {
     }
 
     // allocate mems
-    uint32_t num_mems = module->mems.len;
-    moduleinst->memaddrs = malloc(sizeof(memaddr_t) * num_mems);
-    for(uint32_t i = 0; i < num_mems; i++) {
-        mem_t *mem = VECTOR_ELEM(&module->mems, i);
-        meminst_t *meminst = VECTOR_ELEM(&S->mems, i);
+    if(module->mems.len) {
+        moduleinst->memaddrs = malloc(sizeof(memaddr_t) * 1);
+        mem_t *mem = VECTOR_ELEM(&module->mems, 0);
+        meminst_t *meminst = VECTOR_ELEM(&S->mems, 0);
 
         meminst->type = mem->type;
-        for(int j = 0; j < 16; j++) {
-            meminst->base[j] = NULL;
-        }
-        moduleinst->memaddrs[i] = i;
+        meminst->num_pages = mem->type.min;
+        moduleinst->memaddrs[0] = 0;
     }
 
     // allocate datas
@@ -845,7 +873,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                     int32_t i;
                     pop_i32(&i, S->stack);
-                    uint64_t ea = (uint32_t)i;
+                    eaddr_t ea = (uint32_t)i;
                     ea += ip->m.offset;
 
                     int32_t n;
@@ -874,63 +902,56 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             break;
                     }
 
-                    if(ea + n > WASM_MEM_SIZE) {
+                    if(ea + n > mem->num_pages * WASM_PAGE_SIZE) {
                         __throw(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS);
                     }
 
-                    int32_t idx = ea >> 12;
-                    int32_t offs = ea - 0x1000 * idx;
-
                     // todo: fix this?
-                    if(!mem->base[idx]) {
-                        mem->base[idx] = calloc(4096, 1);
-                    }
-
-                    uint8_t *base = mem->base[idx];
+                    uint8_t *paddr = (uint8_t *)eaddr_to_paddr(mem, ea);
                     val_t val = {.num.i64 = 0};
 
                     switch(ip->op1) {
                         case OP_I32_LOAD:
-                            val.num.i32 = *(int32_t *)(base + offs);
+                            val.num.i32 = *(int32_t *)paddr;
                             break;
                         case OP_I32_LOAD8_S:
-                            val.num.i32 = (int32_t)*(int8_t *)(base + offs);
+                            val.num.i32 = (int32_t)*(int8_t *)paddr;
                             break;
                         case OP_I32_LOAD8_U:
-                            val.num.i32 = (int32_t)*(uint8_t *)(base + offs);
+                            val.num.i32 = (int32_t)*(uint8_t *)paddr;
                             break;
                         case OP_I32_LOAD16_S:
-                            val.num.i32 = (int32_t)*(int16_t *)(base + offs);
+                            val.num.i32 = (int32_t)*(int16_t *)paddr;
                             break;
                         case OP_I32_LOAD16_U:
-                            val.num.i32 = (int32_t)*(uint16_t *)(base + offs);
+                            val.num.i32 = (int32_t)*(uint16_t *)paddr;
                             break;
                         case OP_I64_LOAD:
-                            val.num.i64 = *(int64_t *)(base + offs);
+                            val.num.i64 = *(int64_t *)paddr;
                             break;
                         case OP_I64_LOAD8_S:
-                            val.num.i64 = (int64_t)*(int8_t *)(base + offs);
+                            val.num.i64 = (int64_t)*(int8_t *)paddr;
                             break;
                         case OP_I64_LOAD8_U:
-                            val.num.i64 = (int64_t)*(uint8_t *)(base + offs);
+                            val.num.i64 = (int64_t)*(uint8_t *)paddr;
                             break;
                         case OP_I64_LOAD16_S:
-                            val.num.i64 = (int64_t)*(int16_t *)(base + offs);
+                            val.num.i64 = (int64_t)*(int16_t *)paddr;
                             break;
                         case OP_I64_LOAD16_U:
-                            val.num.i64 = (int64_t)*(uint16_t *)(base + offs);
+                            val.num.i64 = (int64_t)*(uint16_t *)paddr;
                             break;
                         case OP_I64_LOAD32_S:
-                            val.num.i64 = (int64_t)*(int32_t *)(base + offs);
+                            val.num.i64 = (int64_t)*(int32_t *)paddr;
                             break;
                         case OP_I64_LOAD32_U:
-                            val.num.i64 = (int64_t)*(uint32_t *)(base + offs);
+                            val.num.i64 = (int64_t)*(uint32_t *)paddr;
                             break;
                         case OP_F32_LOAD:
-                            val.num.f32 = *(float *)(base + offs);
+                            val.num.f32 = *(float *)paddr;
                             break;
                         case OP_F64_LOAD:
-                            val.num.f64 = *(double *)(base + offs);
+                            val.num.f64 = *(double *)paddr;
                             break;
                     }
                     push_val(val, S->stack);
@@ -978,46 +999,39 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             break;
                     }
 
-                    if(ea + n > WASM_MEM_SIZE) {
+                    if(ea + n > mem->num_pages * WASM_PAGE_SIZE) {
                         __throw(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS);
                     }
 
-                    int32_t idx = ea >> 12;
-                    int32_t offs = ea - 0x1000 * idx;
-
-                    if(!mem->base[idx]) {
-                        mem->base[idx] = calloc(4096, 1);
-                    }
-
-                    uint8_t *base = mem->base[idx];
+                    uint8_t *paddr = (uint8_t *)eaddr_to_paddr(mem, ea);
 
                     switch(ip->op1) {
                         case OP_I32_STORE:
-                            *(int32_t *)(base + offs) = c.num.i32;
+                            *(int32_t *)paddr = c.num.i32;
                             break;
                         case OP_I64_STORE:
-                            *(int64_t *)(base + offs) = c.num.i64;
+                            *(int64_t *)paddr = c.num.i64;
                             break;
                         case OP_F32_STORE:
-                            *(float *)(base + offs) = c.num.f32;
+                            *(float *)paddr = c.num.f32;
                             break;
                         case OP_F64_STORE:
-                            *(double *)(base + offs) = c.num.f64;
+                            *(double *)paddr = c.num.f64;
                             break;
                         case OP_I32_STORE8:
-                            *(uint8_t *)(base + offs) = c.num.i32 & 0xff;
+                            *(uint8_t *)paddr = c.num.i32 & 0xff;
                             break;
                         case OP_I32_STORE16:
-                            *(uint16_t *)(base + offs) = c.num.i32 & 0xffff;
+                            *(uint16_t *)paddr = c.num.i32 & 0xffff;
                             break;
                         case OP_I64_STORE8:
-                            *(uint8_t *)(base + offs) = c.num.i64 & 0xff;
+                            *(uint8_t *)paddr = c.num.i64 & 0xff;
                             break;
                         case OP_I64_STORE16:
-                            *(uint16_t *)(base + offs) = c.num.i64 & 0xffff;
+                            *(uint16_t *)paddr = c.num.i64 & 0xffff;
                             break;
                         case OP_I64_STORE32:
-                            *(uint32_t *)(base + offs) = c.num.i64 & 0xffffffff;
+                            *(uint32_t *)paddr = c.num.i64 & 0xffffffff;
                             break;
                     }
                     break;
@@ -1705,7 +1719,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             pop_i32(&d, S->stack);
 
                             // todo: fix this
-                            __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, s + n > data->data.len || d + n > WASM_MEM_SIZE);
+                            __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, s + n > data->data.len || d + n > mem->num_pages * WASM_PAGE_SIZE);
                             
                             while(n--) {
                                 byte_t b = *VECTOR_ELEM(&data->data, s);
@@ -1747,7 +1761,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             ea2 += (uint32_t)n;
                             __throwif(
                                 ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, 
-                                ea1 > WASM_MEM_SIZE || ea2 > WASM_MEM_SIZE
+                                ea1 > mem->num_pages * WASM_PAGE_SIZE || \
+                                ea2 > mem->num_pages * WASM_PAGE_SIZE
                             );
                             instr_t i32_store8 = {
                                 .op1 = OP_I32_STORE8, .next = NULL, 
@@ -1791,7 +1806,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             uint64_t ea = (uint32_t)d;
                             ea += (uint32_t)n;
 
-                            __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, ea > WASM_MEM_SIZE);
+                            __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, ea > mem->num_pages * WASM_PAGE_SIZE);
 
                             while(n--) {
                                 push_i32(d, S->stack);

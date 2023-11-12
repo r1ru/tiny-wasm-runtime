@@ -91,10 +91,12 @@ typedef struct {
     obj_t           *pool;
 } stack_t;
 
-#define WASM_MEM_SIZE   (4096 * 16)
+#define PAGE_SIZE       (4096)
+#define WASM_PAGE_SIZE  (PAGE_SIZE * 16)
 typedef struct {
     memtype_t       type;
-    uint8_t         *base[16];
+    size_t          num_pages;
+    uint8_t ***     table2[4];
 } meminst_t;
 
 typedef struct {
