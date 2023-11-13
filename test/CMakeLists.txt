@@ -51,7 +51,6 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/align.wast -o ${CMAKE_CURRENT_BINARY_DIR}/align
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/left-to-right.wast -o ${CMAKE_CURRENT_BINARY_DIR}/left-to-right
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory
-    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/stack.wast -o ${CMAKE_CURRENT_BINARY_DIR}/stack
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/unreachable.wast -o ${CMAKE_CURRENT_BINARY_DIR}/unreachable
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/unreached-valid.wast -o ${CMAKE_CURRENT_BINARY_DIR}/unreached-valid
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/unreached-invalid.wast -o ${CMAKE_CURRENT_BINARY_DIR}/unreached-invalid
@@ -79,6 +78,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/select.wast -o ${CMAKE_CURRENT_BINARY_DIR}/select
     COMMAND cp -f ${CMAKE_CURRENT_SOURCE_DIR}/select.2.wasm ${CMAKE_CURRENT_BINARY_DIR}/select.2.wasm
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/bulk.wast -o ${CMAKE_CURRENT_BINARY_DIR}/bulk
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/stack.wast -o ${CMAKE_CURRENT_BINARY_DIR}/stack
 )
 
 add_test(
@@ -461,5 +461,11 @@ add_test(
 add_test(
     NAME bulk
     COMMAND runtest bulk
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME stack
+    COMMAND runtest stack
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
