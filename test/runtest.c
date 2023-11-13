@@ -34,9 +34,8 @@ static const char *error_msg[] = {
     [-ERR_UNKNOWN_TABLE]                                = "unknown table",
     [-ERR_UNKNOWN_TYPE]                                 = "unknown type",
     [-ERR_UNKNOWN_GLOBAL]                               = "unknown global",
-    [-ERR_UNKNOWN_MEMORY_0]                             = "unknown memory 0",
+    [-ERR_UNKNOWN_MEMORY]                               = "unknown memory",
     [-ERR_UNKNOWN_DARA_SEGMENT]                         = "unknown data segment",
-    [-ERR_UNKNOWN_DARA_SEGMENT_1]                       = "unknown data segment 1",
     [-ERR_INVALID_RESULT_ARITY]                         = "invalid result arity",
     [-ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL]    = "alignment must not be larger than natural",
     [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]                 = "integer divide by zero",
@@ -280,10 +279,10 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                     // check that error messagees match
                     __throwif(
                         ERR_FAILED, 
-                        strcmp(
-                            error_msg[-ret], 
-                            json_object_get_string(command, "text")
-                        ) != 0
+                        strstr(
+                            json_object_get_string(command, "text"),
+                            error_msg[-ret]
+                        ) == NULL
                     );
                 }
             }
@@ -310,10 +309,10 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
             // check that error messagees match
             __throwif(
                 ERR_FAILED, 
-                strcmp(
-                    error_msg[-ret], 
-                    json_object_get_string(command, "text")
-                ) != 0
+                strstr(
+                    json_object_get_string(command, "text"),
+                    error_msg[-ret]
+                ) == NULL
             );
         }
         // todo: add here

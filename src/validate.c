@@ -469,7 +469,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
 
             case OP_MEMORY_SIZE: {
                 mem_t *mem = VECTOR_ELEM(&C->mems, 0);
-                __throwif(ERR_UNKNOWN_MEMORY_0, !mem);
+                __throwif(ERR_UNKNOWN_MEMORY, !mem);
                 // valid with [] -> [i32]
                 push(TYPE_NUM_I32, stack);
                 break;
@@ -790,14 +790,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                     // memory.init
                     case 0x08: {
                         mem_t *mem = VECTOR_ELEM(&C->mems, 0);
-                        __throwif(ERR_UNKNOWN_MEMORY_0, !mem);
+                        __throwif(ERR_UNKNOWN_MEMORY, !mem);
                         ok_t *data = VECTOR_ELEM(&C->datas, ip->x);
-                        if(ip->x == 1) {
-                            __throwif(ERR_UNKNOWN_DARA_SEGMENT_1, !data);
-                        }
-                        else {
-                            __throwif(ERR_UNKNOWN_DARA_SEGMENT, !data);
-                        }
+                        __throwif(ERR_UNKNOWN_DARA_SEGMENT, !data);
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
@@ -807,12 +802,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                     // data.drop
                     case 0x09: {
                         ok_t *data = VECTOR_ELEM(&C->datas, ip->x);
-                        if(ip->x == 1) {
-                            __throwif(ERR_UNKNOWN_DARA_SEGMENT_1, !data);
-                        }
-                        else {
-                            __throwif(ERR_UNKNOWN_DARA_SEGMENT, !data);
-                        }
+                        __throwif(ERR_UNKNOWN_DARA_SEGMENT, !data);
                         break;
                     }
 
@@ -821,7 +811,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                     // memory.fill
                     case 0x0B: {
                         mem_t *mem = VECTOR_ELEM(&C->mems, 0);
-                        __throwif(ERR_UNKNOWN_MEMORY_0, !mem);
+                        __throwif(ERR_UNKNOWN_MEMORY, !mem);
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
