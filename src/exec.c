@@ -363,41 +363,21 @@ error_t instantiate(store_t **S, module_t *module) {
             if(elem->mode.kind != 0)
                 continue;
             
-            tableidx_t tableidx = elem->mode.table;
-
-            uint32_t n, s, d;
             // exec instruction sequence
             exec_expr(&elem->mode.offset, store);
-            pop_i32(&d, store->stack);
 
             // exec i32.const 0; i32.const n;
-            n = elem->init.len;
-            s = 0;
+            push_i32(0, store->stack);
+            push_i32(elem->init.len, store->stack);
 
-            // exec table.init tableidx i
-            while(n--) {
-                tableaddr_t ta = F.module->tableaddrs[tableidx];
-                tableinst_t *tab = VECTOR_ELEM(&store->tables, ta);
+            // table.init
+            instr_t table_init = {
+                .op1 = OP_0XFC, .op2 = 0x0C, .x = elem->mode.table, .y = i, .next = NULL
+            };
+            expr_t expr = &table_init;
+            exec_expr(&expr, store);
 
-                if(s + n > elem->init.len || d + n > tab->elem.len) {
-                    PANIC("trap");
-                }
-
-                // get init expr
-                expr_t *init = VECTOR_ELEM(&elem->init, s);
-
-                // eval init expr
-                exec_expr(init, store);
-                val_t val;
-                pop_val(&val, store->stack);
-
-                // exec table.set tableidx
-                *VECTOR_ELEM(&tab->elem, d) = val.ref;
-
-                // update d, s
-                d++;
-                s++;  
-            }
+            // todo: data.drop
         }
 
         // init memory if datamode is active
@@ -1837,6 +1817,42 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                                 expr_t expr = &i32_store8;
                                 exec_expr(&expr, S);
                                 d++;
+                            }
+                            break;
+                        }
+
+                        // table.init
+                        case 0x0C: {
+                            tableaddr_t ta = F->module->tableaddrs[ip->x];
+                            tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
+                            elemaddr_t ea = F->module->elemaddrs[ip->y];
+                            eleminst_t *elem = VECTOR_ELEM(&S->elems, ea);
+                            int32_t n, s, d;
+                            pop_i32(&n , S->stack);
+                            pop_i32(&s , S->stack);
+                            pop_i32(&d , S->stack);
+
+                            while(1) {
+                                __throwif(
+                                    ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, 
+                                    s + n > elem->elem.len || d + n > tab->elem.len
+                                );
+
+                                if(n == 0)
+                                    break;
+                                
+                                ref_t *ref = VECTOR_ELEM(&elem->elem, s);
+                                push_i32(d, S->stack);
+                                push_val((val_t){.ref = *ref}, S->stack);
+                                instr_t table_set = {
+                                    .op1 = OP_TABLE_SET, .next = NULL, 
+                                    .x = ip->x
+                                };
+                                expr_t expr = &table_set;
+                                exec_expr(&expr, S);
+                                d++;
+                                s++;
+                                n--;
                             }
                             break;
                         }
