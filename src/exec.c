@@ -1857,6 +1857,14 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             break;
                         }
 
+                        // elem.drop
+                        case 0x0D: {
+                            elemaddr_t a = F->module->elemaddrs[ip->x];
+                            eleminst_t *elem = VECTOR_ELEM(&S->elems, a);
+                            VECTOR_INIT(&elem->elem);
+                            break;
+                        }
+
                         // table.grow
                         case 0x0F: {
                             tableaddr_t ta = F->module->tableaddrs[ip->x];

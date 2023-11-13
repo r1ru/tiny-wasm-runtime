@@ -832,6 +832,13 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         break;
                     }
 
+                    // elem.drop
+                    case 0x0D: {
+                        reftype_t *elem = VECTOR_ELEM(&C->elems, ip->x);
+                        __throwif(ERR_FAILED, !elem);
+                        break;
+                    }
+
                     // table.copy
                     case 0x0E: {
                         tabletype_t *t1 = VECTOR_ELEM(&C->tables, ip->x);
