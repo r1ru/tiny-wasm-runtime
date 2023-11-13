@@ -1865,6 +1865,52 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             break;
                         }
 
+                        // table.copy
+                        case 0x0E: {
+                            tableaddr_t ta_x = F->module->tableaddrs[ip->x];
+                            tableinst_t *tab_x = VECTOR_ELEM(&S->tables, ta_x);
+                            tableaddr_t ta_y = F->module->tableaddrs[ip->y];
+                            tableinst_t *tab_y = VECTOR_ELEM(&S->tables, ta_y);
+
+                            int32_t n, s, d;
+                            pop_i32(&n, S->stack);
+                            pop_i32(&s, S->stack);
+                            pop_i32(&d, S->stack);
+
+                            __throwif(
+                                ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, 
+                                s + n > tab_y->elem.len || d + n > tab_x->elem.len
+                            );
+
+                            instr_t table_set = {
+                                .op1 = OP_TABLE_SET, .x = ip->x, .next = NULL
+                            };
+                            instr_t table_get = {
+                                .op1 = OP_TABLE_GET, .x = ip->y, .next = &table_set
+                            };
+                            expr_t expr = &table_get;
+
+                            while(1) {
+                                if(n == 0)
+                                    break;
+                                
+                                if(d <= s) {
+                                    push_i32(d, S->stack);
+                                    push_i32(s, S->stack);
+                                    exec_expr(&expr, S);
+                                    d++;
+                                    s++;
+                                }
+                                else {
+                                    push_i32(d + n - 1, S->stack);
+                                    push_i32(s + n - 1, S->stack);
+                                    exec_expr(&expr, S);
+                                }
+                                n--;
+                            }
+                            break;
+                        }
+
                         // table.grow
                         case 0x0F: {
                             tableaddr_t ta = F->module->tableaddrs[ip->x];

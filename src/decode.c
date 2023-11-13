@@ -655,6 +655,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                         __throwiferr(read_u32_leb128(&i->x, buf));
                         break;
 
+                    // table.copy
                     case 0xE:
                         __throwiferr(read_u32_leb128(&i->x, buf));
                         __throwiferr(read_u32_leb128(&i->y, buf));
