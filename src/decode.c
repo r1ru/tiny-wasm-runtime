@@ -187,6 +187,7 @@ typedef error_t (*decoder_t) (module_t *mod, buffer_t *buf);
 
 static decoder_t decoders[13] = {
     [1]     = decode_typesec,
+    [2]     = decode_importsec,
     [3]     = decode_funcsec,
     [4]     = decode_tablesec,
     [5]     = decode_memsec,
@@ -230,6 +231,12 @@ error_t decode_typesec(module_t *mod, buffer_t*buf) {
     __catch:
         return err;
 }
+
+error_t decode_importsec(module_t *mod, buffer_t*buf) {
+    // nop for now
+    return ERR_SUCCESS;
+}
+
 
 error_t decode_funcsec(module_t *mod, buffer_t *buf) {
     __try {

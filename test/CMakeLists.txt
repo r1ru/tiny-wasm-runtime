@@ -79,6 +79,8 @@ add_custom_target(
     COMMAND cp -f ${CMAKE_CURRENT_SOURCE_DIR}/select.2.wasm ${CMAKE_CURRENT_BINARY_DIR}/select.2.wasm
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/bulk.wast -o ${CMAKE_CURRENT_BINARY_DIR}/bulk
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/stack.wast -o ${CMAKE_CURRENT_BINARY_DIR}/stack
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/token.wast -o ${CMAKE_CURRENT_BINARY_DIR}/token
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/tokens.wast -o ${CMAKE_CURRENT_BINARY_DIR}/tokens
 )
 
 add_test(
@@ -467,5 +469,17 @@ add_test(
 add_test(
     NAME stack
     COMMAND runtest stack
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME token
+    COMMAND runtest token
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME tokens
+    COMMAND runtest tokens
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
