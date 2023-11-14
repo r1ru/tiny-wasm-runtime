@@ -25,28 +25,33 @@ typedef struct {
 } test_ctx_t;
 
 static const char *error_msg[] = {
-    [-ERR_SUCCESS]                                      = "",
-    [-ERR_FAILED]                                       = "",
-    [-ERR_TYPE_MISMATCH]                                = "type mismatch",
-    [-ERR_UNKNOWN_LOCAL]                                = "unknown local",
-    [-ERR_UNKNOWN_LABEL]                                = "unknown label",
-    [-ERR_UNKNOWN_FUNC]                                 = "unknown function",
-    [-ERR_UNKNOWN_TABLE]                                = "unknown table",
-    [-ERR_UNKNOWN_TYPE]                                 = "unknown type",
-    [-ERR_UNKNOWN_GLOBAL]                               = "unknown global",
-    [-ERR_UNKNOWN_MEMORY]                               = "unknown memory",
-    [-ERR_UNKNOWN_DARA_SEGMENT]                         = "unknown data segment",
-    [-ERR_INVALID_RESULT_ARITY]                         = "invalid result arity",
-    [-ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL]    = "alignment must not be larger than natural",
-    [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]                 = "integer divide by zero",
-    [-ERR_TRAP_INTERGET_OVERFLOW]                       = "integer overflow",
-    [-ERR_TRAP_INVALID_CONVERSION_TO_INTERGER]          = "invalid conversion to integer",
-    [-ERR_TRAP_UNDEFINED_ELEMENT]                       = "undefined element",
-    [-ERR_TRAP_UNREACHABLE]                             = "unreachable",
-    [-ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH]             = "indirect call type mismatch",
-    [-ERR_TRAP_UNINITIALIZED_ELEMENT]                   = "uninitialized element",
-    [-ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS]             = "out of bounds memory access",
-    [-ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS]              = "out of bounds table access",
+    [-ERR_SUCCESS]                                              = "",
+    [-ERR_FAILED]                                               = "",
+    [-ERR_UNEXPECTED_END]                                       = "unexpected end",
+    [-ERR_LENGTH_OUT_OF_BOUNDS]                                 = "length out of bounds",
+    [-ERR_MALFORMED_SECTION_ID]                                 = "malformed section id",
+    [-ERR_FUNCTION_AND_CODE_SECTION_HAVE_INCOSISTENT_LENGTH]    = "function and code section have inconsistent lengths",
+    [-ERR_DATA_COUNT_AND_DATA_SECTION_HAVE_INCOSISTENT_LENGTH]  = "data count and data section have inconsistent lengths",
+    [-ERR_TYPE_MISMATCH]                                        = "type mismatch",
+    [-ERR_UNKNOWN_LOCAL]                                        = "unknown local",
+    [-ERR_UNKNOWN_LABEL]                                        = "unknown label",
+    [-ERR_UNKNOWN_FUNC]                                         = "unknown function",
+    [-ERR_UNKNOWN_TABLE]                                        = "unknown table",
+    [-ERR_UNKNOWN_TYPE]                                         = "unknown type",
+    [-ERR_UNKNOWN_GLOBAL]                                       = "unknown global",
+    [-ERR_UNKNOWN_MEMORY]                                       = "unknown memory",
+    [-ERR_UNKNOWN_DARA_SEGMENT]                                 = "unknown data segment",
+    [-ERR_INVALID_RESULT_ARITY]                                 = "invalid result arity",
+    [-ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL]            = "alignment must not be larger than natural",
+    [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]                         = "integer divide by zero",
+    [-ERR_TRAP_INTERGET_OVERFLOW]                               = "integer overflow",
+    [-ERR_TRAP_INVALID_CONVERSION_TO_INTERGER]                  = "invalid conversion to integer",
+    [-ERR_TRAP_UNDEFINED_ELEMENT]                               = "undefined element",
+    [-ERR_TRAP_UNREACHABLE]                                     = "unreachable",
+    [-ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH]                     = "indirect call type mismatch",
+    [-ERR_TRAP_UNINITIALIZED_ELEMENT]                           = "uninitialized element",
+    [-ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS]                     = "out of bounds memory access",
+    [-ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS]                      = "out of bounds table access",
 };
 
 // helpers
@@ -314,6 +319,26 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                     error_msg[-ret]
                 ) == NULL
             );
+        }
+        else if(strcmp(type, "assert_malformed") == 0) {
+            const char *module_type    = json_object_get_string(command, "module_type");
+            if(strcmp(module_type, "binary") == 0) {
+                const char *fpath = json_object_get_string(command, "filename");
+                __throwif(ERR_FAILED, map_file(ctx, fpath));
+            
+                // check that decode fails
+                error_t ret = decode_module(&ctx->mod, ctx->map, ctx->size);
+                __throwif(ERR_FAILED, !IS_ERROR(ret));
+
+                // check that error messagees match
+                __throwif(
+                    ERR_FAILED, 
+                    strstr(
+                        json_object_get_string(command, "text"),
+                        error_msg[-ret]
+                    ) == NULL
+                );
+            }
         }
         // todo: add here
         else {

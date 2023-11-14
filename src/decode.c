@@ -3,6 +3,10 @@
 #include "print.h"
 #include "exception.h"
 
+static inline bool eof(buffer_t *buf) {
+    return buf->p == buf->end;
+}
+
 error_t new_buffer(buffer_t **d, uint8_t *head, size_t size) {
     __try {
         buffer_t *buf = malloc(sizeof(buffer_t));
@@ -20,7 +24,7 @@ error_t new_buffer(buffer_t **d, uint8_t *head, size_t size) {
 
 error_t read_buffer(buffer_t **d, size_t size, buffer_t *buf) {
     __try {
-        __throwif(ERR_FAILED, buf->p + size > buf->end);
+        __throwif(ERR_LENGTH_OUT_OF_BOUNDS, buf->p + size > buf->end);
         __throwiferr(new_buffer(d, buf->p, size));
         buf->p += size;
     }
@@ -30,7 +34,7 @@ error_t read_buffer(buffer_t **d, size_t size, buffer_t *buf) {
 
 error_t read_byte(uint8_t *d, buffer_t *buf) {
     __try {
-        __throwif(ERR_FAILED, buf->p + 1 > buf->end);
+        __throwif(ERR_UNEXPECTED_END, buf->p + 1 > buf->end);
         *d = *buf->p++;
     }
     __catch:
@@ -58,7 +62,7 @@ error_t read_bytes(uint8_t **d, buffer_t *buf) {
 
 error_t read_u32(uint32_t *d, buffer_t *buf) {
     __try {
-        __throwif(ERR_FAILED, buf->p + 4 > buf->end);
+        __throwif(ERR_UNEXPECTED_END, buf->p + 4 > buf->end);
          *d = *(uint32_t *)buf->p;
         buf->p += 4;
     }
@@ -68,7 +72,7 @@ error_t read_u32(uint32_t *d, buffer_t *buf) {
 
 error_t read_i32(int32_t *d, buffer_t *buf) {
      __try {
-        __throwif(ERR_FAILED, buf->p + 4 > buf->end);
+        __throwif(ERR_UNEXPECTED_END, buf->p + 4 > buf->end);
          *d = *(int32_t *)buf->p;
         buf->p += 4;
     }
@@ -139,7 +143,7 @@ error_t read_i32_leb128(int32_t *d, buffer_t *buf) {
 
 error_t read_f32(float *d, buffer_t *buf) {
     __try {
-        __throwif(ERR_FAILED, buf->p + 4 > buf->end);
+        __throwif(ERR_UNEXPECTED_END, buf->p + 4 > buf->end);
          *d = *(float *)buf->p;
         buf->p += 4;
     }
@@ -149,7 +153,7 @@ error_t read_f32(float *d, buffer_t *buf) {
 
 error_t read_f64(double *d, buffer_t *buf) {
     __try {
-        __throwif(ERR_FAILED, buf->p + 8 > buf->end);
+        __throwif(ERR_UNEXPECTED_END, buf->p + 8 > buf->end);
          *d = *(double *)buf->p;
         buf->p += 8;
     }
@@ -160,8 +164,6 @@ error_t read_f64(double *d, buffer_t *buf) {
 // todo: support s33
 error_t read_bt(blocktype_t *bt, buffer_t *buf) {
     __try {
-        __throwif(ERR_FAILED, buf->p + 1 > buf->end);
-
         switch(buf->p[0]) {
             case 0x40:
             case TYPE_NUM_I32:
@@ -186,6 +188,7 @@ error_t read_bt(blocktype_t *bt, buffer_t *buf) {
 typedef error_t (*decoder_t) (module_t *mod, buffer_t *buf);
 
 static decoder_t decoders[13] = {
+    [0]     = decode_customsec,
     [1]     = decode_typesec,
     [2]     = decode_importsec,
     [3]     = decode_funcsec,
@@ -199,6 +202,18 @@ static decoder_t decoders[13] = {
     [12]    = decode_datacountsec,
 };
 
+//ref: https://webassembly.github.io/spec/core/appendix/custom.html
+error_t decode_customsec(module_t *mod, buffer_t *buf) {
+    __try {
+        // check that name exists
+        uint8_t *n;
+        __throwiferr(read_bytes(&n, buf));
+        // ignore contentsfor now
+    }
+    __catch:
+        return err;
+}
+ 
 error_t decode_typesec(module_t *mod, buffer_t*buf) {
     __try {
         uint32_t n1;
@@ -832,7 +847,10 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
         uint32_t n1;
         __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n1, buf)));
 
-        // assert(n1 == mod->funcs.n)
+        __throwif(
+            ERR_FUNCTION_AND_CODE_SECTION_HAVE_INCOSISTENT_LENGTH, 
+            n1 != mod->funcs.len
+        );
 
         VECTOR_FOR_EACH(func, &mod->funcs) {
             // size is unused
@@ -875,7 +893,17 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
         uint32_t n1;
         __throwiferr(read_u32_leb128(&n1, buf));
 
-        VECTOR_NEW(&mod->datas, n1);
+        // check that length of vector matches datacount if datacount section present
+        if(mod->datas.len) {
+            __throwif(
+                ERR_DATA_COUNT_AND_DATA_SECTION_HAVE_INCOSISTENT_LENGTH,
+                n1 !=  mod->datas.len
+            );
+        }
+        // init vector
+        else {
+            VECTOR_NEW(&mod->datas, n1);
+        }
 
         byte_t kind;
         VECTOR_FOR_EACH(data, &mod->datas) {
@@ -912,6 +940,8 @@ error_t decode_datacountsec(module_t *mod, buffer_t *buf) {
     __try {
         uint32_t num_datas;
         __throwiferr(read_u32_leb128(&num_datas, buf));
+        // init data segment vector
+        VECTOR_NEW(&mod->datas, num_datas);
     }
     __catch:
         return err;
@@ -942,14 +972,14 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
             uint32_t size;
             __throwiferr(read_byte(&id, buf));
             __throwiferr(read_u32_leb128(&size, buf));
-            
+
             buffer_t *sec;
             __throwiferr(read_buffer(&sec, size, buf));
 
             if(id <= 12 && decoders[id])
                 __throwiferr(decoders[id](m, sec));
             else
-                PANIC("unknown section id: %x", id);
+                __throw(ERR_MALFORMED_SECTION_ID);
         }
     }
     __catch:

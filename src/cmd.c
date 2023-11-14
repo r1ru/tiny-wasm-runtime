@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/select.4.wasm", O_RDONLY);
+    int fd = open("./build/test/custom.8.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
 
     err = decode_module(&mod, head, fsize);
     if(IS_ERROR(err))
-        PANIC("decoding failed");
+        PANIC("decoding failed: %d", err);
     
     puts("[types]");
     VECTOR_FOR_EACH(type, &mod->types) {
