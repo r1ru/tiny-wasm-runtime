@@ -39,3 +39,4 @@ typedef int error_t;
 #define ERR_TRAP_UNINITIALIZED_ELEMENT                          ERR_CODE(24)
 #define ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS                    ERR_CODE(25)
 #define ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS                     ERR_CODE(26)
+#define ERR_TRAP_CALL_STACK_EXHAUSTED                           ERR_CODE(27)

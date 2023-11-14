@@ -52,6 +52,7 @@ static const char *error_msg[] = {
     [-ERR_TRAP_UNINITIALIZED_ELEMENT]                           = "uninitialized element",
     [-ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS]                     = "out of bounds memory access",
     [-ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS]                      = "out of bounds table access",
+    [-ERR_TRAP_CALL_STACK_EXHAUSTED]                            = "call stack exhausted",
 };
 
 // helpers
@@ -205,7 +206,8 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
             // instantiate
             __throwif(ERR_FAILED, IS_ERROR(instantiate(&ctx->store, ctx->mod)));
         }
-        else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0 || strcmp(type, "action") == 0) {
+        else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0 || \
+                strcmp(type, "action") == 0  || strcmp(type, "assert_exhaustion") == 0) {
             JSON_Object *action = json_object_get_object(command, "action");
             const char *action_type = json_object_get_string(action, "type");
 
@@ -289,6 +291,11 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                             error_msg[-ret]
                         ) == NULL
                     );
+
+                    // empty stack if assert_exhaustion
+                    if(strcmp(type, "assert_exhaustion") == 0) {
+                        ctx->store->stack->idx = -1;
+                    }
                 }
             }
             else {

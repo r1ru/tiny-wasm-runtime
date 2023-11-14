@@ -30,71 +30,104 @@ static inline bool empty(stack_t *s) {
     return s->idx == -1;
 }
 
-void push_val(val_t val, stack_t *stack) {
-    if(full(stack))
-        PANIC("stack is full");
+error_t push_val(val_t val, stack_t *stack) {
+    __try {
+        if(full(stack)) {
+            __throw(ERR_TRAP_CALL_STACK_EXHAUSTED);
+        }
+        stack->pool[++stack->idx] = (obj_t) {
+            .type   = TYPE_VAL,
+            .val    = val 
+        };
+        //printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
+    }
+    __catch:
+        return err;
+}
+
+static inline error_t push_i32(int32_t val, stack_t *stack) {
+    __try {
+        val_t v = {.num.i32 = val};
+        __throwiferr(push_val(v, stack));
+    }
+    __catch:
+        return err;
+}
+
+static inline error_t push_i64(int64_t val, stack_t *stack) {
+    __try {
+        val_t v = {.num.i64 = val};
+        __throwiferr(push_val(v, stack));
+    }
+    __catch:
+        return err;
     
-    stack->pool[++stack->idx] = (obj_t) {
-        .type   = TYPE_VAL,
-        .val    = val 
-    };
-    //printf("push val: %x idx: %ld\n", val.num.i32, stack->idx);
 }
 
-static inline void push_i32(int32_t val, stack_t *stack) {
-    val_t v = {.num.i32 = val};
-    push_val(v, stack);
+static inline error_t push_f32(float val, stack_t *stack) {
+    __try {
+        val_t v = {.num.f32 = val};
+        __throwiferr(push_val(v, stack));
+    }
+    __catch:
+        return err;
 }
 
-static inline void push_i64(int64_t val, stack_t *stack) {
-    val_t v = {.num.i64 = val};
-    push_val(v, stack);
-}
-
-static inline void push_f32(float val, stack_t *stack) {
-    val_t v = {.num.f32 = val};
-    push_val(v, stack);
-}
-
-static inline void push_f64(double val, stack_t *stack) {
-    val_t v = {.num.f64 = val};
-    push_val(v, stack);
+static inline error_t push_f64(double val, stack_t *stack) {
+    __try {
+        val_t v = {.num.f64 = val};
+        __throwiferr(push_val(v, stack));
+    }
+    __catch:
+        return err;
 }
 
 // todo: fix this?
-void push_vals(vals_t vals, stack_t *stack) {
-    size_t num_vals = vals.len;
-    for(int32_t i = (num_vals - 1); 0 <= i; i--) {
-        push_val(vals.elem[i], stack);
+error_t push_vals(vals_t vals, stack_t *stack) {
+    __try {
+        size_t num_vals = vals.len;
+        for(int32_t i = (num_vals - 1); 0 <= i; i--) {
+           __throwiferr(push_val(vals.elem[i], stack));
+        }
     }
+    __catch:
+        return err;
 }
 
-void push_label(label_t label, stack_t *stack) {
-    if(full(stack))
-        PANIC("stack is full");
-    
-    obj_t *obj = &stack->pool[++stack->idx];
+error_t push_label(label_t label, stack_t *stack) {
+    __try {
+        if(full(stack)) {
+            __throw(ERR_TRAP_CALL_STACK_EXHAUSTED);
+        }
+        obj_t *obj = &stack->pool[++stack->idx];
 
-    *obj = (obj_t) {
-        .type   = TYPE_LABEL,
-        .label  = label 
-    };
-    list_push_back(&stack->labels, &obj->label.link);
-    //printf("push label idx: %ld\n", stack->idx);
+        *obj = (obj_t) {
+            .type   = TYPE_LABEL,
+            .label  = label 
+        };
+        list_push_back(&stack->labels, &obj->label.link);
+        //printf("push label idx: %ld\n", stack->idx);
+    }
+    __catch:
+        return err;
 }
 
-void push_frame(frame_t frame, stack_t *stack) {
-    if(full(stack))
-        PANIC("stack is full");
-    
-    obj_t *obj = &stack->pool[++stack->idx];
+error_t push_frame(frame_t frame, stack_t *stack) {
+    __try {
+        if(full(stack)) {
+            __throw(ERR_TRAP_CALL_STACK_EXHAUSTED);
+        }
+        obj_t *obj = &stack->pool[++stack->idx];
 
-    *obj = (obj_t) {
-        .type   = TYPE_FRAME,
-        .frame  = frame 
-    };
-    list_push_back(&stack->frames, &obj->frame.link);
-    //printf("push frame idx: %ld\n", stack->idx);
+        *obj = (obj_t) {
+            .type   = TYPE_FRAME,
+            .frame  = frame 
+        };
+        list_push_back(&stack->frames, &obj->frame.link);
+        //printf("push frame idx: %ld\n", stack->idx);
+    }
+    __catch:
+        return err;
 }
 
 void pop_val(val_t *val, stack_t *stack) {    
@@ -321,7 +354,7 @@ error_t instantiate(store_t **S, module_t *module) {
 
         // alloc globals
         frame_t F = {.module = moduleinst, .locals = NULL};
-        push_frame(F, store->stack);
+        __throwiferr(push_frame(F, store->stack));
 
         uint32_t num_globals = module->globals.len;
         moduleinst->globaladdrs = malloc(sizeof(globaladdr_t) * num_globals);
@@ -367,8 +400,8 @@ error_t instantiate(store_t **S, module_t *module) {
             exec_expr(&elem->mode.offset, store);
 
             // exec i32.const 0; i32.const n;
-            push_i32(0, store->stack);
-            push_i32(elem->init.len, store->stack);
+            __throwiferr(push_i32(0, store->stack));
+            __throwiferr(push_i32(elem->init.len, store->stack));
 
             // table.init
             instr_t table_init = {
@@ -391,9 +424,9 @@ error_t instantiate(store_t **S, module_t *module) {
 
             exec_expr(&data->mode.offset, store);
             // i32.const 0
-            push_i32(0, store->stack);
+            __throwiferr(push_i32(0, store->stack));
             // i32.const n
-            push_i32(data->init.len, store->stack);
+            __throwiferr(push_i32(data->init.len, store->stack));
 
             // memory.init i
             instr_t memory_init = {
@@ -578,8 +611,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     };
                     vals_t vals;
                     pop_vals_n(&vals, ty.rt1.len, S->stack);
-                    push_label(L, S->stack);
-                    push_vals(vals, S->stack);
+                    __throwiferr(push_label(L, S->stack));
+                    __throwiferr(push_vals(vals, S->stack));
                     next_ip = ip->in1;
                     break;
                 }
@@ -594,8 +627,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     };
                     vals_t vals;
                     pop_vals_n(&vals, ty.rt1.len, S->stack);
-                    push_label(L, S->stack);
-                    push_vals(vals, S->stack);
+                    __throwiferr(push_label(L, S->stack));
+                    __throwiferr(push_vals(vals, S->stack));
                     next_ip = ip->in1;
                     break; 
                 }
@@ -613,8 +646,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     };
                     vals_t vals;
                     pop_vals_n(&vals, ty.rt1.len, S->stack);
-                    push_label(L, S->stack);
-                    push_vals(vals, S->stack);
+                    __throwiferr(push_label(L, S->stack));
+                    __throwiferr(push_vals(vals, S->stack));
 
                     if(c) {
                         next_ip = ip->in1;
@@ -643,7 +676,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     // exit instr* with label L
                     label_t l = {.parent = NULL};
                     try_pop_label(&l, S->stack);
-                    push_vals(vals, S->stack);
+                    __throwiferr(push_vals(vals, S->stack));
                     next_ip = l.parent != NULL ? l.parent->next : NULL;
                     break;
                 }
@@ -682,7 +715,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                         pop_vals(&tmp, S->stack);
                         pop_label(&L, S->stack);
                     }
-                    push_vals(vals, S->stack);
+                    __throwiferr(push_vals(vals, S->stack));
 
                     // br to "outermost" label (return from function)
                     if(!L.parent) {
@@ -746,8 +779,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                         valtype_t a = *VECTOR_ELEM(&ft_actual->rt2, i);
                         __throwif(ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH, e != a);
                     }
-
-                    invoke_func(S, r);
+                    __throwiferr(invoke_func(S, r));
                     break;
                 }
 
@@ -765,24 +797,24 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     pop_val(&v2, S->stack);
                     pop_val(&v1, S->stack);
                     if(c != 0)
-                        push_val(v1, S->stack);
+                        __throwiferr(push_val(v1, S->stack));
                     else
-                        push_val(v2, S->stack);
+                        __throwiferr(push_val(v2, S->stack));
                     break;
                 }
 
                 case OP_LOCAL_GET: {
                     localidx_t x = ip->localidx;
                     val_t val = F->locals[x];
-                    push_val(val, S->stack);
+                    __throwiferr(push_val(val, S->stack));
                     break;
                 }
 
                 case OP_LOCAL_TEE: {
                     val_t val;
                     pop_val(&val, S->stack);
-                    push_val(val, S->stack);
-                    push_val(val, S->stack);
+                    __throwiferr(push_val(val, S->stack));
+                    __throwiferr(push_val(val, S->stack));
                 }
 
                 case OP_LOCAL_SET: {
@@ -796,7 +828,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 case OP_GLOBAL_GET: {
                     globaladdr_t a = F->module->globaladdrs[ip->globalidx];
                     globalinst_t *glob = VECTOR_ELEM(&S->globals, a);
-                    push_val(glob->val, S->stack);
+                    __throwiferr(push_val(glob->val, S->stack));
                     break;
                 }
 
@@ -817,7 +849,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, !(i < tab->elem.len));
                     val_t val;
                     val.ref = *VECTOR_ELEM(&tab->elem, i);
-                    push_val(val, S->stack);
+                    __throwiferr(push_val(val, S->stack));
                     break;
                 }
 
@@ -934,7 +966,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             val.num.f64 = *(double *)paddr;
                             break;
                     }
-                    push_val(val, S->stack);
+                    __throwiferr(push_val(val, S->stack));
                     break;
                 }
 
@@ -1020,7 +1052,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 case OP_MEMORY_SIZE: {
                     memaddr_t ma = F->module->memaddrs[0];
                     meminst_t *mem = VECTOR_ELEM(&S->mems, ma);
-                    push_i32(mem->num_pages, S->stack);
+                    __throwiferr(push_i32(mem->num_pages, S->stack));
                     break;
                 }
 
@@ -1034,674 +1066,650 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                     if((mem->type.max && n + mem->num_pages > mem->type.max) || \
                         mem->num_pages + n > NUM_PAGE_MAX) {
-                        push_i32(-1, S->stack);
+                        __throwiferr(push_i32(-1, S->stack));
                     } else {
                         // grow n page(always success)
                         mem->num_pages += n;
-                        push_i32(sz, S->stack);
+                        __throwiferr(push_i32(sz, S->stack));
                     }
                     break;
                 }
 
                 case OP_I32_CONST:
-                    push_i32(ip->c.i32, S->stack);
+                    __throwiferr(push_i32(ip->c.i32, S->stack));
                     break;
                 
                 case OP_I64_CONST:
-                    push_i64(ip->c.i64, S->stack);
+                    __throwiferr(push_i64(ip->c.i64, S->stack));
                     break;
                 
                 case OP_F32_CONST:
-                    push_f32(ip->c.f32, S->stack);
+                    __throwiferr(push_f32(ip->c.f32, S->stack));
                     break;
                 
                 case OP_F64_CONST:
-                    push_f64(ip->c.f64, S->stack);
+                    __throwiferr(push_f64(ip->c.f64, S->stack));
                     break;
                 
                 case OP_I32_EQZ:
-                    push_i32(lhs_i32 == 0, S->stack);
+                    __throwiferr(push_i32(lhs_i32 == 0, S->stack));
                     break;
                                     
                 case OP_I32_EQ:
-                    push_i32(lhs_i32 == rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 == rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_NE:
-                    push_i32(lhs_i32 != rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 != rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_LT_S:
-                    push_i32(lhs_i32 < rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 < rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_LT_U:
-                    push_i32((uint32_t)lhs_i32 < (uint32_t)rhs_i32, S->stack);
+                    __throwiferr(push_i32((uint32_t)lhs_i32 < (uint32_t)rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_GT_S:
-                    push_i32(lhs_i32 > rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 > rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_GT_U:
-                    push_i32((uint32_t)lhs_i32 > (uint32_t)rhs_i32, S->stack);
+                    __throwiferr(push_i32((uint32_t)lhs_i32 > (uint32_t)rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_LE_S:
-                    push_i32(lhs_i32 <= rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 <= rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_LE_U:
-                    push_i32((uint32_t)lhs_i32 <= (uint32_t)rhs_i32, S->stack);
+                    __throwiferr(push_i32((uint32_t)lhs_i32 <= (uint32_t)rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_GE_S:
-                    push_i32(lhs_i32 >= rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 >= rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_GE_U:
-                    push_i32((uint32_t)lhs_i32 >= (uint32_t)rhs_i32, S->stack);
+                    __throwiferr(push_i32((uint32_t)lhs_i32 >= (uint32_t)rhs_i32, S->stack));
                     break;
                 
                 case OP_I64_EQZ:
-                    push_i32(lhs_i64 == 0, S->stack);
+                    __throwiferr(push_i32(lhs_i64 == 0, S->stack));
                     break;
                                     
                 case OP_I64_EQ:
-                    push_i32(lhs_i64 == rhs_i64, S->stack);
+                    __throwiferr(push_i32(lhs_i64 == rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_NE:
-                    push_i32(lhs_i64 != rhs_i64, S->stack);
+                    __throwiferr(push_i32(lhs_i64 != rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_LT_S:
-                    push_i32(lhs_i64 < rhs_i64, S->stack);
+                    __throwiferr(push_i32(lhs_i64 < rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_LT_U:
-                    push_i32((uint64_t)lhs_i64 < (uint64_t)rhs_i64, S->stack);
+                    __throwiferr(push_i32((uint64_t)lhs_i64 < (uint64_t)rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_GT_S:
-                    push_i32(lhs_i64 > rhs_i64, S->stack);
+                    __throwiferr(push_i32(lhs_i64 > rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_GT_U:
-                    push_i32((uint64_t)lhs_i64 > (uint64_t)rhs_i64, S->stack);
+                    __throwiferr(push_i32((uint64_t)lhs_i64 > (uint64_t)rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_LE_S:
-                    push_i32(lhs_i64 <= rhs_i64, S->stack);
+                    __throwiferr(push_i32(lhs_i64 <= rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_LE_U:
-                    push_i32((uint64_t)lhs_i64 <= (uint64_t)rhs_i64, S->stack);
+                    __throwiferr(push_i32((uint64_t)lhs_i64 <= (uint64_t)rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_GE_S:
-                    push_i32(lhs_i64 >= rhs_i64, S->stack);
+                    __throwiferr(push_i32(lhs_i64 >= rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_GE_U:
-                    push_i32((uint64_t)lhs_i64 >= (uint64_t)rhs_i64, S->stack);
+                    __throwiferr(push_i32((uint64_t)lhs_i64 >= (uint64_t)rhs_i64, S->stack));
                     break;
                 
                 case OP_F32_EQ:
-                    push_i32(lhs_f32 == rhs_f32, S->stack);
+                    __throwiferr(push_i32(lhs_f32 == rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_NE:
-                    push_i32(lhs_f32 != rhs_f32, S->stack);
+                    __throwiferr(push_i32(lhs_f32 != rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_LT:
-                    push_i32(lhs_f32 < rhs_f32, S->stack);
+                    __throwiferr(push_i32(lhs_f32 < rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_GT:
-                    push_i32(lhs_f32 > rhs_f32, S->stack);
+                    __throwiferr(push_i32(lhs_f32 > rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_LE:
-                    push_i32(lhs_f32 <= rhs_f32, S->stack);
+                    __throwiferr(push_i32(lhs_f32 <= rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_GE:
-                    push_i32(lhs_f32 >= rhs_f32, S->stack);
+                    __throwiferr(push_i32(lhs_f32 >= rhs_f32, S->stack));
                     break;
                 
                 case OP_F64_EQ:
-                    push_i32(lhs_f64 == rhs_f64, S->stack);
+                    __throwiferr(push_i32(lhs_f64 == rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_NE:
-                    push_i32(lhs_f64 != rhs_f64, S->stack);
+                    __throwiferr(push_i32(lhs_f64 != rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_LT:
-                    push_i32(lhs_f64 < rhs_f64, S->stack);
+                    __throwiferr(push_i32(lhs_f64 < rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_GT:
-                    push_i32(lhs_f64 > rhs_f64, S->stack);
+                    __throwiferr(push_i32(lhs_f64 > rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_LE:
-                    push_i32(lhs_f64 <= rhs_f64, S->stack);
+                    __throwiferr(push_i32(lhs_f64 <= rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_GE:
-                    push_i32(lhs_f64 >= rhs_f64, S->stack);
+                    __throwiferr(push_i32(lhs_f64 >= rhs_f64, S->stack));
                     break;
                 
                 case OP_I32_CLZ:
                     if(lhs_i32 == 0)
-                        push_i32(32, S->stack);
+                        __throwiferr(push_i32(32, S->stack));
                     else
-                        push_i32(__builtin_clz(lhs_i32), S->stack);
+                        __throwiferr(push_i32(__builtin_clz(lhs_i32), S->stack));
                     break;
                     
                 case OP_I32_CTZ:
-                    push_i32(__builtin_ctz(lhs_i32), S->stack);
+                    __throwiferr(push_i32(__builtin_ctz(lhs_i32), S->stack));
                     break;
                 
                 case OP_I32_POPCNT:
-                    push_i32(__builtin_popcount(lhs_i32), S->stack);
+                    __throwiferr(push_i32(__builtin_popcount(lhs_i32), S->stack));
                     break;
                 
                 case OP_I32_ADD:
-                    push_i32(lhs_i32 + rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 + rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_SUB:
-                    push_i32(lhs_i32 - rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 - rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_MUL:
-                    push_i32(lhs_i32 * rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 * rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_DIV_S:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
                     __throwif(ERR_TRAP_INTERGET_OVERFLOW, lhs_i32 == INT32_MIN && rhs_i32 == -1);
-                    push_i32(lhs_i32 / rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 / rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_DIV_U:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
-                    push_i32((uint32_t)lhs_i32 / (uint32_t)rhs_i32, S->stack);
+                    __throwiferr(push_i32((uint32_t)lhs_i32 / (uint32_t)rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_REM_S:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
                     if(lhs_i32 == INT32_MIN && rhs_i32 == -1) {
-                        push_i32(0, S->stack);
+                        __throwiferr(push_i32(0, S->stack));
                     }
                     else {
-                        push_i32(lhs_i32 % rhs_i32, S->stack);
+                        __throwiferr(push_i32(lhs_i32 % rhs_i32, S->stack));
                     }
                     break;
                 
                 case OP_I32_REM_U:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
-                    push_i32((uint32_t)lhs_i32 % (uint32_t)rhs_i32, S->stack);
+                    __throwiferr(push_i32((uint32_t)lhs_i32 % (uint32_t)rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_AND:
-                    push_i32(lhs_i32 & rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 & rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_OR:
-                    push_i32(lhs_i32 | rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 | rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_XOR:
-                    push_i32(lhs_i32 ^ rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 ^ rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_SHL:
-                    push_i32(lhs_i32 << rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 << rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_SHR_S:
-                    push_i32(lhs_i32 >> rhs_i32, S->stack);
+                    __throwiferr(push_i32(lhs_i32 >> rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_SHR_U:
-                    push_i32((uint32_t)lhs_i32 >> (uint32_t)rhs_i32, S->stack);
+                    __throwiferr(push_i32((uint32_t)lhs_i32 >> (uint32_t)rhs_i32, S->stack));
                     break;
                 
                 case OP_I32_ROTL: {
                     uint32_t n = rhs_i32 & 31;
-                    push_i32(
-                        ((uint32_t)lhs_i32 << n) | ((uint32_t)lhs_i32 >> ((-n) & 31)), 
-                        S->stack
-                    );
+                    __throwiferr(push_i32(((uint32_t)lhs_i32 << n) | ((uint32_t)lhs_i32 >> ((-n) & 31)), S->stack));
                     break;
                 }
 
                 case OP_I32_ROTR: {
                     uint32_t n = rhs_i32 & 31;
-                    push_i32(
-                        ((uint32_t)lhs_i32 >> n) | ((uint32_t)lhs_i32 << ((-n) & 31)), 
-                        S->stack
-                    );
+                    __throwiferr(push_i32(((uint32_t)lhs_i32 >> n) | ((uint32_t)lhs_i32 << ((-n) & 31)), S->stack));
                     break;
                 }
 
                 case OP_I64_CLZ:
                     if(lhs_i64 == 0)
-                        push_i64(64, S->stack);
+                        __throwiferr(push_i64(64, S->stack));
                     else
-                        push_i64(__builtin_clzl(lhs_i64), S->stack);
+                        __throwiferr(push_i64(__builtin_clzl(lhs_i64), S->stack));
                     break;
                     
                 case OP_I64_CTZ:
-                    push_i64(__builtin_ctzl(lhs_i64), S->stack);
+                    __throwiferr(push_i64(__builtin_ctzl(lhs_i64), S->stack));
                     break;
                 
                 case OP_I64_POPCNT:
-                    push_i64(__builtin_popcountl(lhs_i64), S->stack);
+                    __throwiferr(push_i64(__builtin_popcountl(lhs_i64), S->stack));
                     break;
                 
                 case OP_I64_ADD:
-                    push_i64(lhs_i64 + rhs_i64, S->stack);
+                    __throwiferr(push_i64(lhs_i64 + rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_SUB:
-                    push_i64(lhs_i64 - rhs_i64, S->stack);
+                    __throwiferr(push_i64(lhs_i64 - rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_MUL:
-                    push_i64(lhs_i64 * rhs_i64, S->stack);
+                    __throwiferr(push_i64(lhs_i64 * rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_DIV_S:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
                     __throwif(ERR_TRAP_INTERGET_OVERFLOW, lhs_i64 == INT64_MIN && rhs_i64 == -1);
-                    push_i64(lhs_i64 / rhs_i64, S->stack);
+                    __throwiferr(push_i64(lhs_i64 / rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_DIV_U:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
-                    push_i64((uint64_t)lhs_i64 / (uint64_t)rhs_i64, S->stack);
+                    __throwiferr(push_i64((uint64_t)lhs_i64 / (uint64_t)rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_REM_S:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
                     if(lhs_i64 == INT64_MIN && rhs_i64 == -1) {
-                        push_i64(0, S->stack);
+                        __throwiferr(push_i64(0, S->stack));
                     }
                     else {
-                        push_i64(lhs_i64 % rhs_i64, S->stack);
+                        __throwiferr(push_i64(lhs_i64 % rhs_i64, S->stack));
                     }
                     break;
                 
                 case OP_I64_REM_U:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
-                    push_i64((uint64_t)lhs_i64 % (uint64_t)rhs_i64, S->stack);
+                    __throwiferr(push_i64((uint64_t)lhs_i64 % (uint64_t)rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_AND:
-                    push_i64(lhs_i64 & rhs_i64, S->stack);
+                    __throwiferr(push_i64(lhs_i64 & rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_OR:
-                    push_i64(lhs_i64 | rhs_i64, S->stack);
+                    __throwiferr(push_i64(lhs_i64 | rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_XOR:
-                    push_i64(lhs_i64 ^ rhs_i64, S->stack);
+                    __throwiferr(push_i64(lhs_i64 ^ rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_SHL:
-                    push_i64(lhs_i64 << rhs_i64, S->stack);
+                    __throwiferr(push_i64(lhs_i64 << rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_SHR_S:
-                    push_i64(lhs_i64 >> rhs_i64, S->stack);
+                    __throwiferr(push_i64(lhs_i64 >> rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_SHR_U:
-                    push_i64((uint64_t)lhs_i64 >> (uint64_t)rhs_i64, S->stack);
+                    __throwiferr(push_i64((uint64_t)lhs_i64 >> (uint64_t)rhs_i64, S->stack));
                     break;
                 
                 case OP_I64_ROTL: {
                     uint64_t n = rhs_i64 & 63;
-                    push_i64(
-                        ((uint64_t)lhs_i64 << n) | ((uint64_t)lhs_i64 >> ((-n) & 63)), 
-                        S->stack
-                    );
+                    __throwiferr(push_i64(((uint64_t)lhs_i64 << n) | ((uint64_t)lhs_i64 >> ((-n) & 63)),  S->stack));
                     break;
                 }
 
                 case OP_I64_ROTR: {
                     uint64_t n = rhs_i64 & 63;
-                    push_i64(
-                        ((uint64_t)lhs_i64 >> n) | ((uint64_t)lhs_i64 << ((-n) & 63)), 
-                        S->stack
-                    );
+                    __throwiferr(push_i64(((uint64_t)lhs_i64 >> n) | ((uint64_t)lhs_i64 << ((-n) & 63)), S->stack));
                     break;
                 }
 
                 case OP_F32_ABS:
-                    push_f32(fabsf(lhs_f32), S->stack);
+                    __throwiferr(push_f32(fabsf(lhs_f32), S->stack));
                     break;
 
                 case OP_F32_NEG:
-                    push_f32(-lhs_f32, S->stack);
+                    __throwiferr(push_f32(-lhs_f32, S->stack));
                     break;
                 
                 case OP_F32_CEIL:
-                    push_f32(ceilf(lhs_f32), S->stack);
+                    __throwiferr(push_f32(ceilf(lhs_f32), S->stack));
                     break;
 
                 case OP_F32_FLOOR:
-                    push_f32(floorf(lhs_f32), S->stack);
+                    __throwiferr(push_f32(floorf(lhs_f32), S->stack));
                     break;
 
                 case OP_F32_TRUNC:
-                    push_f32(truncf(lhs_f32), S->stack);
+                    __throwiferr(push_f32(truncf(lhs_f32), S->stack));
                     break;
                 
                 case OP_F32_NEAREST:
-                    push_f32(nearbyintf(lhs_f32), S->stack);
+                    __throwiferr(push_f32(nearbyintf(lhs_f32), S->stack));
                     break;
                 
                 case OP_F32_SQRT:
-                    push_f32(sqrtf(lhs_f32), S->stack);
+                    __throwiferr(push_f32(sqrtf(lhs_f32), S->stack));
                     break;
                 
                 case OP_F32_ADD:
-                    push_f32(lhs_f32 + rhs_f32, S->stack);
+                    __throwiferr(push_f32(lhs_f32 + rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_SUB:
-                    push_f32(lhs_f32 - rhs_f32, S->stack);
+                    __throwiferr(push_f32(lhs_f32 - rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_MUL:
-                    push_f32(lhs_f32 * rhs_f32, S->stack);
+                    __throwiferr(push_f32(lhs_f32 * rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_DIV:
-                    push_f32(lhs_f32 / rhs_f32, S->stack);
+                    __throwiferr(push_f32(lhs_f32 / rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_MIN:
                     if(isnan(lhs_f32) || isnan(rhs_f32))
-                        push_f32(NAN, S->stack);
+                        __throwiferr(push_f32(NAN, S->stack));
                     else if(lhs_f32 == 0 && rhs_f32 == 0)
-                        push_f32(signbit(lhs_f32) ? lhs_f32 : rhs_f32, S->stack);
+                        __throwiferr(push_f32(signbit(lhs_f32) ? lhs_f32 : rhs_f32, S->stack));
                     else 
-                        push_f32(
-                            lhs_f32 < rhs_f32 ? lhs_f32 : rhs_f32,
-                            S->stack
-                        );
+                        __throwiferr(push_f32(lhs_f32 < rhs_f32 ? lhs_f32 : rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_MAX:
                     if(isnan(lhs_f32) || isnan(rhs_f32))
-                        push_f32(NAN, S->stack);
+                        __throwiferr(push_f32(NAN, S->stack));
                     else if(lhs_f32 == 0 && rhs_f32 == 0)
-                        push_f32(signbit(lhs_f32) ? rhs_f32 : lhs_f32, S->stack);
+                        __throwiferr(push_f32(signbit(lhs_f32) ? rhs_f32 : lhs_f32, S->stack));
                     else
-                        push_f32(
-                            lhs_f32 > rhs_f32 ? lhs_f32 : rhs_f32,
-                            S->stack
-                        );
+                        __throwiferr(push_f32(lhs_f32 > rhs_f32 ? lhs_f32 : rhs_f32, S->stack));
                     break;
                 
                 case OP_F32_COPYSIGN:
-                    push_f32(copysignf(lhs_f32, rhs_f32), S->stack);
+                    __throwiferr(push_f32(copysignf(lhs_f32, rhs_f32), S->stack));
                     break;
                 
                 case OP_F64_ABS:
-                    push_f64(fabs(lhs_f64), S->stack);
+                    __throwiferr(push_f64(fabs(lhs_f64), S->stack));
                     break;
                 
                 case OP_F64_NEG:
-                    push_f64(-lhs_f64, S->stack);
+                    __throwiferr(push_f64(-lhs_f64, S->stack));
                     break;
                 
                 case OP_F64_CEIL:
-                    push_f64(ceil(lhs_f64), S->stack);
+                    __throwiferr(push_f64(ceil(lhs_f64), S->stack));
                     break;
                 
                 case OP_F64_FLOOR:
-                    push_f64(floor(lhs_f64), S->stack);
+                    __throwiferr(push_f64(floor(lhs_f64), S->stack));
                     break;
                 
                 case OP_F64_TRUNC:
-                    push_f64(trunc(lhs_f64), S->stack);
+                    __throwiferr(push_f64(trunc(lhs_f64), S->stack));
                     break;
                 
                 case OP_F64_NEAREST:
-                    push_f64(nearbyint(lhs_f64), S->stack);
+                    __throwiferr(push_f64(nearbyint(lhs_f64), S->stack));
                     break;
                 
                 case OP_F64_SQRT:
-                    push_f64(sqrt(lhs_f64), S->stack);
+                    __throwiferr(push_f64(sqrt(lhs_f64), S->stack));
                     break;
                 
                 case OP_F64_ADD:
-                    push_f64(lhs_f64 + rhs_f64, S->stack);
+                    __throwiferr(push_f64(lhs_f64 + rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_SUB:
-                    push_f64(lhs_f64 - rhs_f64, S->stack);
+                    __throwiferr(push_f64(lhs_f64 - rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_MUL:
-                    push_f64(lhs_f64 * rhs_f64, S->stack);
+                    __throwiferr(push_f64(lhs_f64 * rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_DIV:
-                    push_f64(lhs_f64 / rhs_f64, S->stack);
+                    __throwiferr(push_f64(lhs_f64 / rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_MIN:
                     if(isnan(lhs_f64) || isnan(rhs_f64))
-                        push_f64(NAN, S->stack);
+                        __throwiferr(push_f64(NAN, S->stack));
                     else if(lhs_f64 == 0 && rhs_f64 == 0)
-                        push_f64(signbit(lhs_f64) ? lhs_f64 : rhs_f64, S->stack);
-                    else 
-                        push_f64(
-                            lhs_f64 < rhs_f64 ? lhs_f64 : rhs_f64,
-                            S->stack
-                        );
+                        __throwiferr(push_f64(signbit(lhs_f64) ? lhs_f64 : rhs_f64, S->stack));
+                    else
+                        __throwiferr(push_f64(lhs_f64 < rhs_f64 ? lhs_f64 : rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_MAX:
                     if(isnan(lhs_f64) || isnan(rhs_f64))
-                        push_f64(NAN, S->stack);
+                        __throwiferr(push_f64(NAN, S->stack));
                     else if(lhs_f64 == 0 && rhs_f64 == 0)
-                        push_f64(signbit(lhs_f64) ? rhs_f64 : lhs_f64, S->stack);
+                        __throwiferr(push_f64(signbit(lhs_f64) ? rhs_f64 : lhs_f64, S->stack));
                     else
-                        push_f64(
-                            lhs_f64 > rhs_f64 ? lhs_f64 : rhs_f64,
-                            S->stack
-                        );
+                        __throwiferr(push_f64(lhs_f64 > rhs_f64 ? lhs_f64 : rhs_f64, S->stack));
                     break;
                 
                 case OP_F64_COPYSIGN:
-                    push_f64(copysign(lhs_f64, rhs_f64), S->stack);
+                    __throwiferr(push_f64(copysign(lhs_f64, rhs_f64), S->stack));
                     break;
                 
                 case OP_I32_WRAP_I64:
-                    push_i32(lhs_i64 & 0xffffffff, S->stack);
+                    __throwiferr(push_i32(lhs_i64 & 0xffffffff, S->stack));
                     break;
 
                 case OP_I32_TRUNC_F32_S: {
-                    push_i32(I32_TRUNC_F32(lhs_f32), S->stack);
+                    __throwiferr(push_i32(I32_TRUNC_F32(lhs_f32), S->stack));
                     break;
                 }
                 
                 case OP_I32_TRUNC_F32_U:
-                    push_i32(U32_TRUNC_F32(lhs_f32), S->stack);
+                    __throwiferr(push_i32(U32_TRUNC_F32(lhs_f32), S->stack));
                     break;
                 
                 case OP_I32_TRUNC_F64_S:
-                    push_i32(I32_TRUNC_F64(lhs_f64), S->stack);
+                    __throwiferr(push_i32(I32_TRUNC_F64(lhs_f64), S->stack));
                     break;
                 
                 case OP_I32_TRUNC_F64_U:
-                    push_i32(U32_TRUNC_F64(lhs_f64), S->stack);
+                    __throwiferr(push_i32(U32_TRUNC_F64(lhs_f64), S->stack));
                     break;
                 
                 case OP_I64_EXTEND_I32_S:
-                    push_i64((int64_t)(int32_t)lhs_i32, S->stack);
+                    __throwiferr(push_i64((int64_t)(int32_t)lhs_i32, S->stack));
                     break;
                 
                 case OP_I64_EXTEND_I32_U:
-                    push_i64((int64_t)(uint32_t)lhs_i32, S->stack);
+                    __throwiferr(push_i64((int64_t)(uint32_t)lhs_i32, S->stack));
                     break;
 
                 case OP_I64_TRUNC_F32_S:
-                    push_i64(I64_TRUNC_F32(lhs_f32), S->stack);
+                    __throwiferr(push_i64(I64_TRUNC_F32(lhs_f32), S->stack));
                     break;
                 
                 case OP_I64_TRUNC_F32_U:
-                    push_i64(U64_TRUNC_F32(lhs_f32), S->stack);
+                    __throwiferr(push_i64(U64_TRUNC_F32(lhs_f32), S->stack));
                     break;
                 
                 case OP_I64_TRUNC_F64_S:
-                    push_i64(I64_TRUNC_F64(lhs_f64), S->stack);
+                    __throwiferr(push_i64(I64_TRUNC_F64(lhs_f64), S->stack));
                     break;
                 
                 case OP_I64_TRUNC_F64_U:
-                    push_i64(U64_TRUNC_F64(lhs_f64), S->stack);
+                    __throwiferr(push_i64(U64_TRUNC_F64(lhs_f64), S->stack));
                     break;
                 
                 case OP_F32_CONVERT_I32_S:
-                    push_f32((float)lhs_i32, S->stack);
+                    __throwiferr(push_f32((float)lhs_i32, S->stack));
                     break;
                 
                 case OP_F32_CONVERT_I32_U:
-                    push_f32((float)(uint32_t)lhs_i32, S->stack);
+                    __throwiferr(push_f32((float)(uint32_t)lhs_i32, S->stack));
                     break;
 
                 case OP_F32_CONVERT_I64_S:
-                    push_f32((float)lhs_i64, S->stack);
+                    __throwiferr(push_f32((float)lhs_i64, S->stack));
                     break;
                 
                 case OP_F32_CONVERT_I64_U:
-                    push_f32((float)(uint64_t)lhs_i64, S->stack);
+                    __throwiferr(push_f32((float)(uint64_t)lhs_i64, S->stack));
                     break;
                 
                 case OP_F32_DEMOTE_F64:
-                    push_f32((float)lhs_f64, S->stack);
+                    __throwiferr(push_f32((float)lhs_f64, S->stack));
                     break;
                 
                 case OP_F64_CONVERT_I32_S:
-                    push_f64((double)lhs_i32, S->stack);
+                    __throwiferr(push_f64((double)lhs_i32, S->stack));
                     break;
 
                 case OP_F64_CONVERT_I32_U:
-                    push_f64((double)(uint32_t)lhs_i32, S->stack);
+                    __throwiferr(push_f64((double)(uint32_t)lhs_i32, S->stack));
                     break;
 
                 case OP_F64_CONVERT_I64_S:
-                    push_f64((double)lhs_i64, S->stack);
+                    __throwiferr(push_f64((double)lhs_i64, S->stack));
                     break;
 
                 case OP_F64_CONVERT_I64_U:
-                    push_f64((double)(uint64_t)lhs_i64, S->stack);
+                    __throwiferr(push_f64((double)(uint64_t)lhs_i64, S->stack));
                     break;
                 
                 case OP_F64_PROMOTE_F32:
-                    push_f64((double)lhs_f32, S->stack);
+                    __throwiferr(push_f64((double)lhs_f32, S->stack));
                     break;
                 
                 // todo: fix this
                 case OP_I32_REINTERPRET_F32: {
                     num_t num = {.f32 = lhs_f32};
-                    push_i32(num.i32, S->stack);
+                    __throwiferr(push_i32(num.i32, S->stack));
                     break;
                 }
 
                 case OP_I64_REINTERPRET_F64: {
                     num_t num = {.f64 = lhs_f64};
-                    push_i64(num.i64, S->stack);
+                    __throwiferr(push_i64(num.i64, S->stack));
                     break;
                 }
                 
                 case OP_F32_REINTERPRET_I32: {
                     num_t num = {.i32 = lhs_i32};
-                    push_f32(num.f32, S->stack);
+                    __throwiferr(push_f32(num.f32, S->stack));
                     break;
                 }
 
                 case OP_F64_REINTERPRET_I64: {
                     num_t num = {.i64 = lhs_i64};
-                    push_f64(num.f64, S->stack);
+                    __throwiferr(push_f64(num.f64, S->stack));
                     break;
                 }
 
                 case OP_I32_EXTEND8_S:
-                    push_i32((int32_t)(int8_t)lhs_i32, S->stack);
+                    __throwiferr(push_i32((int32_t)(int8_t)lhs_i32, S->stack));
                     break;
                 
                 case OP_I32_EXTEND16_S: 
-                    push_i32((int32_t)(int16_t)lhs_i32, S->stack);
+                    __throwiferr(push_i32((int32_t)(int16_t)lhs_i32, S->stack));
                     break;
                 
                 case OP_I64_EXTEND8_S:
-                    push_i64((int64_t)(int8_t)lhs_i64, S->stack);
+                    __throwiferr(push_i64((int64_t)(int8_t)lhs_i64, S->stack));
                     break;
                 
                 case OP_I64_EXTEND16_S: 
-                    push_i64((int64_t)(int16_t)lhs_i64, S->stack);
+                    __throwiferr(push_i64((int64_t)(int16_t)lhs_i64, S->stack));
                     break;
                 
                 case OP_I64_EXTEND32_S: 
-                    push_i64((int64_t)(int32_t)lhs_i64, S->stack);
+                    __throwiferr(push_i64((int64_t)(int32_t)lhs_i64, S->stack));
                     break;
                 
                 case OP_REF_NULL:
-                    push_val((val_t){.ref = REF_NULL}, S->stack);
+                    __throwiferr(push_val((val_t){.ref = REF_NULL}, S->stack));
                     break;
                 
                 case OP_REF_IS_NULL: {
                     val_t val;
                     pop_val(&val, S->stack);
-                    push_i32(val.ref == REF_NULL, S->stack);
+                    __throwiferr(push_i32(val.ref == REF_NULL, S->stack));
                     break;
                 }
                 
                 case OP_0XFC:
                     switch(ip->op2) {
                         case 0x00:
-                            push_i32(I32_TRUNC_SAT_F32(lhs_f32), S->stack);
+                            __throwiferr(push_i32(I32_TRUNC_SAT_F32(lhs_f32), S->stack));
                             break;
 
                         case 0x01:
-                            push_i32(U32_TRUNC_SAT_F32(lhs_f32), S->stack);
+                            __throwiferr(push_i32(U32_TRUNC_SAT_F32(lhs_f32), S->stack));
                             break;
                         
                         case 0x02:
-                            push_i32(I32_TRUNC_SAT_F64(lhs_f64), S->stack);
+                            __throwiferr(push_i32(I32_TRUNC_SAT_F64(lhs_f64), S->stack));
                             break;
 
                         case 0x03:
-                            push_i32(U32_TRUNC_SAT_F64(lhs_f64), S->stack);
+                            __throwiferr(push_i32(U32_TRUNC_SAT_F64(lhs_f64), S->stack));
                             break;
                         
                         case 0x04:
-                            push_i64(I64_TRUNC_SAT_F32(lhs_f32), S->stack);
+                            __throwiferr(push_i64(I64_TRUNC_SAT_F32(lhs_f32), S->stack));
                             break;
                         
                         case 0x05:
-                            push_i64(U64_TRUNC_SAT_F32(lhs_f32), S->stack);
+                            __throwiferr(push_i64(U64_TRUNC_SAT_F32(lhs_f32), S->stack));
                             break;
 
                         case 0x06:
-                            push_i64(I64_TRUNC_SAT_F64(lhs_f64), S->stack);
+                            __throwiferr(push_i64(I64_TRUNC_SAT_F64(lhs_f64), S->stack));
                             break;
 
                         case 0x07:
-                            push_i64(U64_TRUNC_SAT_F64(lhs_f64), S->stack);
+                            __throwiferr(push_i64(U64_TRUNC_SAT_F64(lhs_f64), S->stack));
                             break;
                         
                         // mememory.init
@@ -1722,8 +1730,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             while(n--) {
                                 byte_t b = *VECTOR_ELEM(&data->data, s);
                                 
-                                push_i32(d, S->stack);
-                                push_i32((int32_t)b, S->stack);
+                                __throwiferr(push_i32(d, S->stack));
+                                __throwiferr(push_i32((int32_t)b, S->stack));
 
                                 instr_t i32_store8 = {
                                     .op1 = OP_I32_STORE8, .next = NULL, 
@@ -1777,15 +1785,15 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                                     break;
                                 
                                 if(d <= s) {
-                                    push_i32(d, S->stack);
-                                    push_i32(s, S->stack);
+                                    __throwiferr(push_i32(d, S->stack));
+                                    __throwiferr(push_i32(s, S->stack));
                                     exec_expr(&expr, S);
                                     d++;
                                     s++;
                                 }
                                 else {
-                                    push_i32(d + n - 1, S->stack);
-                                    push_i32(s + n - 1, S->stack);
+                                    __throwiferr(push_i32(d + n - 1, S->stack));
+                                    __throwiferr(push_i32(s + n - 1, S->stack));
                                     exec_expr(&expr, S);
                                 }
                                 n--;
@@ -1807,8 +1815,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, ea > mem->num_pages * WASM_PAGE_SIZE);
 
                             while(n--) {
-                                push_i32(d, S->stack);
-                                push_i32(val, S->stack);
+                                __throwiferr(push_i32(d, S->stack));
+                                __throwiferr(push_i32(val, S->stack));
 
                                 instr_t i32_store8 = {
                                     .op1 = OP_I32_STORE8, .next = NULL, 
@@ -1842,8 +1850,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                                     break;
                                 
                                 ref_t *ref = VECTOR_ELEM(&elem->elem, s);
-                                push_i32(d, S->stack);
-                                push_val((val_t){.ref = *ref}, S->stack);
+                                __throwiferr(push_i32(d, S->stack));
+                                __throwiferr(push_val((val_t){.ref = *ref}, S->stack));
                                 instr_t table_set = {
                                     .op1 = OP_TABLE_SET, .next = NULL, 
                                     .x = ip->x
@@ -1895,15 +1903,15 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                                     break;
                                 
                                 if(d <= s) {
-                                    push_i32(d, S->stack);
-                                    push_i32(s, S->stack);
+                                    __throwiferr(push_i32(d, S->stack));
+                                    __throwiferr(push_i32(s, S->stack));
                                     exec_expr(&expr, S);
                                     d++;
                                     s++;
                                 }
                                 else {
-                                    push_i32(d + n - 1, S->stack);
-                                    push_i32(s + n - 1, S->stack);
+                                    __throwiferr(push_i32(d + n - 1, S->stack));
+                                    __throwiferr(push_i32(s + n - 1, S->stack));
                                     exec_expr(&expr, S);
                                 }
                                 n--;
@@ -1922,7 +1930,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             pop_val(&val, S->stack);
 
                             if(tab->type.limits.max && n + tab->elem.len > tab->type.limits.max) {
-                                push_i32(-1, S->stack);
+                                __throwiferr(push_i32(-1, S->stack));
                                 break;
                             }
 
@@ -1931,10 +1939,10 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                                 for(int i = sz; i < tab->elem.len; i++) {
                                     *VECTOR_ELEM(&tab->elem, i) = val.ref;
                                 }
-                                push_i32(sz, S->stack);
+                                __throwiferr(push_i32(sz, S->stack));
                             }
                             else {
-                                push_i32(-1, S->stack);
+                                __throwiferr(push_i32(-1, S->stack));
                             }
                             break;
                         }
@@ -1943,7 +1951,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                         case 0x10: {
                             tableaddr_t ta = F->module->tableaddrs[ip->x];
                             tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
-                            push_i32(tab->elem.len, S->stack);
+                            __throwiferr(push_i32(tab->elem.len, S->stack));
                             break;
                         }
 
@@ -1979,7 +1987,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 
                 case OP_REF_FUNC: {
                     funcaddr_t a = F->module->funcaddrs[ip->x];
-                    push_val((val_t){.ref = a}, S->stack);
+                    __throwiferr(push_val((val_t){.ref = a}, S->stack));
                     break;
                 }
 
@@ -1997,31 +2005,30 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
 // ref: https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
 static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
-    funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, funcaddr);
-    functype_t *functype = funcinst->type;
-
-    // create new frame
-    frame_t frame;
-    uint32_t num_locals = functype->rt1.len + funcinst->code->locals.len;
-    frame.module = funcinst->module;
-    frame.locals = malloc(sizeof(val_t) * num_locals);
-
-    // pop args
-    for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
-        pop_val(&frame.locals[i], S->stack);
-    }
-
-    // push activation frame
-    frame.arity  = functype->rt2.len;
-    push_frame(frame, S->stack);
-
-    // create label L
-    static instr_t end = {.op1 = OP_END, .next = NULL};
-    label_t L = {.arity = functype->rt2.len, .parent = NULL, .continuation = &end};
-
     __try {
+        funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, funcaddr);
+        functype_t *functype = funcinst->type;
+
+        // create new frame
+        frame_t frame;
+        uint32_t num_locals = functype->rt1.len + funcinst->code->locals.len;
+        frame.module = funcinst->module;
+        frame.locals = malloc(sizeof(val_t) * num_locals);
+
+        // pop args
+        for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
+            pop_val(&frame.locals[i], S->stack);
+        }
+        
+        // push activation frame
+        frame.arity  = functype->rt2.len;
+        __throwiferr(push_frame(frame, S->stack));
+
+        // create label L
+        static instr_t end = {.op1 = OP_END, .next = NULL};
+        label_t L = {.arity = functype->rt2.len, .parent = NULL, .continuation = &end};
         // enter instr* with label L
-        push_label(L, S->stack);
+        __throwiferr(push_label(L, S->stack));
 
         __throwiferr(exec_expr(&funcinst->code->body ,S));
 
@@ -2030,7 +2037,7 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
         pop_vals_n(&vals, frame.arity, S->stack);
         pop_while_not_frame(S->stack);
         pop_frame(&frame, S->stack);
-        push_vals(vals, S->stack);
+        __throwiferr(push_vals(vals, S->stack));
     }
     __catch:
         return err;
@@ -2056,7 +2063,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         
         // push args
         VECTOR_FOR_EACH(arg, args) {
-            push_val(arg->val, S->stack);
+            __throwiferr(push_val(arg->val, S->stack));
         }
 
         // invoke func

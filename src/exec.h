@@ -133,9 +133,9 @@ typedef struct {
 typedef VECTOR(arg_t) args_t;
 
 void new_stack(stack_t **d);
-void push_val(val_t val, stack_t *stack);
-void push_label(label_t label, stack_t *stack);
-void push_frame(frame_t frame, stack_t *stack);
+error_t push_val(val_t val, stack_t *stack);
+error_t push_label(label_t label, stack_t *stack);
+error_t push_frame(frame_t frame, stack_t *stack);
 void pop_val(val_t *val, stack_t *stack);
 void pop_vals(vals_t *vals, stack_t *stack);
 void pop_label(label_t *label, stack_t *stack);
