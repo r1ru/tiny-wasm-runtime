@@ -82,6 +82,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/token.wast -o ${CMAKE_CURRENT_BINARY_DIR}/token
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/tokens.wast -o ${CMAKE_CURRENT_BINARY_DIR}/tokens
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/custom.wast -o ${CMAKE_CURRENT_BINARY_DIR}/custom
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/skip-stack-guard-page.wast -o ${CMAKE_CURRENT_BINARY_DIR}/skip-stack-guard-page
 )
 
 add_test(
@@ -488,5 +489,11 @@ add_test(
 add_test(
     NAME custom
     COMMAND runtest custom
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME skip-stack-guard-page
+    COMMAND runtest skip-stack-guard-page
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
