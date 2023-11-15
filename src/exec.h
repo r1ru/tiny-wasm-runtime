@@ -7,7 +7,6 @@
 #include <stdbool.h>
 
 // ref: https://webassembly.github.io/spec/core/exec/index.html
-typedef export_t    exportinst_t;
 typedef uint32_t    funcaddr_t;
 typedef uint32_t    tableaddr_t;
 typedef uint32_t    memaddr_t;
@@ -15,15 +14,34 @@ typedef uint32_t    globaladdr_t;
 typedef uint32_t    elemaddr_t;
 typedef uint32_t    dataaddr_t;
 
+#define EXTERN_FUNC     0
+#define EXTERN_TABLE    1
+#define EXTERN_MEM      2
+#define EXTERN_GLOBAL   3
 typedef struct {
-    functype_t      *types;
-    funcaddr_t      *funcaddrs;
-    tableaddr_t     *tableaddrs;
-    memaddr_t       *memaddrs;
-    globaladdr_t    *globaladdrs;
-    elemaddr_t      *elemaddrs;
-    dataaddr_t      *dataaddrs;
-    exportinst_t    *exports;
+    uint8_t             kind;
+    union {
+        funcaddr_t      func;
+        tableaddr_t     table;
+        memaddr_t       mem;
+        globaladdr_t    global;
+    };
+} externval_t;
+
+typedef struct {
+    uint8_t             *name;
+    externval_t         value;
+} exportinst_t;
+
+typedef struct {
+    functype_t              *types;
+    funcaddr_t              *funcaddrs;
+    tableaddr_t             *tableaddrs;
+    memaddr_t               *memaddrs;
+    globaladdr_t            *globaladdrs;
+    elemaddr_t              *elemaddrs;
+    dataaddr_t              *dataaddrs;
+    VECTOR(exportinst_t)    exports;
 } moduleinst_t;
 
 typedef struct {

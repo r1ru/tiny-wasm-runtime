@@ -366,12 +366,13 @@ typedef struct {
     importdesc_t    d;
 } import_t;
 
+#define FUNC_EXPORTDESC         0
+#define TABLE_EXPORTDESC        1
+#define MEM_EXPORTDESC          2
+#define GLOBAL_EXPORTDESC       3
 typedef struct {
     uint8_t     kind;
-    union {
-        funcidx_t funcidx;
-        // todo: add here
-    };
+    idx_t       idx;
 } exportdesc_t;
 
 typedef struct {

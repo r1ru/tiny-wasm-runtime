@@ -67,7 +67,7 @@ static void print_export(export_t *export) {
         "%s %x %x\n", 
         export->name, 
         export->exportdesc.kind, 
-        export->exportdesc.funcidx
+        export->exportdesc.idx
     );
 }
 

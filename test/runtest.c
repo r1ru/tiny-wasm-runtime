@@ -60,7 +60,7 @@ static const char *error_msg[] = {
 error_t lookup_func_by_name(funcaddr_t *addr, const char *name, module_t *mod) {
     VECTOR_FOR_EACH(export, &mod->exports) {
         if(strcmp(export->name, name) == 0 && export->exportdesc.kind == 0) {
-            *addr = export->exportdesc.funcidx;
+            *addr = export->exportdesc.idx;
             return ERR_SUCCESS;
         }
     }

@@ -431,6 +431,30 @@ error_t instantiate(store_t **S, module_t *module) {
 
         pop_frame(&F, store->stack);
 
+        // create exportinst
+        uint32_t exportidx = 0;
+        VECTOR_NEW(&moduleinst->exports, module->exports.len);
+        VECTOR_FOR_EACH(export, &module->exports) {
+            exportinst_t *exportinst = VECTOR_ELEM(&moduleinst->exports, exportidx);
+            exportinst->name = export->name;
+            exportinst->value.kind = export->exportdesc.kind;
+
+            switch(export->exportdesc.kind) {
+                case FUNC_EXPORTDESC:
+                    exportinst->value.func = moduleinst->funcaddrs[export->exportdesc.idx];
+                    break;
+                case TABLE_EXPORTDESC:
+                    exportinst->value.table = moduleinst->tableaddrs[export->exportdesc.idx];
+                    break;
+                case MEM_EXPORTDESC:
+                    exportinst->value.mem = moduleinst->memaddrs[export->exportdesc.idx];
+                    break;
+                case GLOBAL_EXPORTDESC:
+                    exportinst->value.mem = moduleinst->globaladdrs[export->exportdesc.idx];
+                    break;
+            }
+            exportidx++;
+        }
         // todo: support start section
     }
     __catch:

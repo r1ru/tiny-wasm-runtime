@@ -40,7 +40,7 @@ error_t vector_grow(vector_t *vec, size_t ent_size, size_t n);
 
 #define VECTOR_FOR_EACH(iter, vec)                                                      \
     for(__typeof__((vec)->elem) iter = &(vec)->elem[0];                                 \
-        iter != &(vec)->elem[(vec)->len];                                               \
+        (vec)->len != 0 && iter != &(vec)->elem[(vec)->len];                            \
         iter++                                                                          \
     )
 

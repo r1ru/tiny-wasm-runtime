@@ -376,7 +376,7 @@ error_t decode_exportsec(module_t *mod, buffer_t *buf) {
         VECTOR_FOR_EACH(export, &mod->exports) {
             __throwiferr(read_bytes(&export->name, buf));
             __throwiferr(read_byte(&export->exportdesc.kind, buf));
-            __throwiferr(read_u32_leb128(&export->exportdesc.funcidx, buf));
+            __throwiferr(read_u32_leb128(&export->exportdesc.idx, buf));
         }
     }
     __catch:
