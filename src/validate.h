@@ -20,7 +20,7 @@ typedef struct {
     VECTOR(functype_t)      types;
     VECTOR(functype_t)      funcs;
     VECTOR(tabletype_t)     tables;
-    VECTOR(mem_t)           mems;
+    VECTOR(memtype_t)       mems;
     VECTOR(globaltype_t)    globals;
     VECTOR(reftype_t)       elems;
     VECTOR(ok_t)            datas;

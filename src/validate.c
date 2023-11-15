@@ -353,7 +353,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I64_LOAD16_U:
             case OP_I64_LOAD32_S:
             case OP_I64_LOAD32_U: {
-                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
                 __throwif(ERR_FAILED, !mem);
                 int32_t n;
                 switch(ip->op1) {
@@ -419,7 +419,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I64_STORE8:
             case OP_I64_STORE16:
             case OP_I64_STORE32: {
-                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
                 __throwif(ERR_FAILED, !mem);
                 int32_t n;
                 switch(ip->op1) {
@@ -468,7 +468,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             }
 
             case OP_MEMORY_SIZE: {
-                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
                 __throwif(ERR_UNKNOWN_MEMORY, !mem);
                 // valid with [] -> [i32]
                 push(TYPE_NUM_I32, stack);
@@ -476,7 +476,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             }
 
             case OP_MEMORY_GROW: {
-                mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
                 __throwif(ERR_FAILED, !mem);
                 // valid with [i32] -> [i32]
                 __throwiferr(try_pop(TYPE_NUM_I32, stack));
@@ -789,7 +789,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                     
                     // memory.init
                     case 0x08: {
-                        mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                        memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
                         __throwif(ERR_UNKNOWN_MEMORY, !mem);
                         ok_t *data = VECTOR_ELEM(&C->datas, ip->x);
                         __throwif(ERR_UNKNOWN_DARA_SEGMENT, !data);
@@ -810,7 +810,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                     case 0x0A:
                     // memory.fill
                     case 0x0B: {
-                        mem_t *mem = VECTOR_ELEM(&C->mems, 0);
+                        memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
                         __throwif(ERR_UNKNOWN_MEMORY, !mem);
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
                         __throwiferr(try_pop(TYPE_NUM_I32, stack));
@@ -972,20 +972,28 @@ static error_t validate_limits(limits_t *limits, uint32_t k) {
     __catch:
 }
 
+error_t validate_tabletype(tabletype_t *tt) {
+    return validate_limits(&tt->limits, UINT32_MAX);
+}
+
 error_t validate_table(context_t *ctx, table_t *table, tabletype_t *actual) {
      __try {
-        __throwiferr(validate_limits(&table->type.limits, UINT32_MAX));
+        __throwiferr(validate_tabletype(&table->type));
         *actual = table->type;
     }
     __catch:
         return err;
 }
 
-error_t validate_mem(context_t *ctx, mem_t *src, mem_t *dst) {
+error_t validate_memtype(memtype_t *memtype) {
+    return validate_limits(memtype, 1<<16);
+}
+
+error_t validate_mem(context_t *ctx, mem_t *mem, memtype_t *dst) {
     __try {
-        __throwiferr(validate_limits(&src->type, 1<<16));
+        __throwiferr(validate_memtype(&mem->type));
         // append
-        *dst = *src;
+        *dst = mem->type;
     }
     __catch:    
         return err;
@@ -1069,6 +1077,28 @@ error_t validate_elem(context_t *C, elem_t *elem, reftype_t *actual) {
         return err;
 }
 
+error_t validate_import(context_t *C, import_t *import) {
+    __try {
+        switch(import->d.kind) {
+            case FUNC_IMPORT_DESC: {
+                functype_t *functype = VECTOR_ELEM(&C->types, import->d.func);
+                __throwif(ERR_FAILED, !functype);
+                break;
+            }
+            case TABLE_IMPORT_DESC:
+                __throwiferr(validate_tabletype(&import->d.table));
+                break;
+            case MEM_IMPORT_DESC:
+                __throwiferr(validate_memtype(&import->d.mem));
+                break;
+            case GLOBAL_IMPORT_DESC:
+                break;
+        }
+    }
+    __catch:
+        return err;
+}
+
 error_t validate_module(module_t *mod) {
     __try {
         // create context C
@@ -1090,6 +1120,21 @@ error_t validate_module(module_t *mod) {
             *x = idx++;
         }
 
+        // validte funcs
+        // set expected functypes first
+        for(uint32_t i = 0; i < mod->funcs.len; i++) {
+            functype_t *expect = VECTOR_ELEM(&C.funcs, i);
+            func_t *func = VECTOR_ELEM(&mod->funcs, i);
+            functype_t *functype = VECTOR_ELEM(&C.types, func->type);
+            __throwif(ERR_UNKNOWN_TYPE, !functype);
+            *expect = *functype;
+        }
+
+        // validate imports
+        VECTOR_FOR_EACH(import, &mod->imports) {
+            __throwiferr(validate_import(&C, import));
+        }
+        
         // C.mems must be larger than 1
         __throwif(ERR_FAILED, C.mems.len > 1);
 
@@ -1121,7 +1166,7 @@ error_t validate_module(module_t *mod) {
         VECTOR_FOR_EACH(data, &mod->datas) {
             switch(data->mode.kind) {
                 case DATA_MODE_ACTIVE:
-                    mem_t *m = VECTOR_ELEM(&C.mems, data->mode.memory);
+                    memtype_t *m = VECTOR_ELEM(&C.mems, data->mode.memory);
                     __throwif(ERR_FAILED, !m);
 
                      // expr must be valid with result type [i32]
@@ -1135,16 +1180,6 @@ error_t validate_module(module_t *mod) {
                 case DATA_MODE_PASSIVE:
                     break;
             }
-        }
-
-        // validte funcs
-        // set expected functypes first
-        for(uint32_t i = 0; i < mod->funcs.len; i++) {
-            functype_t *expect = VECTOR_ELEM(&C.funcs, i);
-            func_t *func = VECTOR_ELEM(&mod->funcs, i);
-            functype_t *functype = VECTOR_ELEM(&C.types, func->type);
-            __throwif(ERR_UNKNOWN_TYPE, !functype);
-            *expect = *functype;
         }
 
         VECTOR_FOR_EACH(func, &mod->funcs) {
