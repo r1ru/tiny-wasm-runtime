@@ -247,27 +247,6 @@ error_t decode_typesec(module_t *mod, buffer_t*buf) {
         return err;
 }
 
-error_t decode_importsec(module_t *mod, buffer_t*buf) {
-    // nop for now
-    return ERR_SUCCESS;
-}
-
-
-error_t decode_funcsec(module_t *mod, buffer_t *buf) {
-    __try {
-        uint32_t n;
-        __throwiferr(read_u32_leb128(&n, buf));
-
-        VECTOR_NEW(&mod->funcs, n);
-
-        VECTOR_FOR_EACH(func, &mod->funcs) {
-            __throwiferr(read_u32_leb128(&func->type, buf));
-        }
-    }
-    __catch:
-        return err;
-}
-
 static error_t decode_limits(limits_t *limits, buffer_t *buf) {
     __try {
         uint8_t has_max;
@@ -284,6 +263,75 @@ static error_t decode_limits(limits_t *limits, buffer_t *buf) {
         return err;
 }
 
+static error_t decode_tabletype(tabletype_t *tt, buffer_t *buf) {
+    __try {
+        __throwiferr(read_byte(&tt->reftype, buf));
+        __throwiferr(decode_limits(&tt->limits, buf));
+    }
+    __catch:
+        return err;
+}
+
+static error_t decode_globaltype(globaltype_t *gt, buffer_t *buf) {
+    __try {
+        __throwiferr(read_byte(&gt->type, buf));
+        __throwiferr(read_byte(&gt->mut, buf));
+    }  
+    __catch:
+        return err;
+}
+
+error_t decode_importsec(module_t *mod, buffer_t*buf) {
+    __try {
+        uint32_t n;
+        __throwiferr(read_u32_leb128(&n, buf));
+        
+        VECTOR_NEW(&mod->imports, n);
+
+        VECTOR_FOR_EACH(import, &mod->imports) {
+             // todo: decode utf8
+            __throwiferr(read_bytes(&import->module, buf));
+            __throwiferr(read_bytes(&import->name, buf));
+            
+            // decode importdesc
+            __throwiferr(read_byte(&import->d.kind, buf));
+            switch(import->d.kind) {
+                case FUNC_IMPORT_DESC:
+                    __throwiferr(read_u32_leb128(&import->d.func, buf));
+                    break;
+                case TABLE_IMPORT_DESC:
+                    __throwiferr(decode_tabletype(&import->d.table, buf));
+                    break;
+                case MEM_IMPORT_DESC:
+                    __throwiferr(decode_limits(&import->d.mem, buf));
+                    break;
+                case GLOBAL_IMPORT_DESC:
+                    __throwiferr(decode_globaltype(&import->d.globaltype, buf));
+                    break;
+                default:
+                    PANIC("unknown import: %d\n", import->d.kind);
+            }
+        }
+    }
+    __catch:
+        return err;
+}
+
+error_t decode_funcsec(module_t *mod, buffer_t *buf) {
+    __try {
+        uint32_t n;
+        __throwiferr(read_u32_leb128(&n, buf));
+
+        VECTOR_NEW(&mod->funcs, n);
+
+        VECTOR_FOR_EACH(func, &mod->funcs) {
+            __throwiferr(read_u32_leb128(&func->type, buf));
+        }
+    }
+    __catch:
+        return err;
+}
+
 error_t decode_tablesec(module_t *mod, buffer_t *buf) {
     __try {
         uint32_t n;
@@ -292,8 +340,7 @@ error_t decode_tablesec(module_t *mod, buffer_t *buf) {
         VECTOR_NEW(&mod->tables, n);
         
         VECTOR_FOR_EACH(table, &mod->tables) {
-            __throwiferr(read_byte(&table->type.reftype, buf));
-            __throwiferr(decode_limits(&table->type.limits, buf));
+            __throwiferr(decode_tabletype(&table->type, buf));
         }
     }
     __catch:
@@ -732,8 +779,7 @@ error_t decode_globalsec(module_t *mod, buffer_t *buf) {
         VECTOR_NEW(&mod->globals, n);
         
         VECTOR_FOR_EACH(g, &mod->globals) {
-            __throwiferr(read_byte(&g->gt.type, buf));
-            __throwiferr(read_byte(&g->gt.mut, buf));
+            __throwiferr(decode_globaltype(&g->gt, buf));
             __throwiferr(decode_expr(&g->expr, buf));
         }
     }
@@ -965,6 +1011,7 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         VECTOR_INIT(&m->globals);
         VECTOR_INIT(&m->elems);
         VECTOR_INIT(&m->datas);
+        VECTOR_INIT(&m->imports);
         VECTOR_INIT(&m->exports);
 
         while(!eof(buf)) {

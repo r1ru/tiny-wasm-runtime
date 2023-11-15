@@ -345,6 +345,27 @@ typedef struct {
     datamode_t      mode;
 } data_t;
 
+#define FUNC_IMPORT_DESC        0
+#define TABLE_IMPORT_DESC       1
+#define MEM_IMPORT_DESC         2
+#define GLOBAL_IMPORT_DESC      3
+
+typedef struct {
+    uint8_t         kind;
+    union {
+        funcidx_t       func;
+        tabletype_t     table;
+        memtype_t       mem;
+        globaltype_t    globaltype;
+    };
+} importdesc_t;
+
+typedef struct {
+    byte_t          *module;
+    byte_t          *name;
+    importdesc_t    d;
+} import_t;
+
 typedef struct {
     uint8_t     kind;
     union {
@@ -366,5 +387,6 @@ typedef struct {
     VECTOR(global_t)    globals;
     VECTOR(elem_t)      elems;
     VECTOR(data_t)      datas;
+    VECTOR(import_t)    imports;
     VECTOR(export_t)    exports;
 } module_t;
