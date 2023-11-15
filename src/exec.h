@@ -22,7 +22,7 @@ typedef struct {
     memaddr_t       *memaddrs;
     globaladdr_t    *globaladdrs;
     elemaddr_t      *elemaddrs;
-    dataaddr_t       *dataaddrs;
+    dataaddr_t      *dataaddrs;
     exportinst_t    *exports;
 } moduleinst_t;
 
@@ -141,6 +141,5 @@ void pop_vals(vals_t *vals, stack_t *stack);
 void pop_label(label_t *label, stack_t *stack);
 void pop_frame(frame_t *frame, stack_t *stack);
 
-moduleinst_t *allocmodule(store_t *S, module_t *module);
 error_t instantiate(store_t **store, module_t *module);
 error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args);

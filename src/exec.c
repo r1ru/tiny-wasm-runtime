@@ -262,78 +262,6 @@ static paddr_t eaddr_to_paddr(meminst_t *meminst, eaddr_t eaddr) {
     return (uint64_t)table0[vpn0] | (eaddr & 0xfff);
 }
 
-// There is no need to use append when instantiating, since everything we need (functions, imports, etc.) is known to us.
-// see Note of https://webassembly.github.io/spec/core/exec/modules.html#instantiation
-
-// todo: add externval(support imports)
-moduleinst_t *allocmodule(store_t *S, module_t *module) {
-    // allocate moduleinst
-    moduleinst_t *moduleinst = malloc(sizeof(moduleinst_t));
-    
-    moduleinst->types = module->types.elem;
-
-    // allocate funcs
-    // In this implementation, the index always matches the address.
-    uint32_t num_funcs = module->funcs.len;
-    moduleinst->funcaddrs = malloc(sizeof(funcaddr_t) * num_funcs);
-    for(uint32_t i = 0; i < num_funcs; i++) {
-        func_t *func = VECTOR_ELEM(&module->funcs, i);
-
-        // alloc func
-        funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, i);
-        functype_t *functype = &moduleinst->types[func->type];
-
-        funcinst->type   = functype;
-        funcinst->module = moduleinst;
-        funcinst->code   = func;
-        moduleinst->funcaddrs[i] = i;
-    }
-
-    // allocate tables
-    uint32_t num_tables = module->tables.len;
-    moduleinst->tableaddrs = malloc(sizeof(tableaddr_t) * num_tables);
-    for(uint32_t i = 0; i < num_tables; i++) {
-        table_t *table = VECTOR_ELEM(&module->tables, i);
-        tableinst_t *tableinst = VECTOR_ELEM(&S->tables, i);
-
-        uint32_t n = table->type.limits.min;
-        tableinst->type = table->type;
-        VECTOR_NEW(&tableinst->elem, n);
-
-        // init with ref.null
-        VECTOR_FOR_EACH(elem, &tableinst->elem) {
-            *elem = REF_NULL;
-        }
-        moduleinst->tableaddrs[i] = i;
-    }
-
-    // allocate mems
-    if(module->mems.len) {
-        moduleinst->memaddrs = malloc(sizeof(memaddr_t) * 1);
-        mem_t *mem = VECTOR_ELEM(&module->mems, 0);
-        meminst_t *meminst = VECTOR_ELEM(&S->mems, 0);
-
-        meminst->type = mem->type;
-        meminst->num_pages = mem->type.min;
-        moduleinst->memaddrs[0] = 0;
-    }
-
-    // allocate datas
-    uint32_t num_datas = module->datas.len;
-    moduleinst->exports = module->exports.elem;
-    moduleinst->dataaddrs = malloc(sizeof(dataaddr_t) * num_datas);
-    for(uint32_t i = 0; i < num_datas; i++) {
-        data_t *data = VECTOR_ELEM(&module->datas, i);
-        datains_t *datainst = VECTOR_ELEM(&S->datas, i);
-
-        VECTOR_COPY(&datainst->data, &data->init);
-
-        moduleinst->dataaddrs[i] = i;
-    }
-
-    return moduleinst;
-}
-
 error_t exec_expr(expr_t * expr, store_t *S);
 error_t instantiate(store_t **S, module_t *module) {
     __try {
@@ -343,39 +271,103 @@ error_t instantiate(store_t **S, module_t *module) {
         // allocate stack
         new_stack(&store->stack);
         
-        VECTOR_NEW(&store->funcs, module->funcs.len);
-        VECTOR_NEW(&store->tables, module->tables.len);
-        VECTOR_NEW(&store->mems, module->mems.len);
-        VECTOR_NEW(&store->globals, module->globals.len);
+        VECTOR_NEW(&store->funcs, module->num_func_imports + module->funcs.len);
+        VECTOR_NEW(&store->tables, module->num_table_imports + module->tables.len);
+        VECTOR_NEW(&store->mems, module->num_mem_imports + module->mems.len);
+        VECTOR_NEW(&store->globals, module->num_global_imports + module->globals.len);
         VECTOR_NEW(&store->elems, module->elems.len);
         VECTOR_NEW(&store->datas, module->datas.len);
+        
+        // todo: allocate imported objects
+        uint32_t funcidx = module->num_func_imports;
+        uint32_t tableidx = module->num_table_imports;
+        uint32_t memidx = module->num_mem_imports;
+        uint32_t globalidx = module->num_global_imports;
+        uint32_t elemidx = 0, dataidx = 0;
 
-        moduleinst_t *moduleinst = allocmodule(store, module);
+        moduleinst_t *moduleinst = malloc(sizeof(moduleinst_t));
+        moduleinst->types = module->types.elem;
+        moduleinst->funcaddrs = malloc(
+            sizeof(funcaddr_t) * (module->num_func_imports + module->funcs.len)
+        );
+        moduleinst->tableaddrs = malloc(
+            sizeof(tableaddr_t) * (module->num_table_imports + module->tables.len)
+        );
+        moduleinst->memaddrs = malloc(sizeof(memaddr_t) * 1);
+        moduleinst->dataaddrs = malloc(
+            sizeof(dataaddr_t) * module->datas.len
+        );
+        moduleinst->globaladdrs = malloc(
+            sizeof(globaladdr_t) * (module->num_global_imports + module->globals.len)
+        );
+        moduleinst->elemaddrs = malloc(sizeof(elemaddr_t) * module->elems.len);
+        
+        // alloc funcs
+        VECTOR_FOR_EACH(func, &module->funcs) {
+            funcinst_t *funcinst = VECTOR_ELEM(&store->funcs, funcidx);
+            functype_t *functype = VECTOR_ELEM(&module->types, func->type);
+
+            funcinst->type   = functype;
+            funcinst->module = moduleinst;
+            funcinst->code   = func;
+            moduleinst->funcaddrs[funcidx] = funcidx;
+            funcidx++;
+        }
+
+        // alloc tables
+        VECTOR_FOR_EACH(table, &module->tables) {
+            tableinst_t *tableinst = VECTOR_ELEM(&store->tables, tableidx);
+
+            uint32_t n = table->type.limits.min;
+            tableinst->type = table->type;
+            VECTOR_NEW(&tableinst->elem, n);
+
+            // init with ref.null
+            VECTOR_FOR_EACH(elem, &tableinst->elem) {
+                *elem = REF_NULL;
+            }
+            moduleinst->tableaddrs[tableidx] = tableidx;
+            tableidx++;
+        }
+
+        // alloc mems
+        VECTOR_FOR_EACH(mem, &module->mems) {
+            meminst_t *meminst = VECTOR_ELEM(&store->mems, memidx);
+
+            meminst->type = mem->type;
+            meminst->num_pages = mem->type.min;
+            moduleinst->memaddrs[memidx] = memidx;
+        }
+
+        // alloc datas
+        VECTOR_FOR_EACH(data, &module->datas) {
+            datains_t *datainst = VECTOR_ELEM(&store->datas, dataidx);
+
+            VECTOR_COPY(&datainst->data, &data->init);
+
+            moduleinst->dataaddrs[dataidx] = dataidx;
+            dataidx++;
+        }
 
         // alloc globals
         frame_t F = {.module = moduleinst, .locals = NULL};
         __throwiferr(push_frame(F, store->stack));
 
-        uint32_t num_globals = module->globals.len;
-        moduleinst->globaladdrs = malloc(sizeof(globaladdr_t) * num_globals);
-        for(uint32_t i = 0; i < num_globals; i++) {
-            global_t *global = VECTOR_ELEM(&module->globals, i);
-            globalinst_t *globalinst = VECTOR_ELEM(&store->globals, i);
+        VECTOR_FOR_EACH(global, &module->globals) {
+            globalinst_t *globalinst = VECTOR_ELEM(&store->globals, globalidx);
 
             globalinst->gt = global->gt;
 
             exec_expr(&global->expr, store);
             pop_val(&globalinst->val, store->stack);
             
-            moduleinst->globaladdrs[i] = i;
+            moduleinst->globaladdrs[globalidx] = globalidx;
+            globalidx++;
         }
 
         // alloc elems
-        uint32_t num_elems = module->elems.len;
-        moduleinst->elemaddrs = malloc(sizeof(elemaddr_t) * num_elems);
-        for(uint32_t i = 0; i < num_elems; i++) {
-            elem_t *elem = VECTOR_ELEM(&module->elems, i);
-            eleminst_t *eleminst = VECTOR_ELEM(&store->elems, i);
+        VECTOR_FOR_EACH(elem, &module->elems) {
+            eleminst_t *eleminst = VECTOR_ELEM(&store->elems, elemidx);
             VECTOR_NEW(&eleminst->elem, elem->init.len);
 
             for(uint32_t j = 0; j < elem->init.len; j++) {
@@ -386,7 +378,8 @@ error_t instantiate(store_t **S, module_t *module) {
                 *VECTOR_ELEM(&eleminst->elem, j) = val.ref;
             }
 
-            moduleinst->elemaddrs[i] = i;
+            moduleinst->elemaddrs[elemidx] = elemidx;
+            elemidx++;
         }
 
         // init table if elemmode is active
@@ -463,6 +456,7 @@ static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
 
         default:
             // treat as typeidx
+            printf("%p\n", F->module->types);
             *ty = F->module->types[bt.typeidx];
             break;
     }
@@ -753,7 +747,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
 
                     functype_t *ft_expect = &F->module->types[ip->y];
-
+                    
                     int32_t i;
                     pop_i32(&i, S->stack);
                     __throwif(ERR_TRAP_UNDEFINED_ELEMENT, i >= tab->elem.len);
