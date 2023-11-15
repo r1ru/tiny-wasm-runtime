@@ -298,15 +298,19 @@ error_t decode_importsec(module_t *mod, buffer_t*buf) {
             switch(import->d.kind) {
                 case FUNC_IMPORT_DESC:
                     __throwiferr(read_u32_leb128(&import->d.func, buf));
+                    mod->num_func_imports++;
                     break;
                 case TABLE_IMPORT_DESC:
                     __throwiferr(decode_tabletype(&import->d.table, buf));
+                    mod->num_table_imports++;
                     break;
                 case MEM_IMPORT_DESC:
                     __throwiferr(decode_limits(&import->d.mem, buf));
+                    mod->num_mem_imports++;
                     break;
                 case GLOBAL_IMPORT_DESC:
                     __throwiferr(decode_globaltype(&import->d.globaltype, buf));
+                    mod->num_global_imports++;
                     break;
                 default:
                     PANIC("unknown import: %d\n", import->d.kind);
@@ -1013,6 +1017,10 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         VECTOR_INIT(&m->datas);
         VECTOR_INIT(&m->imports);
         VECTOR_INIT(&m->exports);
+        m->num_func_imports     = 0;
+        m->num_table_imports    = 0;
+        m->num_mem_imports      = 0;
+        m->num_global_imports   = 0;
 
         while(!eof(buf)) {
             uint8_t id;

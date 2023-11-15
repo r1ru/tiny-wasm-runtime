@@ -389,4 +389,8 @@ typedef struct {
     VECTOR(data_t)      datas;
     VECTOR(import_t)    imports;
     VECTOR(export_t)    exports;
+    uint32_t            num_func_imports;
+    uint32_t            num_table_imports;
+    uint32_t            num_mem_imports;
+    uint32_t            num_global_imports;
 } module_t;
