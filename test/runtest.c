@@ -84,6 +84,8 @@ error_t map_file(test_ctx_t *ctx, const char *fpath) {
             0
         );
         __throwif(ERR_FAILED, ctx->map == MAP_FAILED);
+        ctx->mod = NULL;
+        ctx->store = NULL;
     }
     __catch:
         return err;
@@ -202,12 +204,15 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
 
             // validate
             __throwif(ERR_FAILED, IS_ERROR(validate_module(ctx->mod)));
-
-            // instantiate
-            __throwif(ERR_FAILED, IS_ERROR(instantiate(&ctx->store, ctx->mod)));
         }
         else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0 || \
                 strcmp(type, "action") == 0  || strcmp(type, "assert_exhaustion") == 0) {
+            
+             // instantiate 
+            if(!ctx->store) {
+                __throwif(ERR_FAILED, IS_ERROR(instantiate(&ctx->store, ctx->mod)));
+            }
+
             JSON_Object *action = json_object_get_object(command, "action");
             const char *action_type = json_object_get_string(action, "type");
 

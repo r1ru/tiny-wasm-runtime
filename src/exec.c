@@ -480,7 +480,6 @@ static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
 
         default:
             // treat as typeidx
-            printf("%p\n", F->module->types);
             *ty = F->module->types[bt.typeidx];
             break;
     }
