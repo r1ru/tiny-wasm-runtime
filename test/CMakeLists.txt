@@ -83,6 +83,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/custom.wast -o ${CMAKE_CURRENT_BINARY_DIR}/custom
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/skip-stack-guard-page.wast -o ${CMAKE_CURRENT_BINARY_DIR}/skip-stack-guard-page
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/ref_func.wast -o ${CMAKE_CURRENT_BINARY_DIR}/ref_func
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_copy.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_copy
 )
 
 add_test(
@@ -495,5 +496,11 @@ add_test(
 add_test(
     NAME ref_func
     COMMAND runtest ref_func
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME table_copy
+    COMMAND runtest table_copy
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
