@@ -547,13 +547,14 @@ error_t instantiate(instance_t **instance, module_t *module) {
             __throwiferr(push_i32(inst->stack, elem->init.len));
 
             // table.init
+            instr_t elem_drop = {
+                .op1 = OP_0XFC, .op2 = 0x0D, .x = i, .next = NULL
+            };
             instr_t table_init = {
-                .op1 = OP_0XFC, .op2 = 0x0C, .x = elem->mode.table, .y = i, .next = NULL
+                .op1 = OP_0XFC, .op2 = 0x0C, .x = elem->mode.table, .y = i, .next = &elem_drop
             };
             expr_t expr = &table_init;
             exec_expr(inst, &expr);
-
-            // todo: data.drop
         }
 
         // init memory if datamode is active
@@ -2000,19 +2001,23 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
 
                         // table.init
                         case 0x0C: {
-                            tableaddr_t ta = F->module->tableaddrs[ip->x];
-                            tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
-                            elemaddr_t ea = F->module->elemaddrs[ip->y];
-                            eleminst_t *elem = VECTOR_ELEM(&S->elems, ea);
-                            int32_t n, s, d;
-                            pop_i32(stack, &n);
-                            pop_i32(stack, &s);
-                            pop_i32(stack, &d);
-
                             while(1) {
+                                tableaddr_t ta = F->module->tableaddrs[ip->x];
+                                tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
+                                elemaddr_t ea = F->module->elemaddrs[ip->y];
+                                eleminst_t *elem = VECTOR_ELEM(&S->elems, ea);
+                                int32_t n, s, d;
+                                pop_i32(stack, &n);
+                                pop_i32(stack, &s);
+                                pop_i32(stack, &d);
+
+                                uint64_t idx1 = (uint32_t)s, idx2 = (uint32_t)d;
+                                idx1 += (uint32_t)n;
+                                idx2 += (uint32_t)n;
+                                
                                 __throwif(
                                     ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, 
-                                    s + n > elem->elem.len || d + n > tab->elem.len
+                                    idx1 > elem->elem.len || idx2 > tab->elem.len
                                 );
 
                                 if(n == 0)
@@ -2027,9 +2032,9 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                                 };
                                 expr_t expr = &table_set;
                                 exec_expr(instance, &expr);
-                                d++;
-                                s++;
-                                n--;
+                                push_i32(stack, d + 1);
+                                push_i32(stack, s + 1);
+                                push_i32(stack, n - 1);
                             }
                             break;
                         }
@@ -2044,34 +2049,34 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
 
                         // table.copy
                         case 0x0E: {
-                            tableaddr_t ta_x = F->module->tableaddrs[ip->x];
-                            tableinst_t *tab_x = VECTOR_ELEM(&S->tables, ta_x);
-                            tableaddr_t ta_y = F->module->tableaddrs[ip->y];
-                            tableinst_t *tab_y = VECTOR_ELEM(&S->tables, ta_y);
-
-                            int32_t n, s, d;
-                            pop_i32(stack, &n);
-                            pop_i32(stack, &s);
-                            pop_i32(stack, &d);
-
-                            uint64_t idx1 = (uint32_t)s, idx2 = (uint32_t)d;
-                            idx1 += (uint32_t)n;
-                            idx2 += (uint32_t)n;
-
-                            __throwif(
-                                ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, 
-                                idx1 > tab_y->elem.len || idx2 > tab_x->elem.len
-                            );
-
-                            instr_t table_set = {
-                                .op1 = OP_TABLE_SET, .x = ip->x, .next = NULL
-                            };
-                            instr_t table_get = {
-                                .op1 = OP_TABLE_GET, .x = ip->y, .next = &table_set
-                            };
-                            expr_t expr = &table_get;
-
                             while(1) {
+                                tableaddr_t ta_x = F->module->tableaddrs[ip->x];
+                                tableinst_t *tab_x = VECTOR_ELEM(&S->tables, ta_x);
+                                tableaddr_t ta_y = F->module->tableaddrs[ip->y];
+                                tableinst_t *tab_y = VECTOR_ELEM(&S->tables, ta_y);
+
+                                int32_t n, s, d;
+                                pop_i32(stack, &n);
+                                pop_i32(stack, &s);
+                                pop_i32(stack, &d);
+
+                                uint64_t idx1 = (uint32_t)s, idx2 = (uint32_t)d;
+                                idx1 += (uint32_t)n;
+                                idx2 += (uint32_t)n;
+
+                                __throwif(
+                                    ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, 
+                                    idx1 > tab_y->elem.len || idx2 > tab_x->elem.len
+                                );
+
+                                instr_t table_set = {
+                                    .op1 = OP_TABLE_SET, .x = ip->x, .next = NULL
+                                };
+                                instr_t table_get = {
+                                    .op1 = OP_TABLE_GET, .x = ip->y, .next = &table_set
+                                };
+                                expr_t expr = &table_get;
+
                                 if(n == 0)
                                     break;
                                 
@@ -2079,15 +2084,17 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                                     __throwiferr(push_i32(stack, d));
                                     __throwiferr(push_i32(stack, s));
                                     exec_expr(instance, &expr);
-                                    d++;
-                                    s++;
+                                    __throwiferr(push_i32(stack, d + 1));
+                                    __throwiferr(push_i32(stack, s + 1));
                                 }
                                 else {
                                     __throwiferr(push_i32(stack, d + n - 1));
                                     __throwiferr(push_i32(stack, s + n - 1));
                                     exec_expr(instance, &expr);
+                                    __throwiferr(push_i32(stack, d));
+                                    __throwiferr(push_i32(stack, s));
                                 }
-                                n--;
+                                push_i32(stack, n - 1);
                             }
                             break;
                         }
