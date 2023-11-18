@@ -5,6 +5,10 @@
 
 // todo: fix this?
 #include <math.h>
+#include <string.h>
+
+// todo: remove this?
+static list_t imported_modules = {.next = &imported_modules, .prev = &imported_modules};
 
 // stack
 void new_stack(stack_t **d) {
@@ -30,7 +34,7 @@ static inline bool empty(stack_t *s) {
     return s->idx == -1;
 }
 
-error_t push_val(val_t val, stack_t *stack) {
+error_t push_val(stack_t *stack, val_t val) {
     __try {
         if(full(stack)) {
             __throw(ERR_TRAP_CALL_STACK_EXHAUSTED);
@@ -45,56 +49,56 @@ error_t push_val(val_t val, stack_t *stack) {
         return err;
 }
 
-static inline error_t push_i32(int32_t val, stack_t *stack) {
+static inline error_t push_i32(stack_t *stack, int32_t val) {
     __try {
         val_t v = {.num.i32 = val};
-        __throwiferr(push_val(v, stack));
+        __throwiferr(push_val(stack, v));
     }
     __catch:
         return err;
 }
 
-static inline error_t push_i64(int64_t val, stack_t *stack) {
+static inline error_t push_i64(stack_t *stack, int64_t val) {
     __try {
         val_t v = {.num.i64 = val};
-        __throwiferr(push_val(v, stack));
+        __throwiferr(push_val(stack, v));
     }
     __catch:
         return err;
     
 }
 
-static inline error_t push_f32(float val, stack_t *stack) {
+static inline error_t push_f32(stack_t *stack, float val) {
     __try {
         val_t v = {.num.f32 = val};
-        __throwiferr(push_val(v, stack));
+        __throwiferr(push_val(stack, v));
     }
     __catch:
         return err;
 }
 
-static inline error_t push_f64(double val, stack_t *stack) {
+static inline error_t push_f64(stack_t *stack, double val) {
     __try {
         val_t v = {.num.f64 = val};
-        __throwiferr(push_val(v, stack));
+        __throwiferr(push_val(stack, v));
     }
     __catch:
         return err;
 }
 
 // todo: fix this?
-error_t push_vals(vals_t vals, stack_t *stack) {
+error_t push_vals(stack_t *stack, vals_t vals) {
     __try {
         size_t num_vals = vals.len;
         for(int32_t i = (num_vals - 1); 0 <= i; i--) {
-           __throwiferr(push_val(vals.elem[i], stack));
+           __throwiferr(push_val(stack, vals.elem[i]));
         }
     }
     __catch:
         return err;
 }
 
-error_t push_label(label_t label, stack_t *stack) {
+error_t push_label(stack_t *stack, label_t label) {
     __try {
         if(full(stack)) {
             __throw(ERR_TRAP_CALL_STACK_EXHAUSTED);
@@ -112,7 +116,7 @@ error_t push_label(label_t label, stack_t *stack) {
         return err;
 }
 
-error_t push_frame(frame_t frame, stack_t *stack) {
+error_t push_frame(stack_t *stack, frame_t frame) {
     __try {
         if(full(stack)) {
             __throw(ERR_TRAP_CALL_STACK_EXHAUSTED);
@@ -130,38 +134,38 @@ error_t push_frame(frame_t frame, stack_t *stack) {
         return err;
 }
 
-void pop_val(val_t *val, stack_t *stack) {    
+void pop_val(stack_t *stack, val_t *val) {    
     *val = stack->pool[stack->idx].val;
     stack->idx--;
     //printf("pop val: %x idx: %ld\n", val->num.i32, stack->idx);
 }
 
-static inline void pop_i32(int32_t *val, stack_t *stack) {
+static inline void pop_i32(stack_t *stack, int32_t *val) {
     val_t v;
-    pop_val(&v, stack);
+    pop_val(stack, &v);
     *val = v.num.i32;
 }
 
-static inline void pop_i64(int64_t *val, stack_t *stack) {
+static inline void pop_i64(stack_t *stack, int64_t *val) {
     val_t v;
-    pop_val(&v, stack);
+    pop_val(stack, &v);
     *val = v.num.i64;
 }
 
-static inline void pop_f32(float *val, stack_t *stack) {
+static inline void pop_f32(stack_t *stack, float *val) {
     val_t v;
-    pop_val(&v, stack);
+    pop_val(stack, &v);
     *val = v.num.f32;
 }
 
-static inline void pop_f64(double *val, stack_t *stack) {
+static inline void pop_f64(stack_t *stack, double *val) {
     val_t v;
-    pop_val(&v, stack);
+    pop_val(stack, &v);
     *val = v.num.f64;
 }
 
 // pop all values from the stack top
-void pop_vals(vals_t *vals, stack_t *stack) {
+void pop_vals(stack_t *stack, vals_t *vals) {
     // count values
     size_t num_vals = 0;
     size_t i = stack->idx;
@@ -175,35 +179,35 @@ void pop_vals(vals_t *vals, stack_t *stack) {
     
     // pop values
     VECTOR_FOR_EACH(val, vals) {
-        pop_val(val, stack);
+        pop_val(stack, val);
     }
 }
 
-void pop_vals_n(vals_t *vals, size_t n, stack_t *stack) {
+void pop_vals_n(stack_t *stack, size_t n, vals_t *vals) {
     // init vector
     VECTOR_NEW(vals, n);
     
     // pop values
     VECTOR_FOR_EACH(val, vals) {
-        pop_val(val, stack);
+        pop_val(stack, val);
     }
 }
 
-void pop_label(label_t *label, stack_t *stack) {
+void pop_label(stack_t *stack, label_t *label) {
     *label = stack->pool[stack->idx].label;
     stack->idx--;
     list_pop_tail(&stack->labels);
 }
 
-void try_pop_label(label_t *label, stack_t *stack) {
+void try_pop_label(stack_t *stack, label_t *label) {
     // nop
     if(stack->pool[stack->idx].type != TYPE_LABEL)
         return;
     
-    pop_label(label, stack);
+    pop_label(stack, label);
 }
 
-void pop_frame(frame_t *frame, stack_t *stack) {
+void pop_frame(stack_t *stack, frame_t *frame) {
     *frame = stack->pool[stack->idx].frame;
     stack->idx--;
     list_pop_tail(&stack->frames);
@@ -219,12 +223,12 @@ void pop_while_not_frame(stack_t *stack) {
                 break;
             case TYPE_FRAME: {
                 frame_t tmp;
-                pop_frame(&tmp, stack);
+                pop_frame(stack, &tmp);
                 break;
             }
             case TYPE_LABEL: {
                 label_t tmp;
-                pop_label(&tmp, stack);
+                pop_label(stack, &tmp);
                 break;
             }
         }
@@ -262,21 +266,205 @@ static paddr_t eaddr_to_paddr(meminst_t *meminst, eaddr_t eaddr) {
     return (uint64_t)table0[vpn0] | (eaddr & 0xfff);
 }
 
-error_t exec_expr(expr_t * expr, store_t *S);
-error_t instantiate(store_t **S, module_t *module) {
+void register_module(instance_t *inst, const uint8_t *as) {
+    inst->name = as;
+    list_push_back(&imported_modules, &inst->link);
+}
+
+static instance_t *find_imported_module(const uint8_t *module_name) {
+    instance_t *instance = NULL;
+    LIST_FOR_EACH(inst, &imported_modules, instance_t, link) {
+        if(strcmp(module_name, inst->name) == 0) {
+            instance = inst;
+            break;
+        }
+    }
+
+    return instance;
+}
+
+static export_t *find_import(module_t *from, const uint8_t *name) {
+    export_t *export = NULL;
+
+    VECTOR_FOR_EACH(e, &from->exports) {
+        if(strcmp(name, e->name) == 0) {
+            export = e;
+            break;
+        }
+    }
+
+    return export;
+}
+
+static funcaddr_t alloc_func(instance_t *instance, func_t *func) {
+    store_t *S = instance->store;
+    moduleinst_t *moduleinst = instance->moduleinst;
+
+    funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, S->funcaddr);
+    functype_t *functype = &moduleinst->types[func->type];
+
+    funcinst->is_imported = false;
+    funcinst->type   = functype;
+    funcinst->module = moduleinst;
+    funcinst->code   = func;
+
+    return S->funcaddr++;
+}
+
+static funcaddr_t alloc_imported_func(instance_t *to, import_t *import, instance_t *from, funcaddr_t funcaddr) {
+    funcinst_t *dst = VECTOR_ELEM(&to->store->funcs, to->store->funcaddr);
+    funcinst_t *src = VECTOR_ELEM(&from->store->funcs, funcaddr);
+
+    dst->is_imported = true;
+    dst->module_name = import->module;
+    dst->name = import->name;
+    dst->type = src->type;
+    dst->module = src->module;
+    dst->code = src->code;
+
+    return to->store->funcaddr++;
+}
+
+static tableaddr_t alloc_table(instance_t *instance, table_t *table) {
+    store_t *S = instance->store;
+    tableinst_t *tableinst = VECTOR_ELEM(&S->tables, S->tableaddr);
+
+    uint32_t n = table->type.limits.min;
+    tableinst->type = table->type;
+    VECTOR_NEW(&tableinst->elem, n);
+
+    // init with ref.null
+    VECTOR_FOR_EACH(elem, &tableinst->elem) {
+        *elem = REF_NULL;
+    }
+
+    return S->tableaddr++;
+}
+
+static memaddr_t alloc_mem(instance_t *instance, mem_t *mem) {
+    store_t *S = instance->store;
+    meminst_t *meminst = VECTOR_ELEM(&S->mems, S->memaddr);
+    
+    meminst->type = mem->type;
+    meminst->num_pages = mem->type.min;
+
+    return S->memaddr++;
+}
+
+static dataaddr_t alloc_data(instance_t *instance, data_t *data) {
+    store_t *S = instance->store;
+    datains_t *datainst = VECTOR_ELEM(&S->datas, S->dataaddr);
+
+    VECTOR_COPY(&datainst->data, &data->init);
+
+    return S->dataaddr++;
+}
+
+error_t exec_expr(instance_t *instance, expr_t * expr);
+static globaladdr_t alloc_global(instance_t *instance, global_t *global) {
+    stack_t *stack = instance->stack;
+    store_t *S = instance->store;
+    globalinst_t *globalinst = VECTOR_ELEM(&S->globals, S->globaladdr);
+
+    globalinst->gt = global->gt;
+
+    exec_expr(instance, &global->expr);
+    pop_val(stack, &globalinst->val);
+    
+    return S->globaladdr++;
+}
+
+static elemaddr_t alloc_elem(instance_t *instance, elem_t *elem) {
+    stack_t *stack = instance->stack;
+    store_t *S = instance->store;
+    eleminst_t *eleminst = VECTOR_ELEM(&S->elems, S->elemaddr);
+
+    VECTOR_NEW(&eleminst->elem, elem->init.len);
+
+    for(uint32_t j = 0; j < elem->init.len; j++) {
+        expr_t *init = VECTOR_ELEM(&elem->init, j);
+        exec_expr(instance, init);
+        val_t val;
+        pop_val(stack, &val);
+        *VECTOR_ELEM(&eleminst->elem, j) = val.ref;
+    }
+
+    return S->elemaddr++;
+}
+
+
+error_t alloc_imports(instance_t *target, module_t *module) {
     __try {
+        instance_t *from = NULL;
+        VECTOR_FOR_EACH(import, &module->imports) {
+            // find instance
+            LIST_FOR_EACH(inst, &imported_modules, instance_t, link) {
+                if(strcmp(import->module, inst->name) == 0) {
+                    from = inst;
+                    break;
+                }
+            }
+            __throwif(ERR_FAILED, !from);
+
+            // find expordesc
+            externval_t *externval = NULL;
+            VECTOR_FOR_EACH(exportinst, &from->moduleinst->exports) {
+                if(strcmp(import->name, exportinst->name) == 0) {
+                    externval = &exportinst->value;
+                    break;
+                }
+            }
+            __throwif(ERR_FAILED, !externval);
+
+            // check that type matches
+            __throwif(ERR_FAILED, import->d.kind != externval->kind);
+
+            // allocate imports
+            store_t *S = target->store;
+            moduleinst_t *moduleinst = target->moduleinst;
+
+            idx_t funcidx = 0, tableidx = 0, memidx = 0, globalidx = 0;
+            switch(externval->kind) {
+                case EXTERN_FUNC: {
+                    moduleinst->funcaddrs[funcidx] = alloc_imported_func(target, import, from, externval->func);
+                    funcidx++;
+                    break;
+                }
+                case EXTERN_TABLE:
+                case EXTERN_MEM:
+                case EXTERN_GLOBAL:
+                    PANIC("implement here!");
+                    break;
+            }
+        }
+    }
+    __catch:
+        return err;
+}
+
+error_t instantiate(instance_t **instance, module_t *module) {
+    __try {
+        // allocate instance
+        instance_t *inst = *instance = malloc(sizeof(instance_t));
+        
         // allocate store
-        store_t *store = *S = malloc(sizeof(store_t));
+        store_t *store = inst->store = malloc(sizeof(store_t));
         
         // allocate stack
-        new_stack(&store->stack);
-        
+        new_stack(&inst->stack);
+
         VECTOR_NEW(&store->funcs, module->num_func_imports + module->funcs.len);
         VECTOR_NEW(&store->tables, module->num_table_imports + module->tables.len);
         VECTOR_NEW(&store->mems, module->num_mem_imports + module->mems.len);
         VECTOR_NEW(&store->globals, module->num_global_imports + module->globals.len);
         VECTOR_NEW(&store->elems, module->elems.len);
         VECTOR_NEW(&store->datas, module->datas.len);
+        store->funcaddr = 0;
+        store->tableaddr = 0;
+        store->memaddr = 0;
+        store->globaladdr = 0;
+        store->elemaddr = 0;
+        store->dataaddr = 0;
         
         // todo: allocate imported objects
         uint32_t funcidx = module->num_func_imports;
@@ -285,7 +473,7 @@ error_t instantiate(store_t **S, module_t *module) {
         uint32_t globalidx = module->num_global_imports;
         uint32_t elemidx = 0, dataidx = 0;
 
-        moduleinst_t *moduleinst = malloc(sizeof(moduleinst_t));
+        moduleinst_t *moduleinst = inst->moduleinst = malloc(sizeof(moduleinst_t));
         moduleinst->types = module->types.elem;
         moduleinst->funcaddrs = malloc(
             sizeof(funcaddr_t) * (module->num_func_imports + module->funcs.len)
@@ -302,83 +490,45 @@ error_t instantiate(store_t **S, module_t *module) {
         );
         moduleinst->elemaddrs = malloc(sizeof(elemaddr_t) * module->elems.len);
         
+        // allocte imports
+        __throwiferr(alloc_imports(inst, module));
+
         // alloc funcs
         VECTOR_FOR_EACH(func, &module->funcs) {
-            funcinst_t *funcinst = VECTOR_ELEM(&store->funcs, funcidx);
-            functype_t *functype = VECTOR_ELEM(&module->types, func->type);
-
-            funcinst->type   = functype;
-            funcinst->module = moduleinst;
-            funcinst->code   = func;
-            moduleinst->funcaddrs[funcidx] = funcidx;
+            moduleinst->funcaddrs[funcidx] = alloc_func(inst, func);
             funcidx++;
         }
 
         // alloc tables
         VECTOR_FOR_EACH(table, &module->tables) {
-            tableinst_t *tableinst = VECTOR_ELEM(&store->tables, tableidx);
-
-            uint32_t n = table->type.limits.min;
-            tableinst->type = table->type;
-            VECTOR_NEW(&tableinst->elem, n);
-
-            // init with ref.null
-            VECTOR_FOR_EACH(elem, &tableinst->elem) {
-                *elem = REF_NULL;
-            }
-            moduleinst->tableaddrs[tableidx] = tableidx;
+            moduleinst->tableaddrs[tableidx] = alloc_table(inst, table);
             tableidx++;
         }
 
         // alloc mems
         VECTOR_FOR_EACH(mem, &module->mems) {
-            meminst_t *meminst = VECTOR_ELEM(&store->mems, memidx);
-
-            meminst->type = mem->type;
-            meminst->num_pages = mem->type.min;
-            moduleinst->memaddrs[memidx] = memidx;
+            moduleinst->memaddrs[memidx] = alloc_mem(inst, mem);
+            memidx++;
         }
 
         // alloc datas
         VECTOR_FOR_EACH(data, &module->datas) {
-            datains_t *datainst = VECTOR_ELEM(&store->datas, dataidx);
-
-            VECTOR_COPY(&datainst->data, &data->init);
-
-            moduleinst->dataaddrs[dataidx] = dataidx;
+            moduleinst->dataaddrs[dataidx] = alloc_data(inst, data);
             dataidx++;
         }
 
         // alloc globals
         frame_t F = {.module = moduleinst, .locals = NULL};
-        __throwiferr(push_frame(F, store->stack));
+        __throwiferr(push_frame(inst->stack, F));
 
         VECTOR_FOR_EACH(global, &module->globals) {
-            globalinst_t *globalinst = VECTOR_ELEM(&store->globals, globalidx);
-
-            globalinst->gt = global->gt;
-
-            exec_expr(&global->expr, store);
-            pop_val(&globalinst->val, store->stack);
-            
-            moduleinst->globaladdrs[globalidx] = globalidx;
+            moduleinst->globaladdrs[globalidx] = alloc_global(inst, global);
             globalidx++;
         }
 
         // alloc elems
         VECTOR_FOR_EACH(elem, &module->elems) {
-            eleminst_t *eleminst = VECTOR_ELEM(&store->elems, elemidx);
-            VECTOR_NEW(&eleminst->elem, elem->init.len);
-
-            for(uint32_t j = 0; j < elem->init.len; j++) {
-                expr_t *init = VECTOR_ELEM(&elem->init, j);
-                exec_expr(init, store);
-                val_t val;
-                pop_val(&val, store->stack);
-                *VECTOR_ELEM(&eleminst->elem, j) = val.ref;
-            }
-
-            moduleinst->elemaddrs[elemidx] = elemidx;
+            moduleinst->elemaddrs[elemidx] = alloc_elem(inst, elem);
             elemidx++;
         }
 
@@ -390,18 +540,18 @@ error_t instantiate(store_t **S, module_t *module) {
                 continue;
             
             // exec instruction sequence
-            exec_expr(&elem->mode.offset, store);
+            exec_expr(inst, &elem->mode.offset);
 
             // exec i32.const 0; i32.const n;
-            __throwiferr(push_i32(0, store->stack));
-            __throwiferr(push_i32(elem->init.len, store->stack));
+            __throwiferr(push_i32(inst->stack, 0));
+            __throwiferr(push_i32(inst->stack, elem->init.len));
 
             // table.init
             instr_t table_init = {
                 .op1 = OP_0XFC, .op2 = 0x0C, .x = elem->mode.table, .y = i, .next = NULL
             };
             expr_t expr = &table_init;
-            exec_expr(&expr, store);
+            exec_expr(inst, &expr);
 
             // todo: data.drop
         }
@@ -415,21 +565,21 @@ error_t instantiate(store_t **S, module_t *module) {
             
             __throwif(ERR_FAILED, data->mode.memory != 0);
 
-            exec_expr(&data->mode.offset, store);
+            exec_expr(inst, &data->mode.offset);
             // i32.const 0
-            __throwiferr(push_i32(0, store->stack));
+            __throwiferr(push_i32(inst->stack, 0));
             // i32.const n
-            __throwiferr(push_i32(data->init.len, store->stack));
+            __throwiferr(push_i32(inst->stack, data->init.len));
 
             // memory.init i
             instr_t memory_init = {
                 .op1 = OP_0XFC, .op2 = 8, .x = i, .next = NULL
             };
             expr_t expr = &memory_init;
-            exec_expr(&expr, store);
+            exec_expr(inst, &expr);
         }
 
-        pop_frame(&F, store->stack);
+        pop_frame(inst->stack, &F);
 
         // create exportinst
         uint32_t exportidx = 0;
@@ -490,7 +640,7 @@ static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
 // ref: https://github.com/wasm3/wasm3/blob/main/source/m3_exec.h
 // ref: https://github.com/wasm3/wasm3/blob/main/source/m3_math_utils.h
 // ref: https://en.wikipedia.org/wiki/Circular_shift
-static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
+static error_t invoke_func(instance_t *instance, funcaddr_t funcaddr);
 
 #define TRUNC(A, TYPE, RMIN, RMAX)                              \
     ({                                                          \
@@ -537,11 +687,13 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
 #define I64_TRUNC_SAT_F64(A)    TRUNC_SAT(A, int64_t, -9223372036854777856.0 ,  9223372036854775808.0,  INT64_MIN,  INT64_MAX)
 #define U64_TRUNC_SAT_F64(A)    TRUNC_SAT(A, uint64_t,                  -1.0 , 18446744073709551616.0,       0ULL, UINT64_MAX)
 
-error_t exec_expr(expr_t * expr, store_t *S) {
+error_t exec_expr(instance_t *instance, expr_t *expr) {
     instr_t *ip = *expr;
 
+    store_t *S = instance->store;
+    stack_t *stack = instance->stack;
     // current frame
-    frame_t *F = LIST_TAIL(&S->stack->frames, frame_t, link);
+    frame_t *F = LIST_TAIL(&stack->frames, frame_t, link);
 
     __try {
         while(ip) {
@@ -561,7 +713,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                OP_F32_CONVERT_I32_S <= ip->op1 && ip->op1 <= OP_F32_CONVERT_I32_U ||
                OP_F64_CONVERT_I32_S <= ip->op1 && ip->op1 <= OP_F64_CONVERT_I32_U ||
                ip->op1 == OP_F32_REINTERPRET_I32) {
-                pop_i32(&lhs_i32, S->stack);
+                pop_i32(stack, &lhs_i32);
             }
             if(ip->op1 == OP_I64_EQZ || OP_I64_CLZ <= ip->op1 && ip->op1 <= OP_I64_POPCNT ||
                OP_I64_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I64_EXTEND32_S ||
@@ -569,7 +721,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                OP_F32_CONVERT_I64_S <= ip->op1 && ip->op1 <= OP_F32_CONVERT_I64_U || 
                OP_F64_CONVERT_I64_S <= ip->op1 && ip->op1 <= OP_F64_CONVERT_I64_U ||
                ip->op1 == OP_F64_REINTERPRET_I64) {
-                pop_i64(&lhs_i64, S->stack);
+                pop_i64(stack, &lhs_i64);
             }
             if(OP_F32_ABS <= ip->op1 && ip->op1 <= OP_F32_SQRT || 
                OP_I32_TRUNC_F32_S <= ip->op1 && ip->op1 <= OP_I32_TRUNC_F32_U ||
@@ -577,7 +729,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                ip->op1 == OP_F64_PROMOTE_F32 || 
                ip->op1 == OP_I32_REINTERPRET_F32 ||
                ip->op1 == OP_0XFC && (ip->op2 == 0 || ip->op2 == 1 || ip->op2 == 4 || ip->op2 == 5)) {
-                pop_f32(&lhs_f32, S->stack);
+                pop_f32(stack, &lhs_f32);
             }
             if(OP_F64_ABS <= ip->op1 && ip->op1 <= OP_F64_SQRT ||
                OP_I32_TRUNC_F64_S <= ip->op1 && ip->op1 <= OP_I32_TRUNC_F64_U || 
@@ -585,29 +737,29 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                ip->op1 == OP_F32_DEMOTE_F64 || 
                ip->op1 == OP_I64_REINTERPRET_F64 ||
                ip->op1 == OP_0XFC && (ip->op2 == 2 || ip->op2 == 3 || ip->op2 == 6 || ip->op2 == 7)) {
-                pop_f64(&lhs_f64, S->stack);
+                pop_f64(stack, &lhs_f64);
             }
             
             // binary operator
             if(OP_I32_EQ <= ip->op1 && ip->op1 <= OP_I32_GE_U || 
                OP_I32_ADD <= ip->op1 && ip->op1 <= OP_I32_ROTR) {
-                pop_i32(&rhs_i32, S->stack);
-                pop_i32(&lhs_i32, S->stack);
+                pop_i32(stack, &rhs_i32);
+                pop_i32(stack, &lhs_i32);
             }
             if(OP_I64_EQ <= ip->op1 && ip->op1 <= OP_I64_GE_U || 
                OP_I64_ADD <= ip->op1 && ip->op1 <= OP_I64_ROTR) {
-                pop_i64(&rhs_i64, S->stack);
-                pop_i64(&lhs_i64, S->stack);
+                pop_i64(stack, &rhs_i64);
+                pop_i64(stack, &lhs_i64);
             }
             if(OP_F32_EQ <= ip->op1 && ip->op1 <= OP_F32_GE ||
                OP_F32_ADD <= ip->op1 && ip->op1 <= OP_F32_COPYSIGN) {
-                pop_f32(&rhs_f32, S->stack);
-                pop_f32(&lhs_f32, S->stack);
+                pop_f32(stack, &rhs_f32);
+                pop_f32(stack, &lhs_f32);
             }
             if(OP_F64_EQ <= ip->op1 && ip->op1 <= OP_F64_GE ||
                OP_F64_ADD <= ip->op1 && ip->op1 <= OP_F64_COPYSIGN) {
-                pop_f64(&rhs_f64, S->stack);
-                pop_f64(&lhs_f64, S->stack);
+                pop_f64(stack, &rhs_f64);
+                pop_f64(stack, &lhs_f64);
             }
 
             switch(ip->op1) {
@@ -627,9 +779,9 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                         .continuation = &end,
                     };
                     vals_t vals;
-                    pop_vals_n(&vals, ty.rt1.len, S->stack);
-                    __throwiferr(push_label(L, S->stack));
-                    __throwiferr(push_vals(vals, S->stack));
+                    pop_vals_n(stack, ty.rt1.len, &vals);
+                    __throwiferr(push_label(stack, L));
+                    __throwiferr(push_vals(stack, vals));
                     next_ip = ip->in1;
                     break;
                 }
@@ -643,16 +795,16 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                         .continuation = ip,
                     };
                     vals_t vals;
-                    pop_vals_n(&vals, ty.rt1.len, S->stack);
-                    __throwiferr(push_label(L, S->stack));
-                    __throwiferr(push_vals(vals, S->stack));
+                    pop_vals_n(stack, ty.rt1.len, &vals);
+                    __throwiferr(push_label(stack, L));
+                    __throwiferr(push_vals(stack, vals));
                     next_ip = ip->in1;
                     break; 
                 }
 
                 case OP_IF: {
                     int32_t c;
-                    pop_i32(&c, S->stack);
+                    pop_i32(stack, &c);
 
                     functype_t ty;
                     expand_F(&ty, ip->bt, F);
@@ -662,9 +814,9 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                         .continuation = &end,
                     };
                     vals_t vals;
-                    pop_vals_n(&vals, ty.rt1.len, S->stack);
-                    __throwiferr(push_label(L, S->stack));
-                    __throwiferr(push_vals(vals, S->stack));
+                    pop_vals_n(stack, ty.rt1.len, &vals);
+                    __throwiferr(push_label(stack, L));
+                    __throwiferr(push_vals(stack, vals));
 
                     if(c) {
                         next_ip = ip->in1;
@@ -688,12 +840,12 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     // exit instr* with label L
                     // pop all values from stack
                     vals_t vals;
-                    pop_vals(&vals, S->stack);
+                    pop_vals(stack, &vals);
 
                     // exit instr* with label L
                     label_t l = {.parent = NULL};
-                    try_pop_label(&l, S->stack);
-                    __throwiferr(push_vals(vals, S->stack));
+                    try_pop_label(stack, &l);
+                    __throwiferr(push_vals(stack, vals));
                     next_ip = l.parent != NULL ? l.parent->next : NULL;
                     break;
                 }
@@ -702,7 +854,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     labelidx_t idx;
                     int32_t c;
                     
-                    pop_i32(&c, S->stack);
+                    pop_i32(stack, &c);
 
                     if(c == 0) {
                         break;
@@ -711,7 +863,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     goto __br;
 
                 case OP_BR_TABLE:
-                    pop_i32(&c, S->stack);
+                    pop_i32(stack, &c);
                     if(c < ip->labels.len) {
                         idx = ip->labels.elem[c];
                     }
@@ -723,16 +875,16 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 case OP_BR:
                     idx = ip->labelidx;
                 __br:
-                    label_t *l = LIST_GET_ELEM(&S->stack->labels, label_t, link, idx);
+                    label_t *l = LIST_GET_ELEM(&stack->labels, label_t, link, idx);
                     vals_t vals;
-                    pop_vals_n(&vals, l->arity, S->stack);
+                    pop_vals_n(stack, l->arity, &vals);
                     label_t L;
                     for(int i = 0; i <= idx; i++) {
                         vals_t tmp;
-                        pop_vals(&tmp, S->stack);
-                        pop_label(&L, S->stack);
+                        pop_vals(stack, &tmp);
+                        pop_label(stack, &L);
                     }
-                    __throwiferr(push_vals(vals, S->stack));
+                    __throwiferr(push_vals(stack, vals));
 
                     // br to "outermost" label (return from function)
                     if(!L.parent) {
@@ -761,7 +913,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                 case OP_CALL: {
                     // invoke func
-                    __throwiferr(invoke_func(S, F->module->funcaddrs[ip->funcidx]));
+                    __throwiferr(invoke_func(instance, F->module->funcaddrs[ip->funcidx]));
                     break;
                 }
 
@@ -772,7 +924,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     functype_t *ft_expect = &F->module->types[ip->y];
                     
                     int32_t i;
-                    pop_i32(&i, S->stack);
+                    pop_i32(stack, &i);
                     __throwif(ERR_TRAP_UNDEFINED_ELEMENT, i >= tab->elem.len);
                     ref_t r = *VECTOR_ELEM(&tab->elem, i);
                     __throwif(ERR_TRAP_UNINITIALIZED_ELEMENT, r == REF_NULL);
@@ -796,13 +948,13 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                         valtype_t a = *VECTOR_ELEM(&ft_actual->rt2, i);
                         __throwif(ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH, e != a);
                     }
-                    __throwiferr(invoke_func(S, r));
+                    __throwiferr(invoke_func(instance, r));
                     break;
                 }
 
                 case OP_DROP: {
                     val_t val;
-                    pop_val(&val, S->stack);
+                    pop_val(stack, &val);
                     break;
                 }
 
@@ -810,34 +962,34 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 case OP_SELECT_T: {
                     val_t v1, v2;
                     int32_t c;
-                    pop_i32(&c, S->stack);
-                    pop_val(&v2, S->stack);
-                    pop_val(&v1, S->stack);
+                    pop_i32(stack, &c);
+                    pop_val(stack, &v2);
+                    pop_val(stack, &v1);
                     if(c != 0)
-                        __throwiferr(push_val(v1, S->stack));
+                        __throwiferr(push_val(stack, v1));
                     else
-                        __throwiferr(push_val(v2, S->stack));
+                        __throwiferr(push_val(stack, v2));
                     break;
                 }
 
                 case OP_LOCAL_GET: {
                     localidx_t x = ip->localidx;
                     val_t val = F->locals[x];
-                    __throwiferr(push_val(val, S->stack));
+                    __throwiferr(push_val(stack, val));
                     break;
                 }
 
                 case OP_LOCAL_TEE: {
                     val_t val;
-                    pop_val(&val, S->stack);
-                    __throwiferr(push_val(val, S->stack));
-                    __throwiferr(push_val(val, S->stack));
+                    pop_val(stack, &val);
+                    __throwiferr(push_val(stack, val));
+                    __throwiferr(push_val(stack, val));
                 }
 
                 case OP_LOCAL_SET: {
                     localidx_t x = ip->localidx;
                     val_t val;
-                    pop_val(&val, S->stack);
+                    pop_val(stack, &val);
                     F->locals[x] = val;
                     break;
                 }
@@ -845,7 +997,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 case OP_GLOBAL_GET: {
                     globaladdr_t a = F->module->globaladdrs[ip->globalidx];
                     globalinst_t *glob = VECTOR_ELEM(&S->globals, a);
-                    __throwiferr(push_val(glob->val, S->stack));
+                    __throwiferr(push_val(stack, glob->val));
                     break;
                 }
 
@@ -853,7 +1005,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     val_t val;
                     globaladdr_t a = F->module->globaladdrs[ip->globalidx];
                     globalinst_t *glob = VECTOR_ELEM(&S->globals, a);
-                    pop_val(&val, S->stack);
+                    pop_val(stack, &val);
                     glob->val = val;
                     break;
                 }
@@ -862,11 +1014,11 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     tableaddr_t a = F->module->tableaddrs[ip->x];
                     tableinst_t *tab = VECTOR_ELEM(&S->tables, a);
                     int32_t i;
-                    pop_i32(&i, S->stack);
+                    pop_i32(stack, &i);
                     __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, !(i < tab->elem.len));
                     val_t val;
                     val.ref = *VECTOR_ELEM(&tab->elem, i);
-                    __throwiferr(push_val(val, S->stack));
+                    __throwiferr(push_val(stack, val));
                     break;
                 }
 
@@ -874,9 +1026,9 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     tableaddr_t a = F->module->tableaddrs[ip->x];
                     tableinst_t *tab = VECTOR_ELEM(&S->tables, a);
                     val_t val;
-                    pop_val(&val, S->stack);
+                    pop_val(stack, &val);
                     int32_t i;
-                    pop_i32(&i, S->stack);
+                    pop_i32(stack, &i);
                     __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, !(i < tab->elem.len));
                     *VECTOR_ELEM(&tab->elem, i) = val.ref;
                     break;
@@ -901,7 +1053,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                     meminst_t *mem = VECTOR_ELEM(&S->mems, a);
 
                     int32_t i;
-                    pop_i32(&i, S->stack);
+                    pop_i32(stack, &i);
                     eaddr_t ea = (uint32_t)i;
                     ea += ip->m.offset;
 
@@ -983,7 +1135,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             val.num.f64 = *(double *)paddr;
                             break;
                     }
-                    __throwiferr(push_val(val, S->stack));
+                    __throwiferr(push_val(stack, val));
                     break;
                 }
 
@@ -1001,8 +1153,8 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                     val_t c;
                     int32_t i;
-                    pop_val(&c, S->stack);
-                    pop_i32(&i, S->stack);
+                    pop_val(stack, &c);
+                    pop_i32(stack, &i);
 
                     uint64_t ea = (uint32_t)i;
                     ea += ip->m.offset;
@@ -1069,7 +1221,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 case OP_MEMORY_SIZE: {
                     memaddr_t ma = F->module->memaddrs[0];
                     meminst_t *mem = VECTOR_ELEM(&S->mems, ma);
-                    __throwiferr(push_i32(mem->num_pages, S->stack));
+                    __throwiferr(push_i32(stack, mem->num_pages));
                     break;
                 }
 
@@ -1079,654 +1231,654 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 
                     int32_t sz = mem->num_pages;
                     int32_t n;
-                    pop_i32(&n, S->stack);
+                    pop_i32(stack, &n);
 
                     if((mem->type.max && n + mem->num_pages > mem->type.max) || \
                         mem->num_pages + n > NUM_PAGE_MAX) {
-                        __throwiferr(push_i32(-1, S->stack));
+                        __throwiferr(push_i32(stack, -1));
                     } else {
                         // grow n page(always success)
                         mem->num_pages += n;
-                        __throwiferr(push_i32(sz, S->stack));
+                        __throwiferr(push_i32(stack, sz));
                     }
                     break;
                 }
 
                 case OP_I32_CONST:
-                    __throwiferr(push_i32(ip->c.i32, S->stack));
+                    __throwiferr(push_i32(stack, ip->c.i32));
                     break;
                 
                 case OP_I64_CONST:
-                    __throwiferr(push_i64(ip->c.i64, S->stack));
+                    __throwiferr(push_i64(stack, ip->c.i64));
                     break;
                 
                 case OP_F32_CONST:
-                    __throwiferr(push_f32(ip->c.f32, S->stack));
+                    __throwiferr(push_f32(stack, ip->c.f32));
                     break;
                 
                 case OP_F64_CONST:
-                    __throwiferr(push_f64(ip->c.f64, S->stack));
+                    __throwiferr(push_f64(stack, ip->c.f64));
                     break;
                 
                 case OP_I32_EQZ:
-                    __throwiferr(push_i32(lhs_i32 == 0, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 == 0));
                     break;
                                     
                 case OP_I32_EQ:
-                    __throwiferr(push_i32(lhs_i32 == rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 == rhs_i32));
                     break;
                 
                 case OP_I32_NE:
-                    __throwiferr(push_i32(lhs_i32 != rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 != rhs_i32));
                     break;
                 
                 case OP_I32_LT_S:
-                    __throwiferr(push_i32(lhs_i32 < rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 < rhs_i32));
                     break;
                 
                 case OP_I32_LT_U:
-                    __throwiferr(push_i32((uint32_t)lhs_i32 < (uint32_t)rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, (uint32_t)lhs_i32 < (uint32_t)rhs_i32));
                     break;
                 
                 case OP_I32_GT_S:
-                    __throwiferr(push_i32(lhs_i32 > rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 > rhs_i32));
                     break;
                 
                 case OP_I32_GT_U:
-                    __throwiferr(push_i32((uint32_t)lhs_i32 > (uint32_t)rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, (uint32_t)lhs_i32 > (uint32_t)rhs_i32));
                     break;
                 
                 case OP_I32_LE_S:
-                    __throwiferr(push_i32(lhs_i32 <= rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 <= rhs_i32));
                     break;
                 
                 case OP_I32_LE_U:
-                    __throwiferr(push_i32((uint32_t)lhs_i32 <= (uint32_t)rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, (uint32_t)lhs_i32 <= (uint32_t)rhs_i32));
                     break;
                 
                 case OP_I32_GE_S:
-                    __throwiferr(push_i32(lhs_i32 >= rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 >= rhs_i32));
                     break;
                 
                 case OP_I32_GE_U:
-                    __throwiferr(push_i32((uint32_t)lhs_i32 >= (uint32_t)rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, (uint32_t)lhs_i32 >= (uint32_t)rhs_i32));
                     break;
                 
                 case OP_I64_EQZ:
-                    __throwiferr(push_i32(lhs_i64 == 0, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i64 == 0));
                     break;
                                     
                 case OP_I64_EQ:
-                    __throwiferr(push_i32(lhs_i64 == rhs_i64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i64 == rhs_i64));
                     break;
                 
                 case OP_I64_NE:
-                    __throwiferr(push_i32(lhs_i64 != rhs_i64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i64 != rhs_i64));
                     break;
                 
                 case OP_I64_LT_S:
-                    __throwiferr(push_i32(lhs_i64 < rhs_i64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i64 < rhs_i64));
                     break;
                 
                 case OP_I64_LT_U:
-                    __throwiferr(push_i32((uint64_t)lhs_i64 < (uint64_t)rhs_i64, S->stack));
+                    __throwiferr(push_i32(stack, (uint64_t)lhs_i64 < (uint64_t)rhs_i64));
                     break;
                 
                 case OP_I64_GT_S:
-                    __throwiferr(push_i32(lhs_i64 > rhs_i64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i64 > rhs_i64));
                     break;
                 
                 case OP_I64_GT_U:
-                    __throwiferr(push_i32((uint64_t)lhs_i64 > (uint64_t)rhs_i64, S->stack));
+                    __throwiferr(push_i32(stack, (uint64_t)lhs_i64 > (uint64_t)rhs_i64));
                     break;
                 
                 case OP_I64_LE_S:
-                    __throwiferr(push_i32(lhs_i64 <= rhs_i64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i64 <= rhs_i64));
                     break;
                 
                 case OP_I64_LE_U:
-                    __throwiferr(push_i32((uint64_t)lhs_i64 <= (uint64_t)rhs_i64, S->stack));
+                    __throwiferr(push_i32(stack, (uint64_t)lhs_i64 <= (uint64_t)rhs_i64));
                     break;
                 
                 case OP_I64_GE_S:
-                    __throwiferr(push_i32(lhs_i64 >= rhs_i64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i64 >= rhs_i64));
                     break;
                 
                 case OP_I64_GE_U:
-                    __throwiferr(push_i32((uint64_t)lhs_i64 >= (uint64_t)rhs_i64, S->stack));
+                    __throwiferr(push_i32(stack, (uint64_t)lhs_i64 >= (uint64_t)rhs_i64));
                     break;
                 
                 case OP_F32_EQ:
-                    __throwiferr(push_i32(lhs_f32 == rhs_f32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f32 == rhs_f32));
                     break;
                 
                 case OP_F32_NE:
-                    __throwiferr(push_i32(lhs_f32 != rhs_f32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f32 != rhs_f32));
                     break;
                 
                 case OP_F32_LT:
-                    __throwiferr(push_i32(lhs_f32 < rhs_f32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f32 < rhs_f32));
                     break;
                 
                 case OP_F32_GT:
-                    __throwiferr(push_i32(lhs_f32 > rhs_f32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f32 > rhs_f32));
                     break;
                 
                 case OP_F32_LE:
-                    __throwiferr(push_i32(lhs_f32 <= rhs_f32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f32 <= rhs_f32));
                     break;
                 
                 case OP_F32_GE:
-                    __throwiferr(push_i32(lhs_f32 >= rhs_f32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f32 >= rhs_f32));
                     break;
                 
                 case OP_F64_EQ:
-                    __throwiferr(push_i32(lhs_f64 == rhs_f64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f64 == rhs_f64));
                     break;
                 
                 case OP_F64_NE:
-                    __throwiferr(push_i32(lhs_f64 != rhs_f64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f64 != rhs_f64));
                     break;
                 
                 case OP_F64_LT:
-                    __throwiferr(push_i32(lhs_f64 < rhs_f64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f64 < rhs_f64));
                     break;
                 
                 case OP_F64_GT:
-                    __throwiferr(push_i32(lhs_f64 > rhs_f64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f64 > rhs_f64));
                     break;
                 
                 case OP_F64_LE:
-                    __throwiferr(push_i32(lhs_f64 <= rhs_f64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f64 <= rhs_f64));
                     break;
                 
                 case OP_F64_GE:
-                    __throwiferr(push_i32(lhs_f64 >= rhs_f64, S->stack));
+                    __throwiferr(push_i32(stack, lhs_f64 >= rhs_f64));
                     break;
                 
                 case OP_I32_CLZ:
                     if(lhs_i32 == 0)
-                        __throwiferr(push_i32(32, S->stack));
+                        __throwiferr(push_i32(stack, 32));
                     else
-                        __throwiferr(push_i32(__builtin_clz(lhs_i32), S->stack));
+                        __throwiferr(push_i32(stack, __builtin_clz(lhs_i32)));
                     break;
                     
                 case OP_I32_CTZ:
-                    __throwiferr(push_i32(__builtin_ctz(lhs_i32), S->stack));
+                    __throwiferr(push_i32(stack, __builtin_ctz(lhs_i32)));
                     break;
                 
                 case OP_I32_POPCNT:
-                    __throwiferr(push_i32(__builtin_popcount(lhs_i32), S->stack));
+                    __throwiferr(push_i32(stack, __builtin_popcount(lhs_i32)));
                     break;
                 
                 case OP_I32_ADD:
-                    __throwiferr(push_i32(lhs_i32 + rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 + rhs_i32));
                     break;
                 
                 case OP_I32_SUB:
-                    __throwiferr(push_i32(lhs_i32 - rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 - rhs_i32));
                     break;
                 
                 case OP_I32_MUL:
-                    __throwiferr(push_i32(lhs_i32 * rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 * rhs_i32));
                     break;
                 
                 case OP_I32_DIV_S:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
                     __throwif(ERR_TRAP_INTERGET_OVERFLOW, lhs_i32 == INT32_MIN && rhs_i32 == -1);
-                    __throwiferr(push_i32(lhs_i32 / rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 / rhs_i32));
                     break;
                 
                 case OP_I32_DIV_U:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
-                    __throwiferr(push_i32((uint32_t)lhs_i32 / (uint32_t)rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, (uint32_t)lhs_i32 / (uint32_t)rhs_i32));
                     break;
                 
                 case OP_I32_REM_S:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
                     if(lhs_i32 == INT32_MIN && rhs_i32 == -1) {
-                        __throwiferr(push_i32(0, S->stack));
+                        __throwiferr(push_i32(stack, 0));
                     }
                     else {
-                        __throwiferr(push_i32(lhs_i32 % rhs_i32, S->stack));
+                        __throwiferr(push_i32(stack, lhs_i32 % rhs_i32));
                     }
                     break;
                 
                 case OP_I32_REM_U:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i32 == 0);
-                    __throwiferr(push_i32((uint32_t)lhs_i32 % (uint32_t)rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, (uint32_t)lhs_i32 % (uint32_t)rhs_i32));
                     break;
                 
                 case OP_I32_AND:
-                    __throwiferr(push_i32(lhs_i32 & rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 & rhs_i32));
                     break;
                 
                 case OP_I32_OR:
-                    __throwiferr(push_i32(lhs_i32 | rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 | rhs_i32));
                     break;
                 
                 case OP_I32_XOR:
-                    __throwiferr(push_i32(lhs_i32 ^ rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 ^ rhs_i32));
                     break;
                 
                 case OP_I32_SHL:
-                    __throwiferr(push_i32(lhs_i32 << rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 << rhs_i32));
                     break;
                 
                 case OP_I32_SHR_S:
-                    __throwiferr(push_i32(lhs_i32 >> rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i32 >> rhs_i32));
                     break;
                 
                 case OP_I32_SHR_U:
-                    __throwiferr(push_i32((uint32_t)lhs_i32 >> (uint32_t)rhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, (uint32_t)lhs_i32 >> (uint32_t)rhs_i32));
                     break;
                 
                 case OP_I32_ROTL: {
                     uint32_t n = rhs_i32 & 31;
-                    __throwiferr(push_i32(((uint32_t)lhs_i32 << n) | ((uint32_t)lhs_i32 >> ((-n) & 31)), S->stack));
+                    __throwiferr(push_i32(stack, ((uint32_t)lhs_i32 << n) | ((uint32_t)lhs_i32 >> ((-n) & 31))));
                     break;
                 }
 
                 case OP_I32_ROTR: {
                     uint32_t n = rhs_i32 & 31;
-                    __throwiferr(push_i32(((uint32_t)lhs_i32 >> n) | ((uint32_t)lhs_i32 << ((-n) & 31)), S->stack));
+                    __throwiferr(push_i32(stack, ((uint32_t)lhs_i32 >> n) | ((uint32_t)lhs_i32 << ((-n) & 31))));
                     break;
                 }
 
                 case OP_I64_CLZ:
                     if(lhs_i64 == 0)
-                        __throwiferr(push_i64(64, S->stack));
+                        __throwiferr(push_i64(stack, 64));
                     else
-                        __throwiferr(push_i64(__builtin_clzl(lhs_i64), S->stack));
+                        __throwiferr(push_i64(stack, __builtin_clzl(lhs_i64)));
                     break;
                     
                 case OP_I64_CTZ:
-                    __throwiferr(push_i64(__builtin_ctzl(lhs_i64), S->stack));
+                    __throwiferr(push_i64(stack, __builtin_ctzl(lhs_i64)));
                     break;
                 
                 case OP_I64_POPCNT:
-                    __throwiferr(push_i64(__builtin_popcountl(lhs_i64), S->stack));
+                    __throwiferr(push_i64(stack, __builtin_popcountl(lhs_i64)));
                     break;
                 
                 case OP_I64_ADD:
-                    __throwiferr(push_i64(lhs_i64 + rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, lhs_i64 + rhs_i64));
                     break;
                 
                 case OP_I64_SUB:
-                    __throwiferr(push_i64(lhs_i64 - rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, lhs_i64 - rhs_i64));
                     break;
                 
                 case OP_I64_MUL:
-                    __throwiferr(push_i64(lhs_i64 * rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, lhs_i64 * rhs_i64));
                     break;
                 
                 case OP_I64_DIV_S:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
                     __throwif(ERR_TRAP_INTERGET_OVERFLOW, lhs_i64 == INT64_MIN && rhs_i64 == -1);
-                    __throwiferr(push_i64(lhs_i64 / rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, lhs_i64 / rhs_i64));
                     break;
                 
                 case OP_I64_DIV_U:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
-                    __throwiferr(push_i64((uint64_t)lhs_i64 / (uint64_t)rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, (uint64_t)lhs_i64 / (uint64_t)rhs_i64));
                     break;
                 
                 case OP_I64_REM_S:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
                     if(lhs_i64 == INT64_MIN && rhs_i64 == -1) {
-                        __throwiferr(push_i64(0, S->stack));
+                        __throwiferr(push_i64(stack, 0));
                     }
                     else {
-                        __throwiferr(push_i64(lhs_i64 % rhs_i64, S->stack));
+                        __throwiferr(push_i64(stack, lhs_i64 % rhs_i64));
                     }
                     break;
                 
                 case OP_I64_REM_U:
                     __throwif(ERR_TRAP_INTERGER_DIVIDE_BY_ZERO, rhs_i64 == 0);
-                    __throwiferr(push_i64((uint64_t)lhs_i64 % (uint64_t)rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, (uint64_t)lhs_i64 % (uint64_t)rhs_i64));
                     break;
                 
                 case OP_I64_AND:
-                    __throwiferr(push_i64(lhs_i64 & rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, lhs_i64 & rhs_i64));
                     break;
                 
                 case OP_I64_OR:
-                    __throwiferr(push_i64(lhs_i64 | rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, lhs_i64 | rhs_i64));
                     break;
                 
                 case OP_I64_XOR:
-                    __throwiferr(push_i64(lhs_i64 ^ rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, lhs_i64 ^ rhs_i64));
                     break;
                 
                 case OP_I64_SHL:
-                    __throwiferr(push_i64(lhs_i64 << rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, lhs_i64 << rhs_i64));
                     break;
                 
                 case OP_I64_SHR_S:
-                    __throwiferr(push_i64(lhs_i64 >> rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, lhs_i64 >> rhs_i64));
                     break;
                 
                 case OP_I64_SHR_U:
-                    __throwiferr(push_i64((uint64_t)lhs_i64 >> (uint64_t)rhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, (uint64_t)lhs_i64 >> (uint64_t)rhs_i64));
                     break;
                 
                 case OP_I64_ROTL: {
                     uint64_t n = rhs_i64 & 63;
-                    __throwiferr(push_i64(((uint64_t)lhs_i64 << n) | ((uint64_t)lhs_i64 >> ((-n) & 63)),  S->stack));
+                    __throwiferr(push_i64( stack, ((uint64_t)lhs_i64 << n) | ((uint64_t)lhs_i64 >> ((-n) & 63))));
                     break;
                 }
 
                 case OP_I64_ROTR: {
                     uint64_t n = rhs_i64 & 63;
-                    __throwiferr(push_i64(((uint64_t)lhs_i64 >> n) | ((uint64_t)lhs_i64 << ((-n) & 63)), S->stack));
+                    __throwiferr(push_i64(stack, ((uint64_t)lhs_i64 >> n) | ((uint64_t)lhs_i64 << ((-n) & 63))));
                     break;
                 }
 
                 case OP_F32_ABS:
-                    __throwiferr(push_f32(fabsf(lhs_f32), S->stack));
+                    __throwiferr(push_f32(stack, fabsf(lhs_f32)));
                     break;
 
                 case OP_F32_NEG:
-                    __throwiferr(push_f32(-lhs_f32, S->stack));
+                    __throwiferr(push_f32(stack, -lhs_f32));
                     break;
                 
                 case OP_F32_CEIL:
-                    __throwiferr(push_f32(ceilf(lhs_f32), S->stack));
+                    __throwiferr(push_f32(stack, ceilf(lhs_f32)));
                     break;
 
                 case OP_F32_FLOOR:
-                    __throwiferr(push_f32(floorf(lhs_f32), S->stack));
+                    __throwiferr(push_f32(stack, floorf(lhs_f32)));
                     break;
 
                 case OP_F32_TRUNC:
-                    __throwiferr(push_f32(truncf(lhs_f32), S->stack));
+                    __throwiferr(push_f32(stack, truncf(lhs_f32)));
                     break;
                 
                 case OP_F32_NEAREST:
-                    __throwiferr(push_f32(nearbyintf(lhs_f32), S->stack));
+                    __throwiferr(push_f32(stack, nearbyintf(lhs_f32)));
                     break;
                 
                 case OP_F32_SQRT:
-                    __throwiferr(push_f32(sqrtf(lhs_f32), S->stack));
+                    __throwiferr(push_f32(stack, sqrtf(lhs_f32)));
                     break;
                 
                 case OP_F32_ADD:
-                    __throwiferr(push_f32(lhs_f32 + rhs_f32, S->stack));
+                    __throwiferr(push_f32(stack, lhs_f32 + rhs_f32));
                     break;
                 
                 case OP_F32_SUB:
-                    __throwiferr(push_f32(lhs_f32 - rhs_f32, S->stack));
+                    __throwiferr(push_f32(stack, lhs_f32 - rhs_f32));
                     break;
                 
                 case OP_F32_MUL:
-                    __throwiferr(push_f32(lhs_f32 * rhs_f32, S->stack));
+                    __throwiferr(push_f32(stack, lhs_f32 * rhs_f32));
                     break;
                 
                 case OP_F32_DIV:
-                    __throwiferr(push_f32(lhs_f32 / rhs_f32, S->stack));
+                    __throwiferr(push_f32(stack, lhs_f32 / rhs_f32));
                     break;
                 
                 case OP_F32_MIN:
                     if(isnan(lhs_f32) || isnan(rhs_f32))
-                        __throwiferr(push_f32(NAN, S->stack));
+                        __throwiferr(push_f32(stack, NAN));
                     else if(lhs_f32 == 0 && rhs_f32 == 0)
-                        __throwiferr(push_f32(signbit(lhs_f32) ? lhs_f32 : rhs_f32, S->stack));
+                        __throwiferr(push_f32(stack, signbit(lhs_f32) ? lhs_f32 : rhs_f32));
                     else 
-                        __throwiferr(push_f32(lhs_f32 < rhs_f32 ? lhs_f32 : rhs_f32, S->stack));
+                        __throwiferr(push_f32(stack, lhs_f32 < rhs_f32 ? lhs_f32 : rhs_f32));
                     break;
                 
                 case OP_F32_MAX:
                     if(isnan(lhs_f32) || isnan(rhs_f32))
-                        __throwiferr(push_f32(NAN, S->stack));
+                        __throwiferr(push_f32(stack, NAN));
                     else if(lhs_f32 == 0 && rhs_f32 == 0)
-                        __throwiferr(push_f32(signbit(lhs_f32) ? rhs_f32 : lhs_f32, S->stack));
+                        __throwiferr(push_f32(stack, signbit(lhs_f32) ? rhs_f32 : lhs_f32));
                     else
-                        __throwiferr(push_f32(lhs_f32 > rhs_f32 ? lhs_f32 : rhs_f32, S->stack));
+                        __throwiferr(push_f32(stack, lhs_f32 > rhs_f32 ? lhs_f32 : rhs_f32));
                     break;
                 
                 case OP_F32_COPYSIGN:
-                    __throwiferr(push_f32(copysignf(lhs_f32, rhs_f32), S->stack));
+                    __throwiferr(push_f32(stack, copysignf(lhs_f32, rhs_f32)));
                     break;
                 
                 case OP_F64_ABS:
-                    __throwiferr(push_f64(fabs(lhs_f64), S->stack));
+                    __throwiferr(push_f64(stack, fabs(lhs_f64)));
                     break;
                 
                 case OP_F64_NEG:
-                    __throwiferr(push_f64(-lhs_f64, S->stack));
+                    __throwiferr(push_f64(stack, -lhs_f64));
                     break;
                 
                 case OP_F64_CEIL:
-                    __throwiferr(push_f64(ceil(lhs_f64), S->stack));
+                    __throwiferr(push_f64(stack, ceil(lhs_f64)));
                     break;
                 
                 case OP_F64_FLOOR:
-                    __throwiferr(push_f64(floor(lhs_f64), S->stack));
+                    __throwiferr(push_f64(stack, floor(lhs_f64)));
                     break;
                 
                 case OP_F64_TRUNC:
-                    __throwiferr(push_f64(trunc(lhs_f64), S->stack));
+                    __throwiferr(push_f64(stack, trunc(lhs_f64)));
                     break;
                 
                 case OP_F64_NEAREST:
-                    __throwiferr(push_f64(nearbyint(lhs_f64), S->stack));
+                    __throwiferr(push_f64(stack, nearbyint(lhs_f64)));
                     break;
                 
                 case OP_F64_SQRT:
-                    __throwiferr(push_f64(sqrt(lhs_f64), S->stack));
+                    __throwiferr(push_f64(stack, sqrt(lhs_f64)));
                     break;
                 
                 case OP_F64_ADD:
-                    __throwiferr(push_f64(lhs_f64 + rhs_f64, S->stack));
+                    __throwiferr(push_f64(stack, lhs_f64 + rhs_f64));
                     break;
                 
                 case OP_F64_SUB:
-                    __throwiferr(push_f64(lhs_f64 - rhs_f64, S->stack));
+                    __throwiferr(push_f64(stack, lhs_f64 - rhs_f64));
                     break;
                 
                 case OP_F64_MUL:
-                    __throwiferr(push_f64(lhs_f64 * rhs_f64, S->stack));
+                    __throwiferr(push_f64(stack, lhs_f64 * rhs_f64));
                     break;
                 
                 case OP_F64_DIV:
-                    __throwiferr(push_f64(lhs_f64 / rhs_f64, S->stack));
+                    __throwiferr(push_f64(stack, lhs_f64 / rhs_f64));
                     break;
                 
                 case OP_F64_MIN:
                     if(isnan(lhs_f64) || isnan(rhs_f64))
-                        __throwiferr(push_f64(NAN, S->stack));
+                        __throwiferr(push_f64(stack, NAN));
                     else if(lhs_f64 == 0 && rhs_f64 == 0)
-                        __throwiferr(push_f64(signbit(lhs_f64) ? lhs_f64 : rhs_f64, S->stack));
+                        __throwiferr(push_f64(stack, signbit(lhs_f64) ? lhs_f64 : rhs_f64));
                     else
-                        __throwiferr(push_f64(lhs_f64 < rhs_f64 ? lhs_f64 : rhs_f64, S->stack));
+                        __throwiferr(push_f64(stack, lhs_f64 < rhs_f64 ? lhs_f64 : rhs_f64));
                     break;
                 
                 case OP_F64_MAX:
                     if(isnan(lhs_f64) || isnan(rhs_f64))
-                        __throwiferr(push_f64(NAN, S->stack));
+                        __throwiferr(push_f64(stack, NAN));
                     else if(lhs_f64 == 0 && rhs_f64 == 0)
-                        __throwiferr(push_f64(signbit(lhs_f64) ? rhs_f64 : lhs_f64, S->stack));
+                        __throwiferr(push_f64(stack, signbit(lhs_f64) ? rhs_f64 : lhs_f64));
                     else
-                        __throwiferr(push_f64(lhs_f64 > rhs_f64 ? lhs_f64 : rhs_f64, S->stack));
+                        __throwiferr(push_f64(stack, lhs_f64 > rhs_f64 ? lhs_f64 : rhs_f64));
                     break;
                 
                 case OP_F64_COPYSIGN:
-                    __throwiferr(push_f64(copysign(lhs_f64, rhs_f64), S->stack));
+                    __throwiferr(push_f64(stack, copysign(lhs_f64, rhs_f64)));
                     break;
                 
                 case OP_I32_WRAP_I64:
-                    __throwiferr(push_i32(lhs_i64 & 0xffffffff, S->stack));
+                    __throwiferr(push_i32(stack, lhs_i64 & 0xffffffff));
                     break;
 
                 case OP_I32_TRUNC_F32_S: {
-                    __throwiferr(push_i32(I32_TRUNC_F32(lhs_f32), S->stack));
+                    __throwiferr(push_i32(stack, I32_TRUNC_F32(lhs_f32)));
                     break;
                 }
                 
                 case OP_I32_TRUNC_F32_U:
-                    __throwiferr(push_i32(U32_TRUNC_F32(lhs_f32), S->stack));
+                    __throwiferr(push_i32(stack, U32_TRUNC_F32(lhs_f32)));
                     break;
                 
                 case OP_I32_TRUNC_F64_S:
-                    __throwiferr(push_i32(I32_TRUNC_F64(lhs_f64), S->stack));
+                    __throwiferr(push_i32(stack, I32_TRUNC_F64(lhs_f64)));
                     break;
                 
                 case OP_I32_TRUNC_F64_U:
-                    __throwiferr(push_i32(U32_TRUNC_F64(lhs_f64), S->stack));
+                    __throwiferr(push_i32(stack, U32_TRUNC_F64(lhs_f64)));
                     break;
                 
                 case OP_I64_EXTEND_I32_S:
-                    __throwiferr(push_i64((int64_t)(int32_t)lhs_i32, S->stack));
+                    __throwiferr(push_i64(stack, (int64_t)(int32_t)lhs_i32));
                     break;
                 
                 case OP_I64_EXTEND_I32_U:
-                    __throwiferr(push_i64((int64_t)(uint32_t)lhs_i32, S->stack));
+                    __throwiferr(push_i64(stack, (int64_t)(uint32_t)lhs_i32));
                     break;
 
                 case OP_I64_TRUNC_F32_S:
-                    __throwiferr(push_i64(I64_TRUNC_F32(lhs_f32), S->stack));
+                    __throwiferr(push_i64(stack, I64_TRUNC_F32(lhs_f32)));
                     break;
                 
                 case OP_I64_TRUNC_F32_U:
-                    __throwiferr(push_i64(U64_TRUNC_F32(lhs_f32), S->stack));
+                    __throwiferr(push_i64(stack, U64_TRUNC_F32(lhs_f32)));
                     break;
                 
                 case OP_I64_TRUNC_F64_S:
-                    __throwiferr(push_i64(I64_TRUNC_F64(lhs_f64), S->stack));
+                    __throwiferr(push_i64(stack, I64_TRUNC_F64(lhs_f64)));
                     break;
                 
                 case OP_I64_TRUNC_F64_U:
-                    __throwiferr(push_i64(U64_TRUNC_F64(lhs_f64), S->stack));
+                    __throwiferr(push_i64(stack, U64_TRUNC_F64(lhs_f64)));
                     break;
                 
                 case OP_F32_CONVERT_I32_S:
-                    __throwiferr(push_f32((float)lhs_i32, S->stack));
+                    __throwiferr(push_f32(stack, (float)lhs_i32));
                     break;
                 
                 case OP_F32_CONVERT_I32_U:
-                    __throwiferr(push_f32((float)(uint32_t)lhs_i32, S->stack));
+                    __throwiferr(push_f32(stack, (float)(uint32_t)lhs_i32));
                     break;
 
                 case OP_F32_CONVERT_I64_S:
-                    __throwiferr(push_f32((float)lhs_i64, S->stack));
+                    __throwiferr(push_f32(stack, (float)lhs_i64));
                     break;
                 
                 case OP_F32_CONVERT_I64_U:
-                    __throwiferr(push_f32((float)(uint64_t)lhs_i64, S->stack));
+                    __throwiferr(push_f32(stack, (float)(uint64_t)lhs_i64));
                     break;
                 
                 case OP_F32_DEMOTE_F64:
-                    __throwiferr(push_f32((float)lhs_f64, S->stack));
+                    __throwiferr(push_f32(stack, (float)lhs_f64));
                     break;
                 
                 case OP_F64_CONVERT_I32_S:
-                    __throwiferr(push_f64((double)lhs_i32, S->stack));
+                    __throwiferr(push_f64(stack, (double)lhs_i32));
                     break;
 
                 case OP_F64_CONVERT_I32_U:
-                    __throwiferr(push_f64((double)(uint32_t)lhs_i32, S->stack));
+                    __throwiferr(push_f64(stack, (double)(uint32_t)lhs_i32));
                     break;
 
                 case OP_F64_CONVERT_I64_S:
-                    __throwiferr(push_f64((double)lhs_i64, S->stack));
+                    __throwiferr(push_f64(stack, (double)lhs_i64));
                     break;
 
                 case OP_F64_CONVERT_I64_U:
-                    __throwiferr(push_f64((double)(uint64_t)lhs_i64, S->stack));
+                    __throwiferr(push_f64(stack, (double)(uint64_t)lhs_i64));
                     break;
                 
                 case OP_F64_PROMOTE_F32:
-                    __throwiferr(push_f64((double)lhs_f32, S->stack));
+                    __throwiferr(push_f64(stack, (double)lhs_f32));
                     break;
                 
                 // todo: fix this
                 case OP_I32_REINTERPRET_F32: {
                     num_t num = {.f32 = lhs_f32};
-                    __throwiferr(push_i32(num.i32, S->stack));
+                    __throwiferr(push_i32(stack, num.i32));
                     break;
                 }
 
                 case OP_I64_REINTERPRET_F64: {
                     num_t num = {.f64 = lhs_f64};
-                    __throwiferr(push_i64(num.i64, S->stack));
+                    __throwiferr(push_i64(stack, num.i64));
                     break;
                 }
                 
                 case OP_F32_REINTERPRET_I32: {
                     num_t num = {.i32 = lhs_i32};
-                    __throwiferr(push_f32(num.f32, S->stack));
+                    __throwiferr(push_f32(stack, num.f32));
                     break;
                 }
 
                 case OP_F64_REINTERPRET_I64: {
                     num_t num = {.i64 = lhs_i64};
-                    __throwiferr(push_f64(num.f64, S->stack));
+                    __throwiferr(push_f64(stack, num.f64));
                     break;
                 }
 
                 case OP_I32_EXTEND8_S:
-                    __throwiferr(push_i32((int32_t)(int8_t)lhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, (int32_t)(int8_t)lhs_i32));
                     break;
                 
                 case OP_I32_EXTEND16_S: 
-                    __throwiferr(push_i32((int32_t)(int16_t)lhs_i32, S->stack));
+                    __throwiferr(push_i32(stack, (int32_t)(int16_t)lhs_i32));
                     break;
                 
                 case OP_I64_EXTEND8_S:
-                    __throwiferr(push_i64((int64_t)(int8_t)lhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, (int64_t)(int8_t)lhs_i64));
                     break;
                 
                 case OP_I64_EXTEND16_S: 
-                    __throwiferr(push_i64((int64_t)(int16_t)lhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, (int64_t)(int16_t)lhs_i64));
                     break;
                 
                 case OP_I64_EXTEND32_S: 
-                    __throwiferr(push_i64((int64_t)(int32_t)lhs_i64, S->stack));
+                    __throwiferr(push_i64(stack, (int64_t)(int32_t)lhs_i64));
                     break;
                 
                 case OP_REF_NULL:
-                    __throwiferr(push_val((val_t){.ref = REF_NULL}, S->stack));
+                    __throwiferr(push_val(stack, (val_t){.ref = REF_NULL}));
                     break;
                 
                 case OP_REF_IS_NULL: {
                     val_t val;
-                    pop_val(&val, S->stack);
-                    __throwiferr(push_i32(val.ref == REF_NULL, S->stack));
+                    pop_val(stack, &val);
+                    __throwiferr(push_i32(stack, val.ref == REF_NULL));
                     break;
                 }
                 
                 case OP_0XFC:
                     switch(ip->op2) {
                         case 0x00:
-                            __throwiferr(push_i32(I32_TRUNC_SAT_F32(lhs_f32), S->stack));
+                            __throwiferr(push_i32(stack, I32_TRUNC_SAT_F32(lhs_f32)));
                             break;
 
                         case 0x01:
-                            __throwiferr(push_i32(U32_TRUNC_SAT_F32(lhs_f32), S->stack));
+                            __throwiferr(push_i32(stack, U32_TRUNC_SAT_F32(lhs_f32)));
                             break;
                         
                         case 0x02:
-                            __throwiferr(push_i32(I32_TRUNC_SAT_F64(lhs_f64), S->stack));
+                            __throwiferr(push_i32(stack, I32_TRUNC_SAT_F64(lhs_f64)));
                             break;
 
                         case 0x03:
-                            __throwiferr(push_i32(U32_TRUNC_SAT_F64(lhs_f64), S->stack));
+                            __throwiferr(push_i32(stack, U32_TRUNC_SAT_F64(lhs_f64)));
                             break;
                         
                         case 0x04:
-                            __throwiferr(push_i64(I64_TRUNC_SAT_F32(lhs_f32), S->stack));
+                            __throwiferr(push_i64(stack, I64_TRUNC_SAT_F32(lhs_f32)));
                             break;
                         
                         case 0x05:
-                            __throwiferr(push_i64(U64_TRUNC_SAT_F32(lhs_f32), S->stack));
+                            __throwiferr(push_i64(stack, U64_TRUNC_SAT_F32(lhs_f32)));
                             break;
 
                         case 0x06:
-                            __throwiferr(push_i64(I64_TRUNC_SAT_F64(lhs_f64), S->stack));
+                            __throwiferr(push_i64(stack, I64_TRUNC_SAT_F64(lhs_f64)));
                             break;
 
                         case 0x07:
-                            __throwiferr(push_i64(U64_TRUNC_SAT_F64(lhs_f64), S->stack));
+                            __throwiferr(push_i64(stack, U64_TRUNC_SAT_F64(lhs_f64)));
                             break;
                         
                         // mememory.init
@@ -1737,9 +1889,9 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             datains_t *data = VECTOR_ELEM(&S->datas, da);
 
                             int32_t n, s, d;
-                            pop_i32(&n, S->stack);
-                            pop_i32(&s, S->stack);
-                            pop_i32(&d, S->stack);
+                            pop_i32(stack, &n);
+                            pop_i32(stack, &s);
+                            pop_i32(stack, &d);
 
                             // todo: fix this
                             __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, s + n > data->data.len || d + n > mem->num_pages * WASM_PAGE_SIZE);
@@ -1747,15 +1899,15 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             while(n--) {
                                 byte_t b = *VECTOR_ELEM(&data->data, s);
                                 
-                                __throwiferr(push_i32(d, S->stack));
-                                __throwiferr(push_i32((int32_t)b, S->stack));
+                                __throwiferr(push_i32(stack, d));
+                                __throwiferr(push_i32(stack, (int32_t)b));
 
                                 instr_t i32_store8 = {
                                     .op1 = OP_I32_STORE8, .next = NULL, 
                                     .m = (memarg_t){.offset = 0, .align = 0}
                                 };
                                 expr_t expr = &i32_store8;
-                                exec_expr(&expr, S);
+                                exec_expr(instance, &expr);
                                 s++;
                                 d++;
                             }
@@ -1775,9 +1927,9 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             memaddr_t ma = F->module->memaddrs[0];
                             meminst_t *mem = VECTOR_ELEM(&S->mems, ma);
                             int32_t n, s, d;
-                            pop_i32(&n, S->stack);
-                            pop_i32(&s, S->stack);
-                            pop_i32(&d, S->stack);
+                            pop_i32(stack, &n);
+                            pop_i32(stack, &s);
+                            pop_i32(stack, &d);
                             
                             uint64_t ea1 = (uint32_t)s, ea2 = (uint32_t)d;
                             ea1 += (uint32_t)n;
@@ -1802,16 +1954,16 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                                     break;
                                 
                                 if(d <= s) {
-                                    __throwiferr(push_i32(d, S->stack));
-                                    __throwiferr(push_i32(s, S->stack));
-                                    exec_expr(&expr, S);
+                                    __throwiferr(push_i32(stack, d));
+                                    __throwiferr(push_i32(stack, s));
+                                    exec_expr(instance, &expr);
                                     d++;
                                     s++;
                                 }
                                 else {
-                                    __throwiferr(push_i32(d + n - 1, S->stack));
-                                    __throwiferr(push_i32(s + n - 1, S->stack));
-                                    exec_expr(&expr, S);
+                                    __throwiferr(push_i32(stack, d + n - 1));
+                                    __throwiferr(push_i32(stack, s + n - 1));
+                                    exec_expr(instance, &expr);
                                 }
                                 n--;
                             }
@@ -1823,24 +1975,24 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             memaddr_t ma = F->module->memaddrs[0];
                             meminst_t *mem = VECTOR_ELEM(&S->mems, ma);
                             int32_t n, val, d;
-                            pop_i32(&n, S->stack);
-                            pop_i32(&val, S->stack);
-                            pop_i32(&d, S->stack);
+                            pop_i32(stack, &n);
+                            pop_i32(stack, &val);
+                            pop_i32(stack, &d);
                             uint64_t ea = (uint32_t)d;
                             ea += (uint32_t)n;
 
                             __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, ea > mem->num_pages * WASM_PAGE_SIZE);
 
                             while(n--) {
-                                __throwiferr(push_i32(d, S->stack));
-                                __throwiferr(push_i32(val, S->stack));
+                                __throwiferr(push_i32(stack, d));
+                                __throwiferr(push_i32(stack, val));
 
                                 instr_t i32_store8 = {
                                     .op1 = OP_I32_STORE8, .next = NULL, 
                                     .m = (memarg_t){.offset = 0, .align = 0}
                                 };
                                 expr_t expr = &i32_store8;
-                                exec_expr(&expr, S);
+                                exec_expr(instance, &expr);
                                 d++;
                             }
                             break;
@@ -1853,9 +2005,9 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             elemaddr_t ea = F->module->elemaddrs[ip->y];
                             eleminst_t *elem = VECTOR_ELEM(&S->elems, ea);
                             int32_t n, s, d;
-                            pop_i32(&n , S->stack);
-                            pop_i32(&s , S->stack);
-                            pop_i32(&d , S->stack);
+                            pop_i32(stack, &n );
+                            pop_i32(stack, &s );
+                            pop_i32(stack, &d );
 
                             while(1) {
                                 __throwif(
@@ -1867,14 +2019,14 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                                     break;
                                 
                                 ref_t *ref = VECTOR_ELEM(&elem->elem, s);
-                                __throwiferr(push_i32(d, S->stack));
-                                __throwiferr(push_val((val_t){.ref = *ref}, S->stack));
+                                __throwiferr(push_i32(stack, d));
+                                __throwiferr(push_val(stack, (val_t){.ref = *ref}));
                                 instr_t table_set = {
                                     .op1 = OP_TABLE_SET, .next = NULL, 
                                     .x = ip->x
                                 };
                                 expr_t expr = &table_set;
-                                exec_expr(&expr, S);
+                                exec_expr(instance, &expr);
                                 d++;
                                 s++;
                                 n--;
@@ -1898,9 +2050,9 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             tableinst_t *tab_y = VECTOR_ELEM(&S->tables, ta_y);
 
                             int32_t n, s, d;
-                            pop_i32(&n, S->stack);
-                            pop_i32(&s, S->stack);
-                            pop_i32(&d, S->stack);
+                            pop_i32(stack, &n);
+                            pop_i32(stack, &s);
+                            pop_i32(stack, &d);
 
                             __throwif(
                                 ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, 
@@ -1920,16 +2072,16 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                                     break;
                                 
                                 if(d <= s) {
-                                    __throwiferr(push_i32(d, S->stack));
-                                    __throwiferr(push_i32(s, S->stack));
-                                    exec_expr(&expr, S);
+                                    __throwiferr(push_i32(stack, d));
+                                    __throwiferr(push_i32(stack, s));
+                                    exec_expr(instance, &expr);
                                     d++;
                                     s++;
                                 }
                                 else {
-                                    __throwiferr(push_i32(d + n - 1, S->stack));
-                                    __throwiferr(push_i32(s + n - 1, S->stack));
-                                    exec_expr(&expr, S);
+                                    __throwiferr(push_i32(stack, d + n - 1));
+                                    __throwiferr(push_i32(stack, s + n - 1));
+                                    exec_expr(instance, &expr);
                                 }
                                 n--;
                             }
@@ -1943,11 +2095,11 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             int32_t sz = tab->elem.len;
                             int32_t n;
                             val_t val;
-                            pop_i32(&n, S->stack);
-                            pop_val(&val, S->stack);
+                            pop_i32(stack, &n);
+                            pop_val(stack, &val);
 
                             if(tab->type.limits.max && n + tab->elem.len > tab->type.limits.max) {
-                                __throwiferr(push_i32(-1, S->stack));
+                                __throwiferr(push_i32(stack, -1));
                                 break;
                             }
 
@@ -1956,10 +2108,10 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                                 for(int i = sz; i < tab->elem.len; i++) {
                                     *VECTOR_ELEM(&tab->elem, i) = val.ref;
                                 }
-                                __throwiferr(push_i32(sz, S->stack));
+                                __throwiferr(push_i32(stack, sz));
                             }
                             else {
-                                __throwiferr(push_i32(-1, S->stack));
+                                __throwiferr(push_i32(stack, -1));
                             }
                             break;
                         }
@@ -1968,7 +2120,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                         case 0x10: {
                             tableaddr_t ta = F->module->tableaddrs[ip->x];
                             tableinst_t *tab = VECTOR_ELEM(&S->tables, ta);
-                            __throwiferr(push_i32(tab->elem.len, S->stack));
+                            __throwiferr(push_i32(stack, tab->elem.len));
                             break;
                         }
 
@@ -1979,9 +2131,9 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                             int32_t n, i;
                             val_t val;
 
-                            pop_i32(&n, S->stack);
-                            pop_val(&val, S->stack);
-                            pop_i32(&i, S->stack);
+                            pop_i32(stack, &n);
+                            pop_val(stack, &val);
+                            pop_i32(stack, &i);
 
                             while(1) {
                                 __throwif(ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, i + n > tab->elem.len);
@@ -2004,7 +2156,7 @@ error_t exec_expr(expr_t * expr, store_t *S) {
                 
                 case OP_REF_FUNC: {
                     funcaddr_t a = F->module->funcaddrs[ip->x];
-                    __throwiferr(push_val((val_t){.ref = a}, S->stack));
+                    __throwiferr(push_val(stack, (val_t){.ref = a}));
                     break;
                 }
 
@@ -2021,8 +2173,11 @@ error_t exec_expr(expr_t * expr, store_t *S) {
 }
 
 // ref: https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
-static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
+static error_t invoke_func(instance_t *instance, funcaddr_t funcaddr) {
     __try {
+        store_t *S = instance->store;
+        stack_t *stack = instance->stack;
+
         funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, funcaddr);
         functype_t *functype = funcinst->type;
 
@@ -2034,27 +2189,27 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
 
         // pop args
         for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
-            pop_val(&frame.locals[i], S->stack);
+            pop_val(stack, &frame.locals[i]);
         }
         
         // push activation frame
         frame.arity  = functype->rt2.len;
-        __throwiferr(push_frame(frame, S->stack));
+        __throwiferr(push_frame(stack, frame));
 
         // create label L
         static instr_t end = {.op1 = OP_END, .next = NULL};
         label_t L = {.arity = functype->rt2.len, .parent = NULL, .continuation = &end};
         // enter instr* with label L
-        __throwiferr(push_label(L, S->stack));
+        __throwiferr(push_label(stack, L));
 
-        __throwiferr(exec_expr(&funcinst->code->body ,S));
+        __throwiferr(exec_expr(instance, &funcinst->code->body));
 
         // return from a function("return" instruction)
         vals_t vals;
-        pop_vals_n(&vals, frame.arity, S->stack);
-        pop_while_not_frame(S->stack);
-        pop_frame(&frame, S->stack);
-        __throwiferr(push_vals(vals, S->stack));
+        pop_vals_n(stack, frame.arity, &vals);
+        pop_while_not_frame(stack);
+        pop_frame(stack, &frame);
+        __throwiferr(push_vals(stack, vals));
     }
     __catch:
         return err;
@@ -2062,8 +2217,11 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
 
 // The args is a reference to args_t. 
 // This is because args is also used to return results.
-error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
+error_t invoke(instance_t *instance, funcaddr_t funcaddr, args_t *args) {
     __try {
+        stack_t *stack = instance->stack;
+        store_t *S = instance->store;
+
         funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, funcaddr);
         __throwif(ERR_FAILED, !funcinst);
 
@@ -2080,11 +2238,11 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         
         // push args
         VECTOR_FOR_EACH(arg, args) {
-            __throwiferr(push_val(arg->val, S->stack));
+            __throwiferr(push_val(stack, arg->val));
         }
 
         // invoke func
-        __throwiferr(invoke_func(S, funcaddr));
+        __throwiferr(invoke_func(instance, funcaddr));
 
         // reuse args to return results since it is no longer used.
         //free(args->elem);
@@ -2092,7 +2250,7 @@ error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
         idx = 0;
         VECTOR_FOR_EACH_REVERSE(ret, args) {
             ret->type = *VECTOR_ELEM(&functype->rt2, idx++);
-            pop_val(&ret->val, S->stack);
+            pop_val(stack, &ret->val);
         }
     }
     __catch:

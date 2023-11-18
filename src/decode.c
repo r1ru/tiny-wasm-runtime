@@ -196,6 +196,7 @@ static decoder_t decoders[13] = {
     [5]     = decode_memsec,
     [6]     = decode_globalsec,
     [7]     = decode_exportsec,
+    [8]     = decode_startsec,
     [9]     = decode_elemsec,
     [10]    = decode_codesec,
     [11]    = decode_datasec,
@@ -296,19 +297,19 @@ error_t decode_importsec(module_t *mod, buffer_t*buf) {
             // decode importdesc
             __throwiferr(read_byte(&import->d.kind, buf));
             switch(import->d.kind) {
-                case FUNC_IMPORT_DESC:
+                case FUNC_IMPORTDESC:
                     __throwiferr(read_u32_leb128(&import->d.func, buf));
                     mod->num_func_imports++;
                     break;
-                case TABLE_IMPORT_DESC:
+                case TABLE_IMPORTDESC:
                     __throwiferr(decode_tabletype(&import->d.table, buf));
                     mod->num_table_imports++;
                     break;
-                case MEM_IMPORT_DESC:
+                case MEM_IMPORTDESC:
                     __throwiferr(decode_limits(&import->d.mem, buf));
                     mod->num_mem_imports++;
                     break;
-                case GLOBAL_IMPORT_DESC:
+                case GLOBAL_IMPORTDESC:
                     __throwiferr(decode_globaltype(&import->d.globaltype, buf));
                     mod->num_global_imports++;
                     break;
@@ -378,6 +379,15 @@ error_t decode_exportsec(module_t *mod, buffer_t *buf) {
             __throwiferr(read_byte(&export->exportdesc.kind, buf));
             __throwiferr(read_u32_leb128(&export->exportdesc.idx, buf));
         }
+    }
+    __catch:
+        return err;
+}
+
+error_t decode_startsec(module_t *mod, buffer_t *buf) {
+    __try {
+        mod->has_start = true;
+        __throwiferr(read_u32_leb128(&mod->start, buf));
     }
     __catch:
         return err;
@@ -1017,11 +1027,12 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         VECTOR_INIT(&m->datas);
         VECTOR_INIT(&m->imports);
         VECTOR_INIT(&m->exports);
+        m->has_start = false;
         m->num_func_imports     = 0;
         m->num_table_imports    = 0;
         m->num_mem_imports      = 0;
         m->num_global_imports   = 0;
-
+        
         while(!eof(buf)) {
             uint8_t id;
             uint32_t size;

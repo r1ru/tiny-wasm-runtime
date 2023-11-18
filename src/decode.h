@@ -32,6 +32,7 @@ error_t decode_tablesec(module_t *mod, buffer_t *buf);
 error_t decode_memsec(module_t *mod, buffer_t *buf);
 error_t decode_globalsec(module_t *mod, buffer_t *buf);
 error_t decode_exportsec(module_t *mod, buffer_t *buf);
+error_t decode_startsec(module_t *mod, buffer_t *buf);
 error_t decode_elemsec(module_t *mod, buffer_t *buf);
 error_t decode_codesec(module_t *mod, buffer_t *buf);
 error_t decode_datasec(module_t *mod, buffer_t *buf);

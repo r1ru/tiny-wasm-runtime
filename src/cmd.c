@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/call.0.wasm", O_RDONLY);
+    int fd = open("./build/test/ref_func.5.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -144,8 +144,8 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("validation failed: %d", err);
     
-    store_t *S;
-    err = instantiate(&S, mod);
+    instance_t *instance;
+    err = instantiate(&instance, mod);
     if(IS_ERROR(err))
         PANIC("insntiation failed");
 
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
     VECTOR_NEW(&args, 1);
     *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I64, .val.num.i64 = 200};
     // invoke
-    err = invoke(S, 41, &args);
+    err = invoke(instance, 41, &args);
 
     if(IS_ERROR(err))
         PANIC("invocation fail: %d", err);

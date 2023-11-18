@@ -16,14 +16,14 @@ static inline bool empty(type_stack *stack) {
     return stack->idx == -1;
 }
 
-static inline void push(valtype_t ty, type_stack *stack) {
+static inline void push(type_stack *stack, valtype_t ty) {
     // todo: panic if stack is full?
     stack->pool[++stack->idx] = ty;
     //printf("push %x idx: %ld\n", ty, stack->idx);
 }
 
 // Type is not verified if expect is 0.
-static inline error_t try_pop(valtype_t expect, type_stack *stack) {
+static inline error_t try_pop(type_stack *stack, valtype_t expect) {
     __try {
         if(empty(stack)) {
             __throwif(ERR_TYPE_MISMATCH, !stack->polymorphic);
@@ -41,7 +41,7 @@ static inline error_t try_pop(valtype_t expect, type_stack *stack) {
         return err;
 }
 
-static inline error_t peek_stack_top(valtype_t *t, type_stack *stack) {
+static inline error_t peek_stack_top(type_stack *stack, valtype_t *t) {
     __try {
         if(empty(stack)) {
             __throwif(ERR_TYPE_MISMATCH, !stack->polymorphic);
@@ -120,10 +120,10 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
 
                 // valid with type [t1*] -> [t2*]
                 VECTOR_FOR_EACH_REVERSE(t, &ty.rt1) {
-                    __throwiferr(try_pop(*t, stack));
+                    __throwiferr(try_pop(stack, *t));
                 }
                 VECTOR_FOR_EACH(t,& ty.rt2) {
-                    push(*t, stack);
+                    push(stack, *t);
                 }
 
                 // cleanup
@@ -142,14 +142,14 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 
                 __throwiferr(validate_instrs(C, ip->in1, &ty.rt1, &ty.rt2));
                 __throwiferr(validate_instrs(C, ip->in2, &ty.rt1, &ty.rt2));
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
 
                 // valid with type [t1*] -> [t2*]
                 VECTOR_FOR_EACH(t,& ty.rt1) {
-                    __throwiferr(try_pop(*t, stack));
+                    __throwiferr(try_pop(stack, *t));
                 }
                 VECTOR_FOR_EACH(t ,&ty.rt2) {
-                    push(*t, stack);
+                    push(stack, *t);
                 }
                 
                 // cleanup
@@ -166,7 +166,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->labelidx);
                 __throwif(ERR_UNKNOWN_LABEL, !l);
                 VECTOR_FOR_EACH_REVERSE(t, &l->ty) {
-                    __throwiferr(try_pop(*t, stack));
+                    __throwiferr(try_pop(stack, *t));
                 }
                 // empty the stack
                 stack->idx = -1;
@@ -177,12 +177,12 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_BR_IF: {
                 labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->labelidx);
                 __throwif(ERR_UNKNOWN_LABEL, !l);
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
                 VECTOR_FOR_EACH_REVERSE(t, &l->ty) {
-                    __throwiferr(try_pop(*t, stack));
+                    __throwiferr(try_pop(stack, *t));
                 }
                 VECTOR_FOR_EACH(t, &l->ty) {
-                    push(*t, stack);
+                    push(stack, *t);
                 }
                 break;
             }
@@ -203,9 +203,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                     }
                 }
 
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
                 VECTOR_FOR_EACH_REVERSE(t, &default_label->ty) {
-                    __throwiferr(try_pop(*t, stack));
+                    __throwiferr(try_pop(stack, *t));
                 }
 
                 // empty the stack
@@ -218,7 +218,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 resulttype_t *ty = C->ret;
                 __throwif(ERR_FAILED, !ty);
                 VECTOR_FOR_EACH_REVERSE(t, ty) {
-                    __throwiferr(try_pop(*t, stack));
+                    __throwiferr(try_pop(stack, *t));
                 }
                 // empty the stack
                 stack->idx = -1;
@@ -230,11 +230,11 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 functype_t *ty = VECTOR_ELEM(&C->funcs, ip->funcidx);
                 __throwif(ERR_UNKNOWN_FUNC, !ty);
                 VECTOR_FOR_EACH_REVERSE(t, &ty->rt1) {
-                    __throwiferr(try_pop(*t, stack));
+                    __throwiferr(try_pop(stack, *t));
                 }
 
                 VECTOR_FOR_EACH(t, &ty->rt2) {
-                    push(*t, stack);
+                    push(stack, *t);
                 }
                 break;
             }
@@ -250,68 +250,68 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 __throwif(ERR_UNKNOWN_TYPE, !ft);
                 
                 // valid with type [t1* i32] -> [t2*]
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
                 VECTOR_FOR_EACH_REVERSE(t, &ft->rt1) {
-                    __throwiferr(try_pop(*t, stack));
+                    __throwiferr(try_pop(stack, *t));
                 }
                 VECTOR_FOR_EACH(t, &ft->rt2) {
-                    push(*t, stack);
+                    push(stack, *t);
                 }
                 break;
             }
 
             case OP_DROP:
-                __throwiferr(try_pop(0, stack));
+                __throwiferr(try_pop(stack, 0));
                 break;
             
             case OP_SELECT: {
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
                 valtype_t t;
-                __throwiferr(peek_stack_top(&t, stack));
+                __throwiferr(peek_stack_top(stack, &t));
                 // reftype is not allowed
                 __throwif(ERR_TYPE_MISMATCH, t == TYPE_EXTENREF || t == TYPE_FUNCREF);
-                __throwiferr(try_pop(t, stack));
-                __throwiferr(try_pop(t, stack));
-                push(t, stack);
+                __throwiferr(try_pop(stack, t));
+                __throwiferr(try_pop(stack, t));
+                push(stack, t);
                 break;
             }
 
             case OP_SELECT_T: {
                 __throwif(ERR_INVALID_RESULT_ARITY, ip->types.len != 1);
                 valtype_t t = ip->types.elem[0];
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                __throwiferr(try_pop(t, stack));
-                __throwiferr(try_pop(t, stack));
-                push(t, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                __throwiferr(try_pop(stack, t));
+                __throwiferr(try_pop(stack, t));
+                push(stack, t);
                 break;
             }
 
             case OP_LOCAL_GET: {
                 valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
                 __throwif(ERR_UNKNOWN_LOCAL, !t);
-                push(*t, stack);
+                push(stack, *t);
                 break;
             }
 
             case OP_LOCAL_SET: {
                 valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
                 __throwif(ERR_UNKNOWN_LOCAL, !t);
-                __throwiferr(try_pop(*t, stack));
+                __throwiferr(try_pop(stack, *t));
                 break;
             }
 
             case OP_LOCAL_TEE: {
                 valtype_t *t = VECTOR_ELEM(&C->locals, ip->localidx);
                 __throwif(ERR_UNKNOWN_LOCAL, !t);
-                __throwiferr(try_pop(*t, stack));
-                push(*t, stack);
+                __throwiferr(try_pop(stack, *t));
+                push(stack, *t);
                 break;
             }
 
             case OP_GLOBAL_GET: {
                 globaltype_t *gt = VECTOR_ELEM(&C->globals, ip->globalidx);
                 __throwif(ERR_UNKNOWN_GLOBAL, !gt);
-                push(gt->type, stack);
+                push(stack, gt->type);
                 break;
             }
 
@@ -319,23 +319,23 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 globaltype_t *gt = VECTOR_ELEM(&C->globals, ip->globalidx);
                 __throwif(ERR_UNKNOWN_GLOBAL, !gt);
                 __throwif(ERR_FAILED, !gt->mut);
-                __throwiferr(try_pop(gt->type, stack));
+                __throwiferr(try_pop(stack, gt->type));
                 break;
             }
 
             case OP_TABLE_GET: {
                 tabletype_t *t = VECTOR_ELEM(&C->tables, ip->x);
                 __throwif(ERR_UNKNOWN_TABLE, !t);
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                push(t->reftype, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                push(stack, t->reftype);
                 break;
             }
 
             case OP_TABLE_SET: {
                 tabletype_t *t = VECTOR_ELEM(&C->tables, ip->x);
                 __throwif(ERR_UNKNOWN_TABLE, !t);
-                __throwiferr(try_pop(t->reftype, stack));
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(stack, t->reftype));
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
                 break;
             }
 
@@ -381,7 +381,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         break;
                 }
                 __throwif(ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL, (1 << ip->m.align) > n);
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
                 valtype_t t;
                 switch(ip->op1) {
                     case OP_I32_LOAD:
@@ -407,7 +407,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         t = TYPE_NUM_F64;
                         break;
                 }
-                push(t, stack);
+                push(stack, t);
                 break;
             }
             case OP_I32_STORE:
@@ -462,8 +462,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         t = TYPE_NUM_I64;
                         break;
                 }
-                __throwiferr(try_pop(t, stack));
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                __throwiferr(try_pop(stack, t));
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
                 break;
             }
 
@@ -471,7 +471,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
                 __throwif(ERR_UNKNOWN_MEMORY, !mem);
                 // valid with [] -> [i32]
-                push(TYPE_NUM_I32, stack);
+                push(stack, TYPE_NUM_I32);
                 break;
             }
 
@@ -479,25 +479,25 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
                 __throwif(ERR_FAILED, !mem);
                 // valid with [i32] -> [i32]
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                push(stack, TYPE_NUM_I32);
                 break;
             }
 
             case OP_I32_CONST:
-                push(TYPE_NUM_I32, stack);
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_I64_CONST:
-                push(TYPE_NUM_I64, stack);
+                push(stack, TYPE_NUM_I64);
                 break;
             
             case OP_F32_CONST:
-                push(TYPE_NUM_F32, stack);
+                push(stack, TYPE_NUM_F32);
                 break;
             
             case OP_F64_CONST:
-                push(TYPE_NUM_F64, stack);
+                push(stack, TYPE_NUM_F64);
                 break;
              
             // testop and unop
@@ -507,13 +507,13 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I32_POPCNT:
             case OP_I32_EXTEND8_S:
             case OP_I32_EXTEND16_S:
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_I64_EQZ:
-                __throwiferr(try_pop(TYPE_NUM_I64, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I64));
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_I64_CLZ:
@@ -522,8 +522,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I64_EXTEND8_S:
             case OP_I64_EXTEND16_S:
             case OP_I64_EXTEND32_S:
-                __throwiferr(try_pop(TYPE_NUM_I64, stack));
-                push(TYPE_NUM_I64, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I64));
+                push(stack, TYPE_NUM_I64);
                 break;
             
             // relop and binop
@@ -552,9 +552,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I32_SHR_U:
             case OP_I32_ROTL:
             case OP_I32_ROTR:
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_I64_EQ:
@@ -567,9 +567,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I64_LE_U:
             case OP_I64_GE_S:
             case OP_I64_GE_U:
-                __throwiferr(try_pop(TYPE_NUM_I64, stack));
-                __throwiferr(try_pop(TYPE_NUM_I64, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I64));
+                __throwiferr(try_pop(stack, TYPE_NUM_I64));
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_F32_EQ:
@@ -578,9 +578,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_F32_GT:
             case OP_F32_LE:
             case OP_F32_GE:
-                __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F32));
+                __throwiferr(try_pop(stack, TYPE_NUM_F32));
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_F64_EQ:
@@ -589,9 +589,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_F64_GT:
             case OP_F64_LE:
             case OP_F64_GE:
-                __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F64));
+                __throwiferr(try_pop(stack, TYPE_NUM_F64));
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_I64_ADD:
@@ -609,9 +609,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I64_SHR_U:
             case OP_I64_ROTL:
             case OP_I64_ROTR:
-                __throwiferr(try_pop(TYPE_NUM_I64, stack));
-                __throwiferr(try_pop(TYPE_NUM_I64, stack));
-                push(TYPE_NUM_I64, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I64));
+                __throwiferr(try_pop(stack, TYPE_NUM_I64));
+                push(stack, TYPE_NUM_I64);
                 break;
             
             case OP_F32_ABS:
@@ -621,8 +621,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_F32_TRUNC:
             case OP_F32_NEAREST:
             case OP_F32_SQRT:
-                __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                push(TYPE_NUM_F32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F32));
+                push(stack, TYPE_NUM_F32);
                 break;
             
             case OP_F32_ADD:
@@ -632,9 +632,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_F32_MIN:
             case OP_F32_MAX:
             case OP_F32_COPYSIGN:
-                __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                push(TYPE_NUM_F32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F32));
+                __throwiferr(try_pop(stack, TYPE_NUM_F32));
+                push(stack, TYPE_NUM_F32);
                 break;
             
             case OP_F64_ABS:
@@ -644,8 +644,8 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_F64_TRUNC:
             case OP_F64_NEAREST:
             case OP_F64_SQRT:
-                __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                push(TYPE_NUM_F64, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F64));
+                push(stack, TYPE_NUM_F64);
                 break;
             
             case OP_F64_ADD:
@@ -655,109 +655,104 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_F64_MIN:
             case OP_F64_MAX:
             case OP_F64_COPYSIGN:
-                __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                push(TYPE_NUM_F64, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F64));
+                __throwiferr(try_pop(stack, TYPE_NUM_F64));
+                push(stack, TYPE_NUM_F64);
                 break;
             
             case OP_I32_WRAP_I64:
-                __throwiferr(try_pop(TYPE_NUM_I64, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I64));
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_I32_TRUNC_F32_S:
             case OP_I32_TRUNC_F32_U:
             case OP_I32_REINTERPRET_F32:
-                __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F32));
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_I32_TRUNC_F64_S:
             case OP_I32_TRUNC_F64_U:
-                __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F64));
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_I64_EXTEND_I32_S:
             case OP_I64_EXTEND_I32_U:
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                push(TYPE_NUM_I64, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                push(stack, TYPE_NUM_I64);
                 break;
 
             case OP_I64_TRUNC_F32_S:
             case OP_I64_TRUNC_F32_U:
-                __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                push(TYPE_NUM_I64, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F32));
+                push(stack, TYPE_NUM_I64);
                 break;
             
             case OP_I64_TRUNC_F64_S:
             case OP_I64_TRUNC_F64_U:
             case OP_I64_REINTERPRET_F64:
-                __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                push(TYPE_NUM_I64, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F64));
+                push(stack, TYPE_NUM_I64);
                 break;
             
             case OP_F32_CONVERT_I32_S:
             case OP_F32_CONVERT_I32_U:
             case OP_F32_REINTERPRET_I32:
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                push(TYPE_NUM_F32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                push(stack, TYPE_NUM_F32);
                 break;
             
             case OP_F32_CONVERT_I64_S:
             case OP_F32_CONVERT_I64_U:
-                __throwiferr(try_pop(TYPE_NUM_I64, stack));
-                push(TYPE_NUM_F32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I64));
+                push(stack, TYPE_NUM_F32);
                 break;
 
             case OP_F32_DEMOTE_F64:
-                __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                push(TYPE_NUM_F32, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F64));
+                push(stack, TYPE_NUM_F32);
                 break;
             
             case OP_F64_CONVERT_I32_S:
             case OP_F64_CONVERT_I32_U:
-                __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                push(TYPE_NUM_F64, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                push(stack, TYPE_NUM_F64);
                 break;
             
             case OP_F64_CONVERT_I64_S:
             case OP_F64_CONVERT_I64_U:
             case OP_F64_REINTERPRET_I64:
-                __throwiferr(try_pop(TYPE_NUM_I64, stack));
-                push(TYPE_NUM_F64, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_I64));
+                push(stack, TYPE_NUM_F64);
                 break;
             
             case OP_F64_PROMOTE_F32:
-                __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                push(TYPE_NUM_F64, stack);
+                __throwiferr(try_pop(stack, TYPE_NUM_F32));
+                push(stack, TYPE_NUM_F64);
                 break;
             
             case OP_REF_NULL:
-                push(ip->t, stack);
+                push(stack, ip->t);
                 break;
             
             case OP_REF_IS_NULL:
-                __throwiferr(try_pop(TYPE_ANY, stack));
-                push(TYPE_NUM_I32, stack);
+                __throwiferr(try_pop(stack, TYPE_ANY));
+                push(stack, TYPE_NUM_I32);
                 break;
             
             case OP_REF_FUNC: {
                 functype_t *ty = VECTOR_ELEM(&C->funcs, ip->x);
                 __throwif(ERR_UNKNOWN_FUNC, !ty);
 
-                bool is_contained = false;
-                VECTOR_FOR_EACH(ref, &C->refs) {
-                    if(*ref == ip->x)
-                        is_contained = true;
-                }
-
+                bool is_contained = *VECTOR_ELEM(&C->refs, ip->x);
                 if(is_contained) {
                     // valid with type [] -> [funcref]
-                    push(TYPE_FUNCREF, stack);
+                    push(stack, TYPE_FUNCREF);
                 }
                 else
-                    __throw(ERR_FAILED)
+                    __throw(ERR_UNDECLARED_FUNCTIION_REFERENCE);
                 break;
             }
             
@@ -765,26 +760,26 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                 switch(ip->op2) {
                     case 0x00:
                     case 0x01:
-                        __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                        push(TYPE_NUM_I32, stack);
+                        __throwiferr(try_pop(stack, TYPE_NUM_F32));
+                        push(stack, TYPE_NUM_I32);
                         break;
 
                     case 0x02:
                     case 0x03:
-                        __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                        push(TYPE_NUM_I32, stack);
+                        __throwiferr(try_pop(stack, TYPE_NUM_F64));
+                        push(stack, TYPE_NUM_I32);
                         break;
                     
                     case 0x04:
                     case 0x05:
-                        __throwiferr(try_pop(TYPE_NUM_F32, stack));
-                        push(TYPE_NUM_I64, stack);
+                        __throwiferr(try_pop(stack, TYPE_NUM_F32));
+                        push(stack, TYPE_NUM_I64);
                         break;
                     
                     case 0x06:
                     case 0x07:
-                        __throwiferr(try_pop(TYPE_NUM_F64, stack));
-                        push(TYPE_NUM_I64, stack);
+                        __throwiferr(try_pop(stack, TYPE_NUM_F64));
+                        push(stack, TYPE_NUM_I64);
                         break;
                     
                     // memory.init
@@ -793,9 +788,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         __throwif(ERR_UNKNOWN_MEMORY, !mem);
                         ok_t *data = VECTOR_ELEM(&C->datas, ip->x);
                         __throwif(ERR_UNKNOWN_DARA_SEGMENT, !data);
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
                         break;
                     }
 
@@ -812,9 +807,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                     case 0x0B: {
                         memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
                         __throwif(ERR_UNKNOWN_MEMORY, !mem);
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
                         break;
                     }
 
@@ -826,9 +821,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         __throwif(ERR_FAILED, !t2);
                         __throwif(ERR_TYPE_MISMATCH, t1->reftype != *t2);
                         // validt with type [i32 i32 i32] -> []
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
                         break;
                     }
 
@@ -847,9 +842,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         __throwif(ERR_UNKNOWN_TABLE, !t2);
                         __throwif(ERR_TYPE_MISMATCH, t1->reftype != t2->reftype);
                         // validt with type [i32 i32 i32] -> []
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
                         break;
                     }
 
@@ -858,9 +853,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         tabletype_t *tt = VECTOR_ELEM(&C->tables, ip->x);
                         __throwif(ERR_UNKNOWN_TABLE, !tt);
                         // valid with type [t i32] -> [i32]
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                        __throwiferr(try_pop(tt->reftype, stack));
-                        push(TYPE_NUM_I32, stack);
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                        __throwiferr(try_pop(stack, tt->reftype));
+                        push(stack, TYPE_NUM_I32);
                         break;
                     }
 
@@ -869,7 +864,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         tabletype_t *tt = VECTOR_ELEM(&C->tables, ip->x);
                         __throwif(ERR_UNKNOWN_TABLE, !tt);
                         // valid with type [] -> [i32]
-                        push(TYPE_NUM_I32, stack);
+                        push(stack, TYPE_NUM_I32);
                         break;
                     }
 
@@ -877,9 +872,9 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                     case 0x11: {
                          tabletype_t *t = VECTOR_ELEM(&C->tables, ip->x);
                         __throwif(ERR_UNKNOWN_TABLE, !t);
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
-                        __throwiferr(try_pop(t->reftype, stack));
-                        __throwiferr(try_pop(TYPE_NUM_I32, stack));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                        __throwiferr(try_pop(stack, t->reftype));
+                        __throwiferr(try_pop(stack, TYPE_NUM_I32));
                         break;
                     }
 
@@ -901,7 +896,7 @@ error_t validate_instrs(context_t *C, instr_t *start, resulttype_t *rt1, resultt
     __try {
         type_stack stack = {.idx = -1, .polymorphic = false};
         VECTOR_FOR_EACH(t, rt1) {
-            push(*t, &stack);
+            push(&stack, *t);
         }
 
         instr_t *ip = start;
@@ -912,7 +907,7 @@ error_t validate_instrs(context_t *C, instr_t *start, resulttype_t *rt1, resultt
 
         // compare witch expected type
         VECTOR_FOR_EACH_REVERSE(t, rt2) {
-            __throwiferr(try_pop(*t, &stack));
+            __throwiferr(try_pop(&stack, *t));
         }
 
         // check if stack is empty
@@ -933,7 +928,7 @@ error_t validate_expr(context_t *C, expr_t *expr, resulttype_t *rt2) {
         }
         // compare witch expected type
         VECTOR_FOR_EACH_REVERSE(t, rt2) {
-            __throwiferr(try_pop(*t, &stack));
+            __throwiferr(try_pop(&stack, *t));
         }
 
         // check if stack is empty
@@ -1084,6 +1079,16 @@ error_t validate_data(context_t *C, data_t *data) {
         return err;
 }
 
+static void mark_funcidx_in_expr(context_t *C, expr_t *expr) {
+    instr_t *ip = *expr;
+    while(ip) {
+        if(ip->op1 == OP_REF_FUNC && ip->x < C->refs.len) {
+            *VECTOR_ELEM(&C->refs, ip->x) = true;
+        }
+        ip = ip->next;
+    }
+}
+
 error_t validate_module(module_t *mod) {
     __try {
         // create context C
@@ -1105,23 +1110,23 @@ error_t validate_module(module_t *mod) {
         // validate imports
         VECTOR_FOR_EACH(import, &mod->imports) {
             switch(import->d.kind) {
-                case FUNC_IMPORT_DESC: {
+                case FUNC_IMPORTDESC: {
                     functype_t *ft = VECTOR_ELEM(&C.types, import->d.func);
                     __throwif(ERR_UNKNOWN_TYPE, !ft);
                     *VECTOR_ELEM(&C.funcs, funcidx++) = *ft;
                     break;
                 }
-                case TABLE_IMPORT_DESC: {
+                case TABLE_IMPORTDESC: {
                     __throwiferr(validate_tabletype(&import->d.table));
                     *VECTOR_ELEM(&C.tables, tableidx++) = import->d.table;
                     break;
                 }
-                case MEM_IMPORT_DESC: {
+                case MEM_IMPORTDESC: {
                     __throwiferr(validate_memtype(&import->d.mem));
                     *VECTOR_ELEM(&C.mems, memidx++) = import->d.mem;
                     break;
                 }
-                case GLOBAL_IMPORT_DESC: {
+                case GLOBAL_IMPORTDESC: {
                     *VECTOR_ELEM(&C.globals, globalidx++) = import->d.globaltype;
                     break;
                 }
@@ -1132,9 +1137,23 @@ error_t validate_module(module_t *mod) {
         __throwif(ERR_FAILED, C.mems.len > 1);
 
         VECTOR_NEW(&C.refs, mod->num_func_imports + mod->funcs.len);
-        size_t idx = 0;
-        VECTOR_FOR_EACH(x, &C.refs) {
-            *x = idx++;
+        VECTOR_FOR_EACH(global, &mod->globals) {
+            mark_funcidx_in_expr(&C, &global->expr);
+        }
+        VECTOR_FOR_EACH(elem, &mod->elems) {
+            VECTOR_FOR_EACH(init, &elem->init) {
+                mark_funcidx_in_expr(&C, init);
+            }
+        }
+        VECTOR_FOR_EACH(import, &mod->imports) {
+            if(import->d.kind == FUNC_IMPORTDESC && import->d.func < C.refs.len) {
+                *VECTOR_ELEM(&C.refs, import->d.func) = true;
+            }
+        }
+        VECTOR_FOR_EACH(export, &mod->exports) {
+            if(export->exportdesc.kind == FUNC_EXPORTDESC && export->exportdesc.idx < C.refs.len) {
+                *VECTOR_ELEM(&C.refs, export->exportdesc.idx) = true;
+            }
         }
 
         // validate tables

@@ -4,7 +4,9 @@
 // ref: https://webassembly.github.io/spec/core/syntax/index.html
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "vector.h"
+#include "list.h"
 
 typedef uint8_t     byte_t;
 typedef uint8_t     valtype_t;
@@ -345,10 +347,10 @@ typedef struct {
     datamode_t      mode;
 } data_t;
 
-#define FUNC_IMPORT_DESC        0
-#define TABLE_IMPORT_DESC       1
-#define MEM_IMPORT_DESC         2
-#define GLOBAL_IMPORT_DESC      3
+#define FUNC_IMPORTDESC        0
+#define TABLE_IMPORTDESC       1
+#define MEM_IMPORTDESC         2
+#define GLOBAL_IMPORTDESC      3
 
 typedef struct {
     uint8_t         kind;
@@ -388,6 +390,8 @@ typedef struct {
     VECTOR(global_t)    globals;
     VECTOR(elem_t)      elems;
     VECTOR(data_t)      datas;
+    bool                has_start;
+    funcidx_t           start;
     VECTOR(import_t)    imports;
     VECTOR(export_t)    exports;
     uint32_t            num_func_imports;

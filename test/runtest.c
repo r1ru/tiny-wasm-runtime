@@ -21,7 +21,7 @@ typedef struct {
     size_t      size;
     uint8_t     *map;
     module_t    *mod;
-    store_t     *store;
+    instance_t  *instance;
 } test_ctx_t;
 
 static const char *error_msg[] = {
@@ -43,6 +43,7 @@ static const char *error_msg[] = {
     [-ERR_UNKNOWN_DARA_SEGMENT]                                 = "unknown data segment",
     [-ERR_INVALID_RESULT_ARITY]                                 = "invalid result arity",
     [-ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL]            = "alignment must not be larger than natural",
+    [-ERR_UNDECLARED_FUNCTIION_REFERENCE]                       = "undeclared function reference",
     [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]                         = "integer divide by zero",
     [-ERR_TRAP_INTERGET_OVERFLOW]                               = "integer overflow",
     [-ERR_TRAP_INVALID_CONVERSION_TO_INTERGER]                  = "invalid conversion to integer",
@@ -85,7 +86,7 @@ error_t map_file(test_ctx_t *ctx, const char *fpath) {
         );
         __throwif(ERR_FAILED, ctx->map == MAP_FAILED);
         ctx->mod = NULL;
-        ctx->store = NULL;
+        ctx->instance = NULL;
     }
     __catch:
         return err;
@@ -93,7 +94,7 @@ error_t map_file(test_ctx_t *ctx, const char *fpath) {
 
 void destroy_test_ctx(test_ctx_t *ctx) {
     free(ctx->mod);
-    free(ctx->store);
+    free(ctx->instance);
     munmap(ctx->map, ctx->size);
     close(ctx->fd);
 }
@@ -204,15 +205,17 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
 
             // validate
             __throwif(ERR_FAILED, IS_ERROR(validate_module(ctx->mod)));
+
+            // instantiate
+            __throwiferr(instantiate(&ctx->instance, ctx->mod));
+        }
+        else if(strcmp(type, "register") == 0) {
+            const char *as    = json_object_get_string(command, "as");
+            register_module(ctx->instance, as);
         }
         else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0 || \
                 strcmp(type, "action") == 0  || strcmp(type, "assert_exhaustion") == 0) {
             
-             // instantiate 
-            if(!ctx->store) {
-                __throwif(ERR_FAILED, IS_ERROR(instantiate(&ctx->store, ctx->mod)));
-            }
-
             JSON_Object *action = json_object_get_object(command, "action");
             const char *action_type = json_object_get_string(action, "type");
 
@@ -231,7 +234,7 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                 convert_to_args(&args, json_object_get_array(action, "args"));
 
                 if(strcmp(type, "assert_return") == 0) {
-                    __throwif(ERR_FAILED, IS_ERROR(invoke(ctx->store, addr, &args)));
+                    __throwif(ERR_FAILED, IS_ERROR(invoke(ctx->instance, addr, &args)));
 
                     args_t expects;
                     convert_to_args(&expects, json_object_get_array(command, "expected"));
@@ -282,9 +285,9 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                         }
                     }
                 } else if(strcmp(type, "action") == 0) {
-                    __throwif(ERR_FAILED, IS_ERROR(invoke(ctx->store, addr, &args)));
+                    __throwif(ERR_FAILED, IS_ERROR(invoke(ctx->instance, addr, &args)));
                 } else {
-                    error_t ret = invoke(ctx->store, addr, &args);
+                    error_t ret = invoke(ctx->instance, addr, &args);
                     // check that invocation fails
                     __throwif(ERR_FAILED, !IS_ERROR(ret));
 
@@ -299,7 +302,7 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
 
                     // empty stack if assert_exhaustion
                     if(strcmp(type, "assert_exhaustion") == 0) {
-                        ctx->store->stack->idx = -1;
+                        ctx->instance->stack->idx = -1;
                     }
                 }
             }

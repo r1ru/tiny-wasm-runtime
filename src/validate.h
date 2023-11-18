@@ -5,6 +5,7 @@
 #include "module.h"
 #include "error.h"
 #include "list.h"
+#include <stdbool.h>
 
 // used in select instruction
 #define TYPE_ANY    0
@@ -27,7 +28,7 @@ typedef struct {
     VECTOR(valtype_t)       locals;
     list_t                  labels;
     resulttype_t            *ret;
-    VECTOR(funcidx_t)       refs;
+    VECTOR(bool)            refs;
 } context_t;
 
 error_t validate_module(module_t *mod);
