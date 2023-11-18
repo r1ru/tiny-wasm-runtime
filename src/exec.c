@@ -319,7 +319,7 @@ static funcaddr_t alloc_imported_func(instance_t *to, import_t *import, instance
     dst->module_name = import->module;
     dst->name = import->name;
     dst->type = src->type;
-    dst->module = src->module;
+    dst->module = to->moduleinst;
     dst->code = src->code;
 
     return to->store->funcaddr++;
@@ -396,6 +396,8 @@ static elemaddr_t alloc_elem(instance_t *instance, elem_t *elem) {
 error_t alloc_imports(instance_t *target, module_t *module) {
     __try {
         instance_t *from = NULL;
+        idx_t funcidx = 0, tableidx = 0, memidx = 0, globalidx = 0;
+
         VECTOR_FOR_EACH(import, &module->imports) {
             // find instance
             LIST_FOR_EACH(inst, &imported_modules, instance_t, link) {
@@ -422,8 +424,6 @@ error_t alloc_imports(instance_t *target, module_t *module) {
             // allocate imports
             store_t *S = target->store;
             moduleinst_t *moduleinst = target->moduleinst;
-
-            idx_t funcidx = 0, tableidx = 0, memidx = 0, globalidx = 0;
             switch(externval->kind) {
                 case EXTERN_FUNC: {
                     moduleinst->funcaddrs[funcidx] = alloc_imported_func(target, import, from, externval->func);
@@ -2005,9 +2005,9 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                             elemaddr_t ea = F->module->elemaddrs[ip->y];
                             eleminst_t *elem = VECTOR_ELEM(&S->elems, ea);
                             int32_t n, s, d;
-                            pop_i32(stack, &n );
-                            pop_i32(stack, &s );
-                            pop_i32(stack, &d );
+                            pop_i32(stack, &n);
+                            pop_i32(stack, &s);
+                            pop_i32(stack, &d);
 
                             while(1) {
                                 __throwif(
@@ -2054,9 +2054,13 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                             pop_i32(stack, &s);
                             pop_i32(stack, &d);
 
+                            uint64_t idx1 = (uint32_t)s, idx2 = (uint32_t)d;
+                            idx1 += (uint32_t)n;
+                            idx2 += (uint32_t)n;
+
                             __throwif(
                                 ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS, 
-                                s + n > tab_y->elem.len || d + n > tab_x->elem.len
+                                idx1 > tab_y->elem.len || idx2 > tab_x->elem.len
                             );
 
                             instr_t table_set = {
