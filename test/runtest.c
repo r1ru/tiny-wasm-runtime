@@ -17,12 +17,14 @@
 #include <exec.h>
 
 typedef struct {
-    int         fd;
-    size_t      size;
-    uint8_t     *map;
-    module_t    *mod;
+    list_elem_t link;
+    const char  *name;
     instance_t  *instance;
 } test_ctx_t;
+
+static test_ctx_t *current_ctx = NULL;
+
+list_t test_ctxs = {.prev = &test_ctxs, .next = &test_ctxs};
 
 static const char *error_msg[] = {
     [-ERR_SUCCESS]                                              = "",
@@ -57,59 +59,68 @@ static const char *error_msg[] = {
 };
 
 // helpers
-// todo: consider the case where funcidx != funcaddr
-error_t lookup_func_by_name(funcaddr_t *addr, const char *name, module_t *mod) {
-    VECTOR_FOR_EACH(export, &mod->exports) {
-        if(strcmp(export->name, name) == 0 && export->exportdesc.kind == 0) {
-            *addr = export->exportdesc.idx;
+error_t lookup_func_by_name(const char *name, funcaddr_t *addr) {
+    VECTOR_FOR_EACH(e, &current_ctx->instance->moduleinst->exports) {
+        if(strcmp(e->name, name) == 0 && e->value.kind == EXTERN_FUNC) {
+            *addr = e->value.func;
             return ERR_SUCCESS;
         }
     }
     return ERR_FAILED;
 }
 
-error_t map_file(test_ctx_t *ctx, const char *fpath) {
+// always success
+static test_ctx_t *find_test_ctx(const char *name) {
+    LIST_FOR_EACH(ctx, &test_ctxs, test_ctx_t, link) {
+        if(strcmp(ctx->name, name) == 0) {
+            return ctx;
+        }
+    }
+}
+
+error_t decode_module_from_fpath(const char *fpath, module_t **mod) {
     __try {
-        // open and map file
-        ctx->fd = open(fpath, O_RDONLY);
-        __throwif(ERR_FAILED, ctx->fd == -1);
+        int fd = open(fpath, O_RDONLY);
+        __throwif(ERR_FAILED, fd == -1);
+
         struct stat s;
-        __throwif(ERR_FAILED, fstat(ctx->fd, &s) == -1);
-        ctx->size = s.st_size;
-        ctx->map = mmap(
+        __throwif(ERR_FAILED, fstat(fd, &s) == -1);
+
+        size_t size = s.st_size;
+        uint8_t *image =  mmap(
             NULL,
-            ctx->size,
+            size,
             PROT_READ,
             MAP_PRIVATE,
-            ctx->fd, 
+            fd, 
             0
         );
-        __throwif(ERR_FAILED, ctx->map == MAP_FAILED);
-        ctx->mod = NULL;
-        ctx->instance = NULL;
+        __throwif(ERR_FAILED, image == MAP_FAILED);
+
+        __throwiferr(decode_module(mod, image, size));
     }
     __catch:
-        return err;
+        err;
 }
 
 error_t register_imports(void) {
     __try {
-        test_ctx_t ctx = {};
-        __throwiferr(map_file(&ctx, "./spectest.wasm"));
-        __throwiferr(decode_module(&ctx.mod, ctx.map, ctx.size));
-        __throwiferr(validate_module(ctx.mod));
-        __throwiferr(instantiate(&ctx.instance, ctx.mod));
-        register_module(ctx.instance, "spectest");
+        module_t *module;
+        instance_t *instance;
+
+        // decode
+        __throwiferr(decode_module_from_fpath("./spectest.wasm", &module));
+
+        // validate
+        __throwiferr(validate_module(module));
+
+        // instantiate
+        __throwiferr(instantiate(&instance, module));
+        
+        register_module(instance, "spectest");
     }
     __catch:
         return err;
-}
-
-void destroy_test_ctx(test_ctx_t *ctx) {
-    free(ctx->mod);
-    free(ctx->instance);
-    munmap(ctx->map, ctx->size);
-    close(ctx->fd);
 }
 
 // ref: https://github.com/WebAssembly/wabt/blob/main/docs/wast2json.md
@@ -198,33 +209,35 @@ static void convert_to_args(args_t *args, JSON_Array *array) {
     }
 }
 
-static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
+static error_t run_command(JSON_Object *command) {
     const char *type    = json_object_get_string(command, "type");
     const double line   = json_object_get_number(command, "line");
     __try {
         if(strcmp(type, "module") == 0) {
+            // create new test context
+            test_ctx_t *ctx = malloc(sizeof(test_ctx_t));
+            module_t *module;
             // *.wasm files expected in the same directory as the json.
             const char *fpath = json_object_get_string(command, "filename");
-            __throwif(ERR_FAILED, map_file(ctx, fpath));
-            
-            // decode
-            __throwif(
-                ERR_FAILED, IS_ERROR(
-                    decode_module(
-                        &ctx->mod, ctx->map, ctx->size
-                    )
-                )
-            );
+            __throwiferr(decode_module_from_fpath(fpath, &module));
 
+            const char *name = json_object_get_string(command, "name");
+            if(name) {
+                ctx->name = name;
+                list_push_back(&test_ctxs, &ctx->link);
+            }
             // validate
-            __throwif(ERR_FAILED, IS_ERROR(validate_module(ctx->mod)));
+            __throwiferr(validate_module(module));
 
             // instantiate
-            __throwiferr(instantiate(&ctx->instance, ctx->mod));
+            __throwiferr(instantiate(&ctx->instance, module));
+            
+            current_ctx = ctx;
         }
         else if(strcmp(type, "register") == 0) {
             const char *as    = json_object_get_string(command, "as");
-            register_module(ctx->instance, as);
+            // todo: fix this
+            register_module(current_ctx->instance, as);
         }
         else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0 || \
                 strcmp(type, "action") == 0  || strcmp(type, "assert_exhaustion") == 0) {
@@ -233,21 +246,21 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
             const char *action_type = json_object_get_string(action, "type");
 
             if(strcmp(action_type, "invoke") == 0) {
+                const char *module = json_object_get_string(action, "module");
+                if(module) {
+                    current_ctx = find_test_ctx(module);
+                }
+
                 const char *func = json_object_get_string(action, "field");
 
                 funcaddr_t addr;
-                __throwif(
-                    ERR_FAILED, 
-                    IS_ERROR(
-                        lookup_func_by_name(&addr, func, ctx->mod)
-                    )
-                );
+                __throwiferr(lookup_func_by_name(func, &addr));
                 
                 args_t args;
                 convert_to_args(&args, json_object_get_array(action, "args"));
 
                 if(strcmp(type, "assert_return") == 0) {
-                    __throwif(ERR_FAILED, IS_ERROR(invoke(ctx->instance, addr, &args)));
+                    __throwiferr(invoke(current_ctx->instance, addr, &args));
 
                     args_t expects;
                     convert_to_args(&expects, json_object_get_array(command, "expected"));
@@ -298,9 +311,9 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                         }
                     }
                 } else if(strcmp(type, "action") == 0) {
-                    __throwif(ERR_FAILED, IS_ERROR(invoke(ctx->instance, addr, &args)));
+                    __throwiferr(invoke(current_ctx->instance, addr, &args));
                 } else {
-                    error_t ret = invoke(ctx->instance, addr, &args);
+                    error_t ret = invoke(current_ctx->instance, addr, &args);
                     // check that invocation fails
                     __throwif(ERR_FAILED, !IS_ERROR(ret));
 
@@ -313,10 +326,8 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
                         ) == NULL
                     );
 
-                    // empty stack if assert_exhaustion
-                    if(strcmp(type, "assert_exhaustion") == 0) {
-                        ctx->instance->stack->idx = -1;
-                    }
+                    // empty stack if assert_{exhaustion, trap}
+                     current_ctx->instance->stack->idx = -1;
                 }
             }
             else {
@@ -324,21 +335,15 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
             }
         }
         else if(strcmp(type, "assert_invalid") == 0) {
-            const char *fpath = json_object_get_string(command, "filename");
-            __throwif(ERR_FAILED, map_file(ctx, fpath));
-            
-            // decode
-            __throwif(
-                ERR_FAILED, IS_ERROR(
-                    decode_module(
-                        &ctx->mod, ctx->map, ctx->size
-                    )
-                )
-            );
+            module_t *module;
 
-            // check that validation fails
-            error_t ret = validate_module(ctx->mod);
+            const char *fpath = json_object_get_string(command, "filename");
+            __throwiferr(decode_module_from_fpath(fpath, &module));
+
+            // validate
+            error_t ret = validate_module(module);
             __throwif(ERR_FAILED, !IS_ERROR(ret));
+
             // check that error messagees match
             __throwif(
                 ERR_FAILED, 
@@ -351,11 +356,11 @@ static error_t run_command(test_ctx_t *ctx, JSON_Object *command) {
         else if(strcmp(type, "assert_malformed") == 0) {
             const char *module_type    = json_object_get_string(command, "module_type");
             if(strcmp(module_type, "binary") == 0) {
+                module_t *module;
                 const char *fpath = json_object_get_string(command, "filename");
-                __throwif(ERR_FAILED, map_file(ctx, fpath));
-            
+
                 // check that decode fails
-                error_t ret = decode_module(&ctx->mod, ctx->map, ctx->size);
+                error_t ret = decode_module_from_fpath(fpath, &module);
                 __throwif(ERR_FAILED, !IS_ERROR(ret));
 
                 // check that error messagees match
@@ -401,9 +406,7 @@ int main(int argc, char *argv[]) {
         __throwif(ERR_FAILED, !commands);
 
         for(int i = 0; i < json_array_get_count(commands); i++) {
-            __throwif(ERR_FAILED, IS_ERROR(
-                run_command(&ctx, json_array_get_object(commands, i))
-            ));
+            __throwiferr(run_command(json_array_get_object(commands, i)));
         }
     }
     __catch:
