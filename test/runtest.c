@@ -92,6 +92,19 @@ error_t map_file(test_ctx_t *ctx, const char *fpath) {
         return err;
 }
 
+error_t register_imports(void) {
+    __try {
+        test_ctx_t ctx = {};
+        __throwiferr(map_file(&ctx, "./spectest.wasm"));
+        __throwiferr(decode_module(&ctx.mod, ctx.map, ctx.size));
+        __throwiferr(validate_module(ctx.mod));
+        __throwiferr(instantiate(&ctx.instance, ctx.mod));
+        register_module(ctx.instance, "spectest");
+    }
+    __catch:
+        return err;
+}
+
 void destroy_test_ctx(test_ctx_t *ctx) {
     free(ctx->mod);
     free(ctx->instance);
@@ -374,6 +387,8 @@ int main(int argc, char *argv[]) {
     JSON_Value *root;
 
     __try {
+        __throwiferr(register_imports());
+
         INFO("testsuite: %s", argv[1]);
 
         root = json_parse_file(argv[1]);
@@ -392,9 +407,6 @@ int main(int argc, char *argv[]) {
         }
     }
     __catch:
-        // cleanup
-        json_value_free(root);
-        destroy_test_ctx(&ctx);
-
+        // todo: cleanup
         return err;
 }

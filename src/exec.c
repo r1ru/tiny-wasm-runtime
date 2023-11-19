@@ -321,7 +321,7 @@ static funcaddr_t alloc_imported_func(instance_t *to, import_t *import, instance
     dst->type = src->type;
     dst->module = to->moduleinst;
     dst->code = src->code;
-
+    printf("alloc %s from %s %x -> %x\n", dst->name, dst->module_name, dst->type->rt1.len, dst->type->rt2.len);
     return to->store->funcaddr++;
 }
 
