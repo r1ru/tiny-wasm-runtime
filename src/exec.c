@@ -286,7 +286,7 @@ static funcaddr_t alloc_func(instance_t *instance, func_t *func) {
     return S->funcaddr++;
 }
 
-static funcaddr_t alloc_imported_func(instance_t *to, import_t *import, instance_t *from, funcaddr_t funcaddr) {
+static funcaddr_t alloc_imported_func(instance_t *to, instance_t *from, funcaddr_t funcaddr) {
     funcinst_t *dst = VECTOR_ELEM(&to->store->funcs, to->store->funcaddr);
     funcinst_t *src = VECTOR_ELEM(&from->store->funcs, funcaddr);
 
@@ -313,6 +313,15 @@ static tableaddr_t alloc_table(instance_t *instance, table_t *table) {
     return S->tableaddr++;
 }
 
+static tableaddr_t alloc_imported_table(instance_t *to, instance_t *from, tableaddr_t tableaddr) {
+    tableinst_t *dst = VECTOR_ELEM(&to->store->tables, to->store->tableaddr);
+    tableinst_t *src = VECTOR_ELEM(&from->store->tables, tableaddr);
+
+    *dst = *src;
+
+    return to->store->tableaddr++;
+}
+
 static memaddr_t alloc_mem(instance_t *instance, mem_t *mem) {
     store_t *S = instance->store;
     meminst_t *meminst = VECTOR_ELEM(&S->mems, S->memaddr);
@@ -323,9 +332,17 @@ static memaddr_t alloc_mem(instance_t *instance, mem_t *mem) {
     return S->memaddr++;
 }
 
+static memaddr_t alloc_imported_mem(instance_t *to, instance_t *from, memaddr_t memaddr) {
+    meminst_t *dst = VECTOR_ELEM(&to->store->mems, to->store->memaddr);
+    meminst_t *src = VECTOR_ELEM(&from->store->mems, memaddr);
+
+    *dst = *src;
+    return to->store->memaddr++;
+}
+
 static dataaddr_t alloc_data(instance_t *instance, data_t *data) {
     store_t *S = instance->store;
-    datains_t *datainst = VECTOR_ELEM(&S->datas, S->dataaddr);
+    datainst_t *datainst = VECTOR_ELEM(&S->datas, S->dataaddr);
 
     VECTOR_COPY(&datainst->data, &data->init);
 
@@ -346,6 +363,15 @@ static globaladdr_t alloc_global(instance_t *instance, global_t *global) {
     return S->globaladdr++;
 }
 
+static globaladdr_t alloc_imported_global(instance_t *to, instance_t *from, globaladdr_t globaladdr) {
+    globalinst_t *dst = VECTOR_ELEM(&to->store->globals, to->store->globaladdr);
+    globalinst_t *src = VECTOR_ELEM(&from->store->globals, globaladdr);
+
+    *dst = *src;
+
+    return to->store->globaladdr++;
+}
+
 static elemaddr_t alloc_elem(instance_t *instance, elem_t *elem) {
     stack_t *stack = instance->stack;
     store_t *S = instance->store;
@@ -364,6 +390,54 @@ static elemaddr_t alloc_elem(instance_t *instance, elem_t *elem) {
     return S->elemaddr++;
 }
 
+static bool match_functype(functype_t *ft1, functype_t *ft2) {
+    if(ft1->rt1.len != ft2->rt1.len)
+        return false;
+
+    for(uint32_t i = 0; i < ft1->rt1.len; i++) {
+        if(*VECTOR_ELEM(&ft1->rt1, i) != *VECTOR_ELEM(&ft2->rt1, i)){
+            return false;
+        };
+    }
+
+    if(ft1->rt2.len != ft2->rt2.len)
+        return false;
+
+    for(uint32_t i = 0; i < ft1->rt2.len; i++) {
+        if(*VECTOR_ELEM(&ft1->rt2, i) != *VECTOR_ELEM(&ft2->rt2, i)){
+            return false;
+        };
+    }
+
+    return true;
+}
+
+static bool match_limits(limits_t *l1, limits_t *l2) {
+    if(l1->min < l2->min) {
+        if(l2->max != 0)
+            return true;
+        else if (l1->max != 0 && l2->max != 0 && l1->max <= l2->max)
+            return true;
+    }
+    return false;
+}
+
+static bool match_tabletype(tabletype_t *tt1, tabletype_t *tt2) {
+    if(tt1->reftype != tt2->reftype)
+        return false;
+    
+    return match_limits(&tt1->limits, &tt2->limits);
+}
+
+static bool match_memtype(memtype_t *mt1, memtype_t *mt2) {
+    return match_limits(mt1, mt2);
+}
+
+static bool match_globaltype(globaltype_t *gt1, globaltype_t *gt2) {
+    if(gt1->mut != gt2->mut || gt1->type != gt2->type)
+        return false;
+    return true;
+}
 
 error_t alloc_imports(instance_t *target, module_t *module) {
     __try {
@@ -390,23 +464,60 @@ error_t alloc_imports(instance_t *target, module_t *module) {
             }
             __throwif(ERR_FAILED, !externval);
 
-            // check that type matches
             __throwif(ERR_FAILED, import->d.kind != externval->kind);
+
+            // check that type matches
+            switch(externval->kind) {
+                case EXTERN_FUNC: {
+                    functype_t *expect = VECTOR_ELEM(&module->types, import->d.func);
+                    functype_t *actual = VECTOR_ELEM(&from->store->funcs, externval->func)->type;
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_functype(expect, actual));
+                    break;
+                }
+                case EXTERN_TABLE: {
+                    tabletype_t *expect = &import->d.table;
+                    tabletype_t *actual = &VECTOR_ELEM(&from->store->tables, externval->table)->type;
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_tabletype(expect, actual));
+                    break;
+                }
+                case EXTERN_MEM: {
+                    memtype_t *expect = &import->d.mem;
+                    memtype_t *actual = &VECTOR_ELEM(&from->store->mems, externval->mem)->type;
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_memtype(expect, actual));
+                    break;
+                }
+                case EXTERN_GLOBAL: {
+                    globaltype_t *expect = &import->d.globaltype;
+                    globaltype_t *actual = &VECTOR_ELEM(&from->store->globals, externval->global)->gt;
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_globaltype(expect, actual));
+                    break;
+                }
+            }
 
             // allocate imports
             store_t *S = target->store;
             moduleinst_t *moduleinst = target->moduleinst;
             switch(externval->kind) {
                 case EXTERN_FUNC: {
-                    moduleinst->funcaddrs[funcidx] = alloc_imported_func(target, import, from, externval->func);
+                    moduleinst->funcaddrs[funcidx] = alloc_imported_func(target, from, externval->func);
                     funcidx++;
                     break;
                 }
-                case EXTERN_TABLE:
-                case EXTERN_MEM:
-                case EXTERN_GLOBAL:
-                    PANIC("implement here!");
+                case EXTERN_TABLE: {
+                    moduleinst->tableaddrs[tableidx] = alloc_imported_table(target, from, externval->table);
+                    tableidx++;
                     break;
+                }
+                case EXTERN_MEM: {
+                    moduleinst->memaddrs[memidx] = alloc_imported_mem(target, from, externval->mem);
+                    memidx++;
+                    break;
+                }
+                case EXTERN_GLOBAL: {
+                    moduleinst->globaladdrs[globalidx] = alloc_imported_global(target, from, externval->global);
+                    globalidx++;
+                    break;
+                }
             }
         }
     }
@@ -1859,7 +1970,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                             memaddr_t ma = F->module->memaddrs[0];
                             meminst_t *mem = VECTOR_ELEM(&S->mems, ma);
                             dataaddr_t da = F->module->dataaddrs[ip->x];
-                            datains_t *data = VECTOR_ELEM(&S->datas, da);
+                            datainst_t *data = VECTOR_ELEM(&S->datas, da);
 
                             int32_t n, s, d;
                             pop_i32(stack, &n);
@@ -1890,7 +2001,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                         // data.drop
                         case 0x09: {
                             dataaddr_t a = F->module->dataaddrs[ip->x];
-                            datains_t *data = VECTOR_ELEM(&S->datas, a);
+                            datainst_t *data = VECTOR_ELEM(&S->datas, a);
                             VECTOR_INIT(&data->data);
                             break;
                         }

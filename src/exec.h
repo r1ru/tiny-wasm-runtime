@@ -135,7 +135,7 @@ typedef  struct {
 
 typedef struct {
     VECTOR(byte_t)      data;
-} datains_t;
+} datainst_t;
 
 typedef struct {
     VECTOR(funcinst_t)      funcs;
@@ -143,7 +143,7 @@ typedef struct {
     VECTOR(meminst_t)       mems;
     VECTOR(globalinst_t)    globals;
     VECTOR(eleminst_t)      elems;
-    VECTOR(datains_t)       datas;
+    VECTOR(datainst_t)      datas;
     funcaddr_t              funcaddr;
     tableaddr_t             tableaddr;
     memaddr_t               memaddr;

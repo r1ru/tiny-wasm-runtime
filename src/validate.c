@@ -787,7 +787,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
                         __throwif(ERR_UNKNOWN_MEMORY, !mem);
                         ok_t *data = VECTOR_ELEM(&C->datas, ip->x);
-                        __throwif(ERR_UNKNOWN_DARA_SEGMENT, !data);
+                        __throwif(ERR_UNKNOWN_DATA_SEGMENT, !data);
                         __throwiferr(try_pop(stack, TYPE_NUM_I32));
                         __throwiferr(try_pop(stack, TYPE_NUM_I32));
                         __throwiferr(try_pop(stack, TYPE_NUM_I32));
@@ -797,7 +797,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                     // data.drop
                     case 0x09: {
                         ok_t *data = VECTOR_ELEM(&C->datas, ip->x);
-                        __throwif(ERR_UNKNOWN_DARA_SEGMENT, !data);
+                        __throwif(ERR_UNKNOWN_DATA_SEGMENT, !data);
                         break;
                     }
 
@@ -818,7 +818,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                         tabletype_t *t1 = VECTOR_ELEM(&C->tables, ip->x);
                         __throwif(ERR_UNKNOWN_TABLE, !t1);
                         reftype_t *t2 = VECTOR_ELEM(&C->elems, ip->y);
-                        __throwif(ERR_FAILED, !t2);
+                        __throwif(ERR_UNKNOWN_ELEM_SEGMENT, !t2);
                         __throwif(ERR_TYPE_MISMATCH, t1->reftype != *t2);
                         // validt with type [i32 i32 i32] -> []
                         __throwiferr(try_pop(stack, TYPE_NUM_I32));
@@ -830,7 +830,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
                     // elem.drop
                     case 0x0D: {
                         reftype_t *elem = VECTOR_ELEM(&C->elems, ip->x);
-                        __throwif(ERR_FAILED, !elem);
+                        __throwif(ERR_UNKNOWN_ELEM_SEGMENT, !elem);
                         break;
                     }
 

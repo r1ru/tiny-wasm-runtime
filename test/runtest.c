@@ -27,8 +27,8 @@ static test_ctx_t *current_ctx = NULL;
 list_t test_ctxs = {.prev = &test_ctxs, .next = &test_ctxs};
 
 static const char *error_msg[] = {
-    [-ERR_SUCCESS]                                              = "",
-    [-ERR_FAILED]                                               = "",
+    [-ERR_SUCCESS]                                              = "success",
+    [-ERR_FAILED]                                               = "failed",
     [-ERR_UNEXPECTED_END]                                       = "unexpected end",
     [-ERR_LENGTH_OUT_OF_BOUNDS]                                 = "length out of bounds",
     [-ERR_MALFORMED_SECTION_ID]                                 = "malformed section id",
@@ -42,7 +42,8 @@ static const char *error_msg[] = {
     [-ERR_UNKNOWN_TYPE]                                         = "unknown type",
     [-ERR_UNKNOWN_GLOBAL]                                       = "unknown global",
     [-ERR_UNKNOWN_MEMORY]                                       = "unknown memory",
-    [-ERR_UNKNOWN_DARA_SEGMENT]                                 = "unknown data segment",
+    [-ERR_UNKNOWN_DATA_SEGMENT]                                 = "unknown data segment",
+    [-ERR_UNKNOWN_ELEM_SEGMENT]                                 = "unknown elem segment",
     [-ERR_INVALID_RESULT_ARITY]                                 = "invalid result arity",
     [-ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL]            = "alignment must not be larger than natural",
     [-ERR_UNDECLARED_FUNCTIION_REFERENCE]                       = "undeclared function reference",
@@ -56,9 +57,19 @@ static const char *error_msg[] = {
     [-ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS]                     = "out of bounds memory access",
     [-ERR_TRAP_OUT_OF_BOUNDS_TABLE_ACCESS]                      = "out of bounds table access",
     [-ERR_TRAP_CALL_STACK_EXHAUSTED]                            = "call stack exhausted",
+    [-ERR_INCOMPATIBLE_IMPORT_TYPE]                             = "incompatible import type",
 };
 
 // helpers
+static exportinst_t *find_exportinst(const char *name) {
+    VECTOR_FOR_EACH(e, &current_ctx->instance->moduleinst->exports) {
+        if(strcmp(e->name, name) == 0) {
+            return e;
+        }
+    }
+    return NULL;
+}
+
 error_t lookup_func_by_name(const char *name, funcaddr_t *addr) {
     VECTOR_FOR_EACH(e, &current_ctx->instance->moduleinst->exports) {
         if(strcmp(e->name, name) == 0 && e->value.kind == EXTERN_FUNC) {
@@ -330,6 +341,29 @@ static error_t run_command(JSON_Object *command) {
                      current_ctx->instance->stack->idx = -1;
                 }
             }
+            else if(strcmp(action_type, "get") == 0) {
+                const char *module = json_object_get_string(action, "module");
+                if(module) {
+                    current_ctx = find_test_ctx(module);
+                }
+                const char *field = json_object_get_string(action, "field");
+
+                exportinst_t *exportinst = find_exportinst(field);
+
+                args_t expects;
+                convert_to_args(&expects, json_object_get_array(command, "expected"));
+                
+                val_t val = VECTOR_ELEM(&current_ctx->instance->store->globals, exportinst->value.global)->val;
+                arg_t *expect = VECTOR_ELEM(&expects, 0);
+                switch(expect->type) {
+                    case TYPE_NUM_I32:
+                        __throwif(ERR_FAILED, val.num.i32 != expect->val.num.i32);
+                        break;
+
+                    default:
+                        PANIC("unknown type: %x", expect->type);
+                }
+            }
             else {
                 PANIC("unknown action: %s", action_type);
             }
@@ -372,6 +406,30 @@ static error_t run_command(JSON_Object *command) {
                     ) == NULL
                 );
             }
+        }
+        else if(strcmp(type, "assert_unlinkable") == 0) {
+            module_t *module;
+            instance_t *instance;
+
+            const char *fpath = json_object_get_string(command, "filename");
+            __throwiferr(decode_module_from_fpath(fpath, &module));
+
+            // validate
+            __throwiferr(validate_module(module));
+
+            // instantiate
+            error_t ret = instantiate(&instance, module);
+           
+            __throwif(ERR_FAILED, !IS_ERROR(ret));
+
+            // check that error messagees match
+            __throwif(
+                ERR_FAILED, 
+                strstr(
+                    json_object_get_string(command, "text"),
+                    error_msg[-ret]
+                ) == NULL
+            );
         }
         // todo: add here
         else {
