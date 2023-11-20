@@ -271,31 +271,6 @@ void register_module(instance_t *inst, const uint8_t *as) {
     list_push_back(&imported_modules, &inst->link);
 }
 
-static instance_t *find_imported_module(const uint8_t *module_name) {
-    instance_t *instance = NULL;
-    LIST_FOR_EACH(inst, &imported_modules, instance_t, link) {
-        if(strcmp(module_name, inst->name) == 0) {
-            instance = inst;
-            break;
-        }
-    }
-
-    return instance;
-}
-
-static export_t *find_import(module_t *from, const uint8_t *name) {
-    export_t *export = NULL;
-
-    VECTOR_FOR_EACH(e, &from->exports) {
-        if(strcmp(name, e->name) == 0) {
-            export = e;
-            break;
-        }
-    }
-
-    return export;
-}
-
 static funcaddr_t alloc_func(instance_t *instance, func_t *func) {
     store_t *S = instance->store;
     moduleinst_t *moduleinst = instance->moduleinst;
@@ -316,12 +291,9 @@ static funcaddr_t alloc_imported_func(instance_t *to, import_t *import, instance
     funcinst_t *src = VECTOR_ELEM(&from->store->funcs, funcaddr);
 
     dst->is_imported = true;
-    dst->module_name = import->module;
-    dst->name = import->name;
     dst->type = src->type;
-    dst->module = to->moduleinst;
-    dst->code = src->code;
-    printf("alloc %s from %s %x -> %x\n", dst->name, dst->module_name, dst->type->rt1.len, dst->type->rt2.len);
+    dst->instance = from;
+    dst->funcaddr = funcaddr;
     return to->store->funcaddr++;
 }
 
@@ -2192,35 +2164,53 @@ static error_t invoke_func(instance_t *instance, funcaddr_t funcaddr) {
         funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, funcaddr);
         functype_t *functype = funcinst->type;
 
-        // create new frame
-        frame_t frame;
-        uint32_t num_locals = functype->rt1.len + funcinst->code->locals.len;
-        frame.module = funcinst->module;
-        frame.locals = malloc(sizeof(val_t) * num_locals);
+        if(funcinst->is_imported) {
+            args_t args;
+            VECTOR_NEW(&args, functype->rt1.len);
+            // pop args
+            for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
+                arg_t *arg = VECTOR_ELEM(&args, i);
+                arg->type = *VECTOR_ELEM(&functype->rt1, i);
+                pop_val(stack, &arg->val);
+            }
+            // invoke
+            __throwiferr(invoke(funcinst->instance, funcinst->funcaddr, &args));
 
-        // pop args
-        for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
-            pop_val(stack, &frame.locals[i]);
+            VECTOR_FOR_EACH(ret, &args) {
+                push_val(stack, ret->val);
+            }
         }
-        
-        // push activation frame
-        frame.arity  = functype->rt2.len;
-        __throwiferr(push_frame(stack, frame));
+        else {
+            // create new frame
+            frame_t frame;
+            uint32_t num_locals = functype->rt1.len + funcinst->code->locals.len;
+            frame.module = funcinst->module;
+            frame.locals = malloc(sizeof(val_t) * num_locals);
 
-        // create label L
-        static instr_t end = {.op1 = OP_END, .next = NULL};
-        label_t L = {.arity = functype->rt2.len, .parent = NULL, .continuation = &end};
-        // enter instr* with label L
-        __throwiferr(push_label(stack, L));
+            // pop args
+            for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
+                pop_val(stack, &frame.locals[i]);
+            }
+            
+            // push activation frame
+            frame.arity  = functype->rt2.len;
+            __throwiferr(push_frame(stack, frame));
 
-        __throwiferr(exec_expr(instance, &funcinst->code->body));
+            // create label L
+            static instr_t end = {.op1 = OP_END, .next = NULL};
+            label_t L = {.arity = functype->rt2.len, .parent = NULL, .continuation = &end};
+            // enter instr* with label L
+            __throwiferr(push_label(stack, L));
 
-        // return from a function("return" instruction)
-        vals_t vals;
-        pop_vals_n(stack, frame.arity, &vals);
-        pop_while_not_frame(stack);
-        pop_frame(stack, &frame);
-        __throwiferr(push_vals(stack, vals));
+            __throwiferr(exec_expr(instance, &funcinst->code->body));
+
+            // return from a function("return" instruction)
+            vals_t vals;
+            pop_vals_n(stack, frame.arity, &vals);
+            pop_while_not_frame(stack);
+            pop_frame(stack, &frame);
+            __throwiferr(push_vals(stack, vals));
+        }
     }
     __catch:
         return err;

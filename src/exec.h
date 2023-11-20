@@ -44,13 +44,14 @@ typedef struct {
     VECTOR(exportinst_t)    exports;
 } moduleinst_t;
 
+struct instance_t;
 typedef struct {
-    bool            is_imported;
-    const uint8_t   *module_name;
-    const uint8_t   *name;
-    functype_t      *type;
-    moduleinst_t    *module;
-    func_t          *code;
+    bool                is_imported;
+    functype_t          *type;
+    moduleinst_t        *module;
+    func_t              *code;
+    struct instance_t   *instance;
+    funcaddr_t          funcaddr;
 } funcinst_t;
 
 #define REF_NULL    -1
@@ -151,7 +152,7 @@ typedef struct {
     dataaddr_t              dataaddr;
 } store_t;
 
-typedef struct {
+typedef struct instance_t {
     const uint8_t           *name;
     list_elem_t             link;
     stack_t                 *stack;
