@@ -418,11 +418,13 @@ static bool match_functype(functype_t *ft1, functype_t *ft2) {
 }
 
 static bool match_limits(limits_t *l1, limits_t *l2) {
-    if(l1->min < l2->min) {
-        if(l2->max != 0)
+    if(l1->min >= l2->min) {
+        if(l2->max == 0)
             return true;
-        else if (l1->max != 0 && l2->max != 0 && l1->max <= l2->max)
+        else if(l1->max != 0 && l2->max != 0 && l1->max <= l2->max)
             return true;
+        else
+            return false;
     }
     return false;
 }
@@ -476,25 +478,25 @@ error_t alloc_imports(instance_t *target, module_t *module) {
                 case EXTERN_FUNC: {
                     functype_t *expect = VECTOR_ELEM(&module->types, import->d.func);
                     functype_t *actual = VECTOR_ELEM(&from->store->funcs, externval->func)->type;
-                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_functype(expect, actual));
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_functype(actual, expect));
                     break;
                 }
                 case EXTERN_TABLE: {
                     tabletype_t *expect = &import->d.table;
                     tabletype_t *actual = &VECTOR_ELEM(&from->store->tables, externval->table)->type;
-                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_tabletype(expect, actual));
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_tabletype(actual, expect));
                     break;
                 }
                 case EXTERN_MEM: {
                     memtype_t *expect = &import->d.mem;
                     memtype_t *actual = &VECTOR_ELEM(&from->store->mems, externval->mem)->type;
-                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_memtype(expect, actual));
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_memtype(actual, expect));
                     break;
                 }
                 case EXTERN_GLOBAL: {
                     globaltype_t *expect = &import->d.globaltype;
                     globaltype_t *actual = &(*VECTOR_ELEM(&from->store->globals, externval->global))->gt;
-                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_globaltype(expect, actual));
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_globaltype(actual, expect));
                     break;
                 }
             }
