@@ -495,7 +495,6 @@ error_t alloc_imports(instance_t *target, module_t *module) {
             }
 
             // allocate imports
-            store_t *S = target->store;
             moduleinst_t *moduleinst = target->moduleinst;
             switch(externval->kind) {
                 case EXTERN_FUNC: {
@@ -791,57 +790,57 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
             double  rhs_f64, lhs_f64;
 
             // unary operator
-            if(ip->op1 == OP_I32_EQZ || OP_I32_CLZ <= ip->op1 && ip->op1 <= OP_I32_POPCNT ||
-               OP_I64_EXTEND_I32_S <= ip->op1 && ip->op1 <= OP_I64_EXTEND_I32_U ||
-               OP_I32_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I32_EXTEND16_S ||
-               OP_F32_CONVERT_I32_S <= ip->op1 && ip->op1 <= OP_F32_CONVERT_I32_U ||
-               OP_F64_CONVERT_I32_S <= ip->op1 && ip->op1 <= OP_F64_CONVERT_I32_U ||
+            if(ip->op1 == OP_I32_EQZ || (OP_I32_CLZ <= ip->op1 && ip->op1 <= OP_I32_POPCNT) ||
+               (OP_I64_EXTEND_I32_S <= ip->op1 && ip->op1 <= OP_I64_EXTEND_I32_U) ||
+               (OP_I32_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I32_EXTEND16_S) ||
+               (OP_F32_CONVERT_I32_S <= ip->op1 && ip->op1 <= OP_F32_CONVERT_I32_U) ||
+               (OP_F64_CONVERT_I32_S <= ip->op1 && ip->op1 <= OP_F64_CONVERT_I32_U) ||
                ip->op1 == OP_F32_REINTERPRET_I32) {
                 pop_i32(stack, &lhs_i32);
             }
-            if(ip->op1 == OP_I64_EQZ || OP_I64_CLZ <= ip->op1 && ip->op1 <= OP_I64_POPCNT ||
-               OP_I64_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I64_EXTEND32_S ||
+            if(ip->op1 == OP_I64_EQZ || (OP_I64_CLZ <= ip->op1 && ip->op1 <= OP_I64_POPCNT) ||
+               (OP_I64_EXTEND8_S <= ip->op1 && ip->op1 <= OP_I64_EXTEND32_S) ||
                ip->op1 == OP_I32_WRAP_I64 || 
-               OP_F32_CONVERT_I64_S <= ip->op1 && ip->op1 <= OP_F32_CONVERT_I64_U || 
-               OP_F64_CONVERT_I64_S <= ip->op1 && ip->op1 <= OP_F64_CONVERT_I64_U ||
+               (OP_F32_CONVERT_I64_S <= ip->op1 && ip->op1 <= OP_F32_CONVERT_I64_U) || 
+               (OP_F64_CONVERT_I64_S <= ip->op1 && ip->op1 <= OP_F64_CONVERT_I64_U) ||
                ip->op1 == OP_F64_REINTERPRET_I64) {
                 pop_i64(stack, &lhs_i64);
             }
-            if(OP_F32_ABS <= ip->op1 && ip->op1 <= OP_F32_SQRT || 
-               OP_I32_TRUNC_F32_S <= ip->op1 && ip->op1 <= OP_I32_TRUNC_F32_U ||
-               OP_I64_TRUNC_F32_S <= ip->op1 && ip->op1 <= OP_I64_TRUNC_F32_U ||
+            if((OP_F32_ABS <= ip->op1 && ip->op1 <= OP_F32_SQRT) || 
+               (OP_I32_TRUNC_F32_S <= ip->op1 && ip->op1 <= OP_I32_TRUNC_F32_U) ||
+               (OP_I64_TRUNC_F32_S <= ip->op1 && ip->op1 <= OP_I64_TRUNC_F32_U) ||
                ip->op1 == OP_F64_PROMOTE_F32 || 
                ip->op1 == OP_I32_REINTERPRET_F32 ||
-               ip->op1 == OP_0XFC && (ip->op2 == 0 || ip->op2 == 1 || ip->op2 == 4 || ip->op2 == 5)) {
+               (ip->op1 == OP_0XFC && (ip->op2 == 0 || ip->op2 == 1 || ip->op2 == 4 || ip->op2 == 5))) {
                 pop_f32(stack, &lhs_f32);
             }
-            if(OP_F64_ABS <= ip->op1 && ip->op1 <= OP_F64_SQRT ||
-               OP_I32_TRUNC_F64_S <= ip->op1 && ip->op1 <= OP_I32_TRUNC_F64_U || 
-               OP_I64_TRUNC_F64_S <= ip->op1 && ip->op1 <= OP_I64_TRUNC_F64_U || 
+            if((OP_F64_ABS <= ip->op1 && ip->op1 <= OP_F64_SQRT) ||
+               (OP_I32_TRUNC_F64_S <= ip->op1 && ip->op1 <= OP_I32_TRUNC_F64_U) || 
+               (OP_I64_TRUNC_F64_S <= ip->op1 && ip->op1 <= OP_I64_TRUNC_F64_U) || 
                ip->op1 == OP_F32_DEMOTE_F64 || 
                ip->op1 == OP_I64_REINTERPRET_F64 ||
-               ip->op1 == OP_0XFC && (ip->op2 == 2 || ip->op2 == 3 || ip->op2 == 6 || ip->op2 == 7)) {
+               (ip->op1 == OP_0XFC && (ip->op2 == 2 || ip->op2 == 3 || ip->op2 == 6 || ip->op2 == 7))) {
                 pop_f64(stack, &lhs_f64);
             }
             
             // binary operator
-            if(OP_I32_EQ <= ip->op1 && ip->op1 <= OP_I32_GE_U || 
-               OP_I32_ADD <= ip->op1 && ip->op1 <= OP_I32_ROTR) {
+            if((OP_I32_EQ <= ip->op1 && ip->op1 <= OP_I32_GE_U) || 
+               (OP_I32_ADD <= ip->op1 && ip->op1 <= OP_I32_ROTR)) {
                 pop_i32(stack, &rhs_i32);
                 pop_i32(stack, &lhs_i32);
             }
-            if(OP_I64_EQ <= ip->op1 && ip->op1 <= OP_I64_GE_U || 
-               OP_I64_ADD <= ip->op1 && ip->op1 <= OP_I64_ROTR) {
+            if((OP_I64_EQ <= ip->op1 && ip->op1 <= OP_I64_GE_U) || 
+               (OP_I64_ADD <= ip->op1 && ip->op1 <= OP_I64_ROTR)) {
                 pop_i64(stack, &rhs_i64);
                 pop_i64(stack, &lhs_i64);
             }
-            if(OP_F32_EQ <= ip->op1 && ip->op1 <= OP_F32_GE ||
-               OP_F32_ADD <= ip->op1 && ip->op1 <= OP_F32_COPYSIGN) {
+            if((OP_F32_EQ <= ip->op1 && ip->op1 <= OP_F32_GE) ||
+               (OP_F32_ADD <= ip->op1 && ip->op1 <= OP_F32_COPYSIGN)) {
                 pop_f32(stack, &rhs_f32);
                 pop_f32(stack, &lhs_f32);
             }
-            if(OP_F64_EQ <= ip->op1 && ip->op1 <= OP_F64_GE ||
-               OP_F64_ADD <= ip->op1 && ip->op1 <= OP_F64_COPYSIGN) {
+            if((OP_F64_EQ <= ip->op1 && ip->op1 <= OP_F64_GE) ||
+               (OP_F64_ADD <= ip->op1 && ip->op1 <= OP_F64_COPYSIGN)) {
                 pop_f64(stack, &rhs_f64);
                 pop_f64(stack, &lhs_f64);
             }

@@ -359,7 +359,6 @@ error_t decode_memsec(module_t *mod, buffer_t *buf) {
 
         VECTOR_NEW(&mod->mems, n);
         
-        uint8_t has_max;
         VECTOR_FOR_EACH(mem, &mod->mems) {
             __throwiferr(decode_limits(&mem->type, buf));
         }

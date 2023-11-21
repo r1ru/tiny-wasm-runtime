@@ -190,17 +190,22 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_BR_TABLE: {
                 labeltype_t *default_label = LIST_GET_ELEM(&C->labels, labeltype_t, link, ip->default_label);
                 __throwif(ERR_UNKNOWN_LABEL, !default_label);
+                
 
                 VECTOR_FOR_EACH(i, &ip->labels) {
                     labeltype_t *l = LIST_GET_ELEM(&C->labels, labeltype_t, link, *i);
                     __throwif(ERR_UNKNOWN_LABEL, !l);
 
                     __throwif(ERR_TYPE_MISMATCH, default_label->ty.len != l->ty.len);
-                    for(uint32_t j = 0; j < default_label->ty.len; j++) {
-                        valtype_t t1 =  *VECTOR_ELEM(&default_label->ty, j);
-                        valtype_t t2 =  *VECTOR_ELEM(&l->ty, j);
-                        __throwif(ERR_FAILED, t1 != t1);
+
+                    __throwiferr(try_pop(stack, TYPE_NUM_I32));
+                    VECTOR_FOR_EACH_REVERSE(t, &l->ty) {
+                        __throwiferr(try_pop(stack, *t));
                     }
+
+                    // empty the stack
+                    stack->idx = -1;
+                    stack->polymorphic = true;
                 }
 
                 __throwiferr(try_pop(stack, TYPE_NUM_I32));
@@ -965,6 +970,7 @@ static error_t validate_limits(limits_t *limits, uint32_t k) {
         }
     }
     __catch:
+        return err;
 }
 
 error_t validate_tabletype(tabletype_t *tt) {

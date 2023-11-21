@@ -87,6 +87,7 @@ static test_ctx_t *find_test_ctx(const char *name) {
             return ctx;
         }
     }
+    return NULL;
 }
 
 error_t decode_module_from_fpath(const char *fpath, module_t **mod) {
@@ -111,7 +112,7 @@ error_t decode_module_from_fpath(const char *fpath, module_t **mod) {
         __throwiferr(decode_module(mod, image, size));
     }
     __catch:
-        err;
+        return err;
 }
 
 error_t register_imports(void) {
@@ -145,6 +146,8 @@ static inline bool is_canonical_nan(arg_t *arg) {
             return (arg->val.num.i32 & 0x7fffffff) == 0x7fc00000;
         case TYPE_NUM_F64:
             return (arg->val.num.i64 & 0x7fffffffffffffff) == 0x7ff8000000000000;
+        default:
+            return false;
     }
 }
 
@@ -154,6 +157,8 @@ static inline bool is_arithmetic_nan(arg_t *arg) {
             return (arg->val.num.i32 & 0x00400000) == 0x00400000;
         case TYPE_NUM_F64:
             return (arg->val.num.i64 & 0x0008000000000000) == 0x0008000000000000;
+        default:
+            return false;
     }
 }
 
@@ -446,7 +451,6 @@ static error_t run_command(JSON_Object *command) {
 }
 
 int main(int argc, char *argv[]) {
-    test_ctx_t ctx = {};
     JSON_Value *root;
 
     __try {
