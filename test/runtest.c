@@ -358,7 +358,7 @@ static error_t run_command(JSON_Object *command) {
                 args_t expects;
                 convert_to_args(&expects, json_object_get_array(command, "expected"));
                 
-                val_t val = VECTOR_ELEM(&current_ctx->instance->store->globals, exportinst->value.global)->val;
+                val_t val = (*VECTOR_ELEM(&current_ctx->instance->store->globals, exportinst->value.global))->val;
                 arg_t *expect = VECTOR_ELEM(&expects, 0);
                 switch(expect->type) {
                     case TYPE_NUM_I32:

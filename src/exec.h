@@ -141,7 +141,7 @@ typedef struct {
     VECTOR(funcinst_t)      funcs;
     VECTOR(tableinst_t)     tables;
     VECTOR(meminst_t)       mems;
-    VECTOR(globalinst_t)    globals;
+    VECTOR(globalinst_t *)  globals;
     VECTOR(eleminst_t)      elems;
     VECTOR(datainst_t)      datas;
     funcaddr_t              funcaddr;

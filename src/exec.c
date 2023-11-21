@@ -328,6 +328,9 @@ static memaddr_t alloc_mem(instance_t *instance, mem_t *mem) {
     
     meminst->type = mem->type;
     meminst->num_pages = mem->type.min;
+    for(uint32_t i = 0; i < 4; i++) {
+        meminst->table2[i] = NULL;
+    }
 
     return S->memaddr++;
 }
@@ -353,19 +356,21 @@ error_t exec_expr(instance_t *instance, expr_t * expr);
 static globaladdr_t alloc_global(instance_t *instance, global_t *global) {
     stack_t *stack = instance->stack;
     store_t *S = instance->store;
-    globalinst_t *globalinst = VECTOR_ELEM(&S->globals, S->globaladdr);
+    globalinst_t *globalinst = malloc(sizeof(globalinst_t));
 
     globalinst->gt = global->gt;
 
     exec_expr(instance, &global->expr);
     pop_val(stack, &globalinst->val);
     
+    *VECTOR_ELEM(&S->globals, S->globaladdr) = globalinst;
+
     return S->globaladdr++;
 }
 
 static globaladdr_t alloc_imported_global(instance_t *to, instance_t *from, globaladdr_t globaladdr) {
-    globalinst_t *dst = VECTOR_ELEM(&to->store->globals, to->store->globaladdr);
-    globalinst_t *src = VECTOR_ELEM(&from->store->globals, globaladdr);
+    globalinst_t **dst = VECTOR_ELEM(&to->store->globals, to->store->globaladdr);
+    globalinst_t **src = VECTOR_ELEM(&from->store->globals, globaladdr);
 
     *dst = *src;
 
@@ -488,7 +493,7 @@ error_t alloc_imports(instance_t *target, module_t *module) {
                 }
                 case EXTERN_GLOBAL: {
                     globaltype_t *expect = &import->d.globaltype;
-                    globaltype_t *actual = &VECTOR_ELEM(&from->store->globals, externval->global)->gt;
+                    globaltype_t *actual = &(*VECTOR_ELEM(&from->store->globals, externval->global))->gt;
                     __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_globaltype(expect, actual));
                     break;
                 }
@@ -1079,7 +1084,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
 
                 case OP_GLOBAL_GET: {
                     globaladdr_t a = F->module->globaladdrs[ip->globalidx];
-                    globalinst_t *glob = VECTOR_ELEM(&S->globals, a);
+                    globalinst_t *glob = *VECTOR_ELEM(&S->globals, a);
                     __throwiferr(push_val(stack, glob->val));
                     break;
                 }
@@ -1087,7 +1092,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                 case OP_GLOBAL_SET: {
                     val_t val;
                     globaladdr_t a = F->module->globaladdrs[ip->globalidx];
-                    globalinst_t *glob = VECTOR_ELEM(&S->globals, a);
+                    globalinst_t *glob = *VECTOR_ELEM(&S->globals, a);
                     pop_val(stack, &val);
                     glob->val = val;
                     break;
