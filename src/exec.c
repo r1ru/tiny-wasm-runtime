@@ -2204,6 +2204,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                             }
 
                             if(!IS_ERROR(VECTOR_GROW(&tab->elem, n))) {
+                                tab->elem.len += n;
                                 // init
                                 for(int i = sz; i < tab->elem.len; i++) {
                                     *VECTOR_ELEM(&tab->elem, i) = val.ref;

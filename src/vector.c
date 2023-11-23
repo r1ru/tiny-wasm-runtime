@@ -44,16 +44,15 @@ error_t vector_concat(vector_t *dst, vector_t *src1, vector_t *src2) {
         return err;
 }
 
-error_t vector_grow(vector_t *vec, size_t len) {
+error_t vector_grow(vector_t *vec, size_t n) {
     __try {
-        if(len == 0)
+        if(n == 0)
             __throw(ERR_SUCCESS);
         
-        void *new = realloc(vec->elem, vec->ent_size * (len + vec->cap));
+        void *new = realloc(vec->elem, vec->ent_size * (n+ vec->cap));
         __throwif(ERR_FAILED, !new);
         vec->elem = new;
-        vec->cap += len;
-        vec->len += len;
+        vec->cap += n;
     }
     __catch:
         return err;

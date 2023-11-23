@@ -53,8 +53,8 @@ typedef struct {
         (vec)->len != 0 && __i < (vec)->len ? &(vec)->elem[__i] : NULL;                 \
     })
 
-#define VECTOR_GROW(vec, len)                                                             \
-    vector_grow((vector_t *)vec, len)
+#define VECTOR_GROW(vec, n)                                                             \
+    vector_grow((vector_t *)vec, n)
 
 void vector_init(vector_t *vec);
 void vector_copy(vector_t *dst, vector_t *src);
