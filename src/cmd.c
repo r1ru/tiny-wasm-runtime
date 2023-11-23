@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
         PANIC("insntiation failed");
 
     args_t args;
-    VECTOR_NEW(&args, 1);
+    VECTOR_NEW(&args, 1, 1);
     *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I64, .val.num.i64 = 200};
     // invoke
     err = invoke(instance, 41, &args);

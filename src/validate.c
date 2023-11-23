@@ -70,7 +70,7 @@ error_t validate_blocktype(context_t *C, blocktype_t bt, functype_t *ty) {
             case TYPE_NUM_F64:
             case TYPE_EXTENREF:
             case TYPE_FUNCREF:
-                VECTOR_NEW(&ty->rt2, 1);
+                VECTOR_NEW(&ty->rt2, 1, 1);
                 *VECTOR_ELEM(&ty->rt2, 0) = bt.valtype;
                 break;
 
@@ -1100,12 +1100,12 @@ error_t validate_module(module_t *mod) {
         // create context C
         context_t C;
         VECTOR_COPY(&C.types, &mod->types);
-        VECTOR_NEW(&C.funcs, mod->num_func_imports + mod->funcs.len);
-        VECTOR_NEW(&C.tables, mod->num_table_imports + mod->tables.len);
-        VECTOR_NEW(&C.mems, mod->num_mem_imports + mod->mems.len);
-        VECTOR_NEW(&C.globals, mod->num_global_imports + mod->globals.len);
-        VECTOR_NEW(&C.elems, mod->elems.len);
-        VECTOR_NEW(&C.datas, mod->datas.len);
+        VECTOR_NEW(&C.funcs, mod->num_func_imports + mod->funcs.len, mod->num_func_imports + mod->funcs.len);
+        VECTOR_NEW(&C.tables, mod->num_table_imports + mod->tables.len, mod->num_table_imports + mod->tables.len);
+        VECTOR_NEW(&C.mems, mod->num_mem_imports + mod->mems.len, mod->num_mem_imports + mod->mems.len);
+        VECTOR_NEW(&C.globals, mod->num_global_imports + mod->globals.len, mod->num_global_imports + mod->globals.len);
+        VECTOR_NEW(&C.elems, mod->elems.len, mod->elems.len);
+        VECTOR_NEW(&C.datas, mod->datas.len, mod->datas.len);
         VECTOR_INIT(&C.locals);
         LIST_INIT(&C.labels);
         C.ret = NULL;
@@ -1142,7 +1142,7 @@ error_t validate_module(module_t *mod) {
         // C.mems must be larger than 1
         __throwif(ERR_FAILED, C.mems.len > 1);
 
-        VECTOR_NEW(&C.refs, mod->num_func_imports + mod->funcs.len);
+        VECTOR_NEW(&C.refs, mod->num_func_imports + mod->funcs.len, mod->num_func_imports + mod->funcs.len);
         VECTOR_FOR_EACH(global, &mod->globals) {
             mark_funcidx_in_expr(&C, &global->expr);
         }
