@@ -46,12 +46,9 @@ typedef struct {
 
 struct instance_t;
 typedef struct {
-    bool                is_imported;
     functype_t          *type;
     moduleinst_t        *module;
     func_t              *code;
-    struct instance_t   *instance;
-    funcaddr_t          funcaddr;
 } funcinst_t;
 
 #define REF_NULL    -1
@@ -141,7 +138,7 @@ typedef struct {
     VECTOR(funcinst_t)      funcs;
     VECTOR(tableinst_t)     tables;
     VECTOR(meminst_t)       mems;
-    VECTOR(globalinst_t *)  globals;
+    VECTOR(globalinst_t)    globals;
     VECTOR(eleminst_t)      elems;
     VECTOR(datainst_t)      datas;
     funcaddr_t              funcaddr;

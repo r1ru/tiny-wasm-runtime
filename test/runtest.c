@@ -115,26 +115,6 @@ error_t decode_module_from_fpath(const char *fpath, module_t **mod) {
         return err;
 }
 
-error_t register_imports(void) {
-    __try {
-        module_t *module;
-        instance_t *instance;
-
-        // decode
-        __throwiferr(decode_module_from_fpath("./spectest.wasm", &module));
-
-        // validate
-        __throwiferr(validate_module(module));
-
-        // instantiate
-        __throwiferr(instantiate(&instance, module));
-        
-        register_module(instance, "spectest");
-    }
-    __catch:
-        return err;
-}
-
 // ref: https://github.com/WebAssembly/wabt/blob/main/docs/wast2json.md
 // used only in test
 #define TYPE_NAN_CANONICAL  (1<<7)
@@ -250,11 +230,6 @@ static error_t run_command(JSON_Object *command) {
             
             current_ctx = ctx;
         }
-        else if(strcmp(type, "register") == 0) {
-            const char *as    = json_object_get_string(command, "as");
-            // todo: fix this
-            register_module(current_ctx->instance, as);
-        }
         else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0 || \
                 strcmp(type, "action") == 0  || strcmp(type, "assert_exhaustion") == 0) {
             
@@ -358,7 +333,7 @@ static error_t run_command(JSON_Object *command) {
                 args_t expects;
                 convert_to_args(&expects, json_object_get_array(command, "expected"));
                 
-                val_t val = (*VECTOR_ELEM(&current_ctx->instance->store->globals, exportinst->value.global))->val;
+                val_t val = VECTOR_ELEM(&current_ctx->instance->store->globals, exportinst->value.global)->val;
                 arg_t *expect = VECTOR_ELEM(&expects, 0);
                 switch(expect->type) {
                     case TYPE_NUM_I32:
@@ -454,8 +429,6 @@ int main(int argc, char *argv[]) {
     JSON_Value *root;
 
     __try {
-        __throwiferr(register_imports());
-
         INFO("testsuite: %s", argv[1]);
 
         root = json_parse_file(argv[1]);

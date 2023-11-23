@@ -61,7 +61,8 @@ typedef struct {
         if((vec)->len == (vec)->cap) {                                                  \
             VECTOR_GROW(vec, (vec)->cap);                                               \
         }                                                                               \
-        (vec)->elem[(vec)->len++] = val;                                                \
+        (vec)->elem[(vec)->len] = val;                                                  \
+        (vec)->len++;                                                                   \
     })
 
 void vector_init(vector_t *vec);

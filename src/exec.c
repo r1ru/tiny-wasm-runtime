@@ -7,9 +7,6 @@
 #include <math.h>
 #include <string.h>
 
-// todo: remove this?
-static list_t imported_modules = {.next = &imported_modules, .prev = &imported_modules};
-
 // stack
 void new_stack(stack_t **d) {
     stack_t *stack = *d = malloc(sizeof(stack_t));
@@ -266,11 +263,6 @@ static paddr_t eaddr_to_paddr(meminst_t *meminst, eaddr_t eaddr) {
     return (uint64_t)table0[vpn0] | (eaddr & 0xfff);
 }
 
-void register_module(instance_t *inst, const uint8_t *as) {
-    inst->name = as;
-    list_push_back(&imported_modules, &inst->link);
-}
-
 static funcaddr_t alloc_func(instance_t *instance, func_t *func) {
     store_t *S = instance->store;
     moduleinst_t *moduleinst = instance->moduleinst;
@@ -278,23 +270,11 @@ static funcaddr_t alloc_func(instance_t *instance, func_t *func) {
     funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, S->funcaddr);
     functype_t *functype = &moduleinst->types[func->type];
 
-    funcinst->is_imported = false;
     funcinst->type   = functype;
     funcinst->module = moduleinst;
     funcinst->code   = func;
 
     return S->funcaddr++;
-}
-
-static funcaddr_t alloc_imported_func(instance_t *to, instance_t *from, funcaddr_t funcaddr) {
-    funcinst_t *dst = VECTOR_ELEM(&to->store->funcs, to->store->funcaddr);
-    funcinst_t *src = VECTOR_ELEM(&from->store->funcs, funcaddr);
-
-    dst->is_imported = true;
-    dst->type = src->type;
-    dst->instance = from;
-    dst->funcaddr = funcaddr;
-    return to->store->funcaddr++;
 }
 
 static tableaddr_t alloc_table(instance_t *instance, table_t *table) {
@@ -313,15 +293,6 @@ static tableaddr_t alloc_table(instance_t *instance, table_t *table) {
     return S->tableaddr++;
 }
 
-static tableaddr_t alloc_imported_table(instance_t *to, instance_t *from, tableaddr_t tableaddr) {
-    tableinst_t *dst = VECTOR_ELEM(&to->store->tables, to->store->tableaddr);
-    tableinst_t *src = VECTOR_ELEM(&from->store->tables, tableaddr);
-
-    *dst = *src;
-
-    return to->store->tableaddr++;
-}
-
 static memaddr_t alloc_mem(instance_t *instance, mem_t *mem) {
     store_t *S = instance->store;
     meminst_t *meminst = VECTOR_ELEM(&S->mems, S->memaddr);
@@ -333,14 +304,6 @@ static memaddr_t alloc_mem(instance_t *instance, mem_t *mem) {
     }
 
     return S->memaddr++;
-}
-
-static memaddr_t alloc_imported_mem(instance_t *to, instance_t *from, memaddr_t memaddr) {
-    meminst_t *dst = VECTOR_ELEM(&to->store->mems, to->store->memaddr);
-    meminst_t *src = VECTOR_ELEM(&from->store->mems, memaddr);
-
-    *dst = *src;
-    return to->store->memaddr++;
 }
 
 static dataaddr_t alloc_data(instance_t *instance, data_t *data) {
@@ -356,25 +319,14 @@ error_t exec_expr(instance_t *instance, expr_t * expr);
 static globaladdr_t alloc_global(instance_t *instance, global_t *global) {
     stack_t *stack = instance->stack;
     store_t *S = instance->store;
-    globalinst_t *globalinst = malloc(sizeof(globalinst_t));
+    globalinst_t globalinst;
 
-    globalinst->gt = global->gt;
+    globalinst.gt = global->gt;
 
     exec_expr(instance, &global->expr);
-    pop_val(stack, &globalinst->val);
+    pop_val(stack, &globalinst.val);
     
-    *VECTOR_ELEM(&S->globals, S->globaladdr) = globalinst;
-
-    return S->globaladdr++;
-}
-
-static globaladdr_t alloc_imported_global(instance_t *to, instance_t *from, globaladdr_t globaladdr) {
-    globalinst_t **dst = VECTOR_ELEM(&to->store->globals, to->store->globaladdr);
-    globalinst_t **src = VECTOR_ELEM(&from->store->globals, globaladdr);
-
-    *dst = *src;
-
-    return to->store->globaladdr++;
+    return VECTOR_APPEND(&S->globals, globalinst);
 }
 
 static elemaddr_t alloc_elem(instance_t *instance, elem_t *elem) {
@@ -395,142 +347,6 @@ static elemaddr_t alloc_elem(instance_t *instance, elem_t *elem) {
     return S->elemaddr++;
 }
 
-static bool match_functype(functype_t *ft1, functype_t *ft2) {
-    if(ft1->rt1.len != ft2->rt1.len)
-        return false;
-
-    for(uint32_t i = 0; i < ft1->rt1.len; i++) {
-        if(*VECTOR_ELEM(&ft1->rt1, i) != *VECTOR_ELEM(&ft2->rt1, i)){
-            return false;
-        };
-    }
-
-    if(ft1->rt2.len != ft2->rt2.len)
-        return false;
-
-    for(uint32_t i = 0; i < ft1->rt2.len; i++) {
-        if(*VECTOR_ELEM(&ft1->rt2, i) != *VECTOR_ELEM(&ft2->rt2, i)){
-            return false;
-        };
-    }
-
-    return true;
-}
-
-static bool match_limits(limits_t *l1, limits_t *l2) {
-    if(l1->min >= l2->min) {
-        if(l2->max == 0)
-            return true;
-        else if(l1->max != 0 && l2->max != 0 && l1->max <= l2->max)
-            return true;
-        else
-            return false;
-    }
-    return false;
-}
-
-static bool match_tabletype(tabletype_t *tt1, tabletype_t *tt2) {
-    if(tt1->reftype != tt2->reftype)
-        return false;
-    
-    return match_limits(&tt1->limits, &tt2->limits);
-}
-
-static bool match_memtype(memtype_t *mt1, memtype_t *mt2) {
-    return match_limits(mt1, mt2);
-}
-
-static bool match_globaltype(globaltype_t *gt1, globaltype_t *gt2) {
-    if(gt1->mut != gt2->mut || gt1->type != gt2->type)
-        return false;
-    return true;
-}
-
-error_t alloc_imports(instance_t *target, module_t *module) {
-    __try {
-        instance_t *from = NULL;
-        idx_t funcidx = 0, tableidx = 0, memidx = 0, globalidx = 0;
-
-        VECTOR_FOR_EACH(import, &module->imports) {
-            // find instance
-            LIST_FOR_EACH(inst, &imported_modules, instance_t, link) {
-                if(strcmp(import->module, inst->name) == 0) {
-                    from = inst;
-                    break;
-                }
-            }
-            __throwif(ERR_FAILED, !from);
-
-            // find expordesc
-            externval_t *externval = NULL;
-            VECTOR_FOR_EACH(exportinst, &from->moduleinst->exports) {
-                if(strcmp(import->name, exportinst->name) == 0) {
-                    externval = &exportinst->value;
-                    break;
-                }
-            }
-            __throwif(ERR_FAILED, !externval);
-
-            __throwif(ERR_FAILED, import->d.kind != externval->kind);
-
-            // check that type matches
-            switch(externval->kind) {
-                case EXTERN_FUNC: {
-                    functype_t *expect = VECTOR_ELEM(&module->types, import->d.func);
-                    functype_t *actual = VECTOR_ELEM(&from->store->funcs, externval->func)->type;
-                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_functype(actual, expect));
-                    break;
-                }
-                case EXTERN_TABLE: {
-                    tabletype_t *expect = &import->d.table;
-                    tabletype_t *actual = &VECTOR_ELEM(&from->store->tables, externval->table)->type;
-                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_tabletype(actual, expect));
-                    break;
-                }
-                case EXTERN_MEM: {
-                    memtype_t *expect = &import->d.mem;
-                    memtype_t *actual = &VECTOR_ELEM(&from->store->mems, externval->mem)->type;
-                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_memtype(actual, expect));
-                    break;
-                }
-                case EXTERN_GLOBAL: {
-                    globaltype_t *expect = &import->d.globaltype;
-                    globaltype_t *actual = &(*VECTOR_ELEM(&from->store->globals, externval->global))->gt;
-                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_globaltype(actual, expect));
-                    break;
-                }
-            }
-
-            // allocate imports
-            moduleinst_t *moduleinst = target->moduleinst;
-            switch(externval->kind) {
-                case EXTERN_FUNC: {
-                    moduleinst->funcaddrs[funcidx] = alloc_imported_func(target, from, externval->func);
-                    funcidx++;
-                    break;
-                }
-                case EXTERN_TABLE: {
-                    moduleinst->tableaddrs[tableidx] = alloc_imported_table(target, from, externval->table);
-                    tableidx++;
-                    break;
-                }
-                case EXTERN_MEM: {
-                    moduleinst->memaddrs[memidx] = alloc_imported_mem(target, from, externval->mem);
-                    memidx++;
-                    break;
-                }
-                case EXTERN_GLOBAL: {
-                    moduleinst->globaladdrs[globalidx] = alloc_imported_global(target, from, externval->global);
-                    globalidx++;
-                    break;
-                }
-            }
-        }
-    }
-    __catch:
-        return err;
-}
-
 error_t instantiate(instance_t **instance, module_t *module) {
     __try {
         // allocate instance
@@ -542,10 +358,10 @@ error_t instantiate(instance_t **instance, module_t *module) {
         // allocate stack
         new_stack(&inst->stack);
 
-        VECTOR_NEW(&store->funcs, module->num_func_imports + module->funcs.len, module->num_func_imports + module->funcs.len);
+        VECTOR_NEW(&store->funcs, module->funcs.len, module->funcs.len);
         VECTOR_NEW(&store->tables, module->num_table_imports + module->tables.len, module->num_table_imports + module->tables.len);
         VECTOR_NEW(&store->mems, module->num_mem_imports + module->mems.len, module->num_mem_imports + module->mems.len);
-        VECTOR_NEW(&store->globals, module->num_global_imports + module->globals.len, module->num_global_imports + module->globals.len);
+        VECTOR_NEW(&store->globals, 0, module->num_global_imports + module->globals.len);
         VECTOR_NEW(&store->elems, module->elems.len, module->elems.len);
         VECTOR_NEW(&store->datas, module->datas.len, module->datas.len);
         store->funcaddr = 0;
@@ -579,9 +395,6 @@ error_t instantiate(instance_t **instance, module_t *module) {
         );
         moduleinst->elemaddrs = malloc(sizeof(elemaddr_t) * module->elems.len);
         
-        // allocte imports
-        __throwiferr(alloc_imports(inst, module));
-
         // alloc funcs
         VECTOR_FOR_EACH(func, &module->funcs) {
             moduleinst->funcaddrs[funcidx] = alloc_func(inst, func);
@@ -1086,7 +899,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
 
                 case OP_GLOBAL_GET: {
                     globaladdr_t a = F->module->globaladdrs[ip->globalidx];
-                    globalinst_t *glob = *VECTOR_ELEM(&S->globals, a);
+                    globalinst_t *glob = VECTOR_ELEM(&S->globals, a);
                     __throwiferr(push_val(stack, glob->val));
                     break;
                 }
@@ -1094,7 +907,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                 case OP_GLOBAL_SET: {
                     val_t val;
                     globaladdr_t a = F->module->globaladdrs[ip->globalidx];
-                    globalinst_t *glob = *VECTOR_ELEM(&S->globals, a);
+                    globalinst_t *glob = VECTOR_ELEM(&S->globals, a);
                     pop_val(stack, &val);
                     glob->val = val;
                     break;
@@ -2282,53 +2095,35 @@ static error_t invoke_func(instance_t *instance, funcaddr_t funcaddr) {
         funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, funcaddr);
         functype_t *functype = funcinst->type;
 
-        if(funcinst->is_imported) {
-            args_t args;
-            VECTOR_NEW(&args, functype->rt1.len, functype->rt1.len);
-            // pop args
-            for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
-                arg_t *arg = VECTOR_ELEM(&args, i);
-                arg->type = *VECTOR_ELEM(&functype->rt1, i);
-                pop_val(stack, &arg->val);
-            }
-            // invoke
-            __throwiferr(invoke(funcinst->instance, funcinst->funcaddr, &args));
+        // create new frame
+        frame_t frame;
+        uint32_t num_locals = functype->rt1.len + funcinst->code->locals.len;
+        frame.module = funcinst->module;
+        frame.locals = malloc(sizeof(val_t) * num_locals);
 
-            VECTOR_FOR_EACH(ret, &args) {
-                push_val(stack, ret->val);
-            }
+        // pop args
+        for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
+            pop_val(stack, &frame.locals[i]);
         }
-        else {
-            // create new frame
-            frame_t frame;
-            uint32_t num_locals = functype->rt1.len + funcinst->code->locals.len;
-            frame.module = funcinst->module;
-            frame.locals = malloc(sizeof(val_t) * num_locals);
+        
+        // push activation frame
+        frame.arity  = functype->rt2.len;
+        __throwiferr(push_frame(stack, frame));
 
-            // pop args
-            for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
-                pop_val(stack, &frame.locals[i]);
-            }
-            
-            // push activation frame
-            frame.arity  = functype->rt2.len;
-            __throwiferr(push_frame(stack, frame));
+        // create label L
+        static instr_t end = {.op1 = OP_END, .next = NULL};
+        label_t L = {.arity = functype->rt2.len, .parent = NULL, .continuation = &end};
+        // enter instr* with label L
+        __throwiferr(push_label(stack, L));
 
-            // create label L
-            static instr_t end = {.op1 = OP_END, .next = NULL};
-            label_t L = {.arity = functype->rt2.len, .parent = NULL, .continuation = &end};
-            // enter instr* with label L
-            __throwiferr(push_label(stack, L));
+        __throwiferr(exec_expr(instance, &funcinst->code->body));
 
-            __throwiferr(exec_expr(instance, &funcinst->code->body));
-
-            // return from a function("return" instruction)
-            vals_t vals;
-            pop_vals_n(stack, frame.arity, &vals);
-            pop_while_not_frame(stack);
-            pop_frame(stack, &frame);
-            __throwiferr(push_vals(stack, vals));
-        }
+        // return from a function("return" instruction)
+        vals_t vals;
+        pop_vals_n(stack, frame.arity, &vals);
+        pop_while_not_frame(stack);
+        pop_frame(stack, &frame);
+        __throwiferr(push_vals(stack, vals));
     }
     __catch:
         return err;
