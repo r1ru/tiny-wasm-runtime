@@ -71,6 +71,15 @@ static void print_export(export_t *export) {
     );
 }
 
+static funcaddr_t find_func(moduleinst_t *moduleinst, const char *name) {
+    VECTOR_FOR_EACH(exportinst, &moduleinst->exports) {
+        if(strcmp(exportinst->name, name) == 0 && exportinst->value.kind == FUNC_EXPORTDESC)
+            return exportinst->value.func;
+    }
+    printf("Failed to find %s\n", name);
+    exit(1);
+}
+
 int main(int argc, char *argv[]) {
     /*
     if(argc != 2) {
@@ -79,7 +88,7 @@ int main(int argc, char *argv[]) {
     }*/
 
     //int fd = open(argv[1], O_RDWR);
-    int fd = open("./build/test/unreached-invalid.1.wasm", O_RDONLY);
+    int fd = open("./build/test/i32.0.wasm", O_RDONLY);
     if(fd == -1) fatal("open");
 
     struct stat s;
@@ -144,16 +153,21 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("validation failed: %d", err);
     
-    instance_t *instance;
-    err = instantiate(&instance, mod);
+    store_t *S = new_store_from_module(mod);
+    moduleinst_t *moduleinst = NULL;
+    err = instantiate(S, mod, &moduleinst);
     if(IS_ERROR(err))
         PANIC("insntiation failed");
-
+    
     args_t args;
-    VECTOR_NEW(&args, 1, 1);
-    *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I64, .val.num.i64 = 200};
+    VECTOR_NEW(&args, 2, 2);
+    *VECTOR_ELEM(&args, 0) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 1};
+    *VECTOR_ELEM(&args, 1) = (arg_t){.type = TYPE_NUM_I32, .val.num.i32 = 2};
+
     // invoke
-    err = invoke(instance, 41, &args);
+    funcaddr_t funcaddr = find_func(moduleinst, "add");
+    
+    err = invoke(S, 0, &args);
 
     if(IS_ERROR(err))
         PANIC("invocation fail: %d", err);

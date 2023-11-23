@@ -3,20 +3,21 @@
 #include "memory.h"
 #include <stdint.h>
 
-void vector_init(vector_t *vec) {
+void vector_init(vector_t *vec, size_t ent_size) {
     vec->cap = 0;
     vec->len = 0;
-    vec->ent_size = 0;
+    vec->ent_size = ent_size;
     vec->elem = NULL;
 }
 
+// todo: return err if len > cap
 error_t vector_new(vector_t *vec, size_t ent_size, size_t len, size_t cap) {
     __try {
         vec->elem = malloc(ent_size * cap);
         __throwif(ERR_FAILED, !vec->elem);
         vec->cap = cap;
         vec->len = len;
-        vec->ent_size = ent_size;        
+        vec->ent_size = ent_size;
     }
     __catch:
         return err;
@@ -49,7 +50,7 @@ error_t vector_grow(vector_t *vec, size_t n) {
         if(n == 0)
             __throw(ERR_SUCCESS);
         
-        void *new = realloc(vec->elem, vec->ent_size * (n+ vec->cap));
+        void *new = realloc(vec->elem, vec->ent_size * (n + vec->cap));
         __throwif(ERR_FAILED, !new);
         vec->elem = new;
         vec->cap += n;

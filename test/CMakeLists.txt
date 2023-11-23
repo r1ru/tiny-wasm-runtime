@@ -87,6 +87,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_copy.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_copy
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_init.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_init
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/tokens.wast -o ${CMAKE_CURRENT_BINARY_DIR}/tokens
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/linking.wast -o ${CMAKE_CURRENT_BINARY_DIR}/linking
 )
 
 add_test(

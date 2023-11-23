@@ -141,15 +141,8 @@ typedef struct {
     VECTOR(globalinst_t)    globals;
     VECTOR(eleminst_t)      elems;
     VECTOR(datainst_t)      datas;
-} store_t;
-
-typedef struct instance_t {
-    const uint8_t           *name;
-    list_elem_t             link;
     stack_t                 *stack;
-    store_t                 *store;
-    moduleinst_t            *moduleinst;
-} instance_t;
+} store_t;
 
 typedef struct {
     valtype_t   type;
@@ -167,6 +160,6 @@ void pop_vals(stack_t *stack, vals_t *vals);
 void pop_label(stack_t *stack, label_t *label);
 void pop_frame(stack_t *stack, frame_t *frame);
 
-error_t instantiate(instance_t **instance, module_t *module);
-error_t invoke(instance_t *instance, funcaddr_t funcaddr, args_t *args);
-void register_module(instance_t *inst, const uint8_t *as);
+store_t *new_store_from_module(module_t *module);
+error_t instantiate(store_t *S, module_t *module, moduleinst_t **inst);
+error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args);

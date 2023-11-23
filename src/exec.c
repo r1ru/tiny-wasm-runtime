@@ -218,11 +218,6 @@ void pop_while_not_frame(stack_t *stack) {
             case TYPE_VAL:
                 stack->idx--;
                 break;
-            case TYPE_FRAME: {
-                frame_t tmp;
-                pop_frame(stack, &tmp);
-                break;
-            }
             case TYPE_LABEL: {
                 label_t tmp;
                 pop_label(stack, &tmp);
@@ -242,15 +237,13 @@ static paddr_t eaddr_to_paddr(meminst_t *meminst, eaddr_t eaddr) {
     uint32_t vpn0 = (eaddr) >> 12 & 0x1ff;
 
     if(meminst->table2[vpn2] == NULL) {
-        meminst->table2[vpn2] = malloc(4096);
-        memset(meminst->table2[vpn2], 0, 4096);
+        meminst->table2[vpn2] = calloc(1, 4096);
     }
     
     uint8_t ***table1 = meminst->table2[vpn2];
 
     if(table1[vpn1] == NULL) {
-        table1[vpn1] = malloc(4096);
-        memset(table1[vpn1], 0, 4096);
+        table1[vpn1] = calloc(1, 4096);
     }
 
     uint8_t **table0 = table1[vpn1];
@@ -263,10 +256,7 @@ static paddr_t eaddr_to_paddr(meminst_t *meminst, eaddr_t eaddr) {
     return (uint64_t)table0[vpn0] | (eaddr & 0xfff);
 }
 
-static funcaddr_t alloc_func(instance_t *instance, func_t *func) {
-    store_t *S = instance->store;
-    moduleinst_t *moduleinst = instance->moduleinst;
-
+static funcaddr_t alloc_func(store_t *S, func_t *func, moduleinst_t *moduleinst) {
     funcinst_t funcinst;
 
     funcinst.type = &moduleinst->types[func->type];
@@ -276,8 +266,7 @@ static funcaddr_t alloc_func(instance_t *instance, func_t *func) {
     return VECTOR_APPEND(&S->funcs, funcinst);
 }
 
-static tableaddr_t alloc_table(instance_t *instance, table_t *table) {
-    store_t *S = instance->store;
+static tableaddr_t alloc_table(store_t *S, table_t *table) {
     tableinst_t tableinst;
     
     uint32_t n = table->type.limits.min;
@@ -292,8 +281,7 @@ static tableaddr_t alloc_table(instance_t *instance, table_t *table) {
     return VECTOR_APPEND(&S->tables, tableinst);
 }
 
-static memaddr_t alloc_mem(instance_t *instance, mem_t *mem) {
-    store_t *S = instance->store;
+static memaddr_t alloc_mem(store_t *S, mem_t *mem) {
     meminst_t meminst;
     
     meminst.type = mem->type;
@@ -305,8 +293,7 @@ static memaddr_t alloc_mem(instance_t *instance, mem_t *mem) {
     return VECTOR_APPEND(&S->mems, meminst);
 }
 
-static dataaddr_t alloc_data(instance_t *instance, data_t *data) {
-    store_t *S = instance->store;
+static dataaddr_t alloc_data(store_t *S, data_t *data) {
     datainst_t datainst;
 
     VECTOR_COPY(&datainst.data, &data->init);
@@ -314,56 +301,57 @@ static dataaddr_t alloc_data(instance_t *instance, data_t *data) {
     return VECTOR_APPEND(&S->datas, datainst);
 }
 
-error_t exec_expr(instance_t *instance, expr_t * expr);
-static globaladdr_t alloc_global(instance_t *instance, global_t *global) {
-    stack_t *stack = instance->stack;
-    store_t *S = instance->store;
+error_t exec_expr(store_t *S, expr_t * expr);
+static globaladdr_t alloc_global(store_t *S, global_t *global) {
     globalinst_t globalinst;
 
     globalinst.gt = global->gt;
 
-    exec_expr(instance, &global->expr);
-    pop_val(stack, &globalinst.val);
+    exec_expr(S, &global->expr);
+    pop_val(S->stack, &globalinst.val);
     
     return VECTOR_APPEND(&S->globals, globalinst);
 }
 
-static elemaddr_t alloc_elem(instance_t *instance, elem_t *elem) {
-    stack_t *stack = instance->stack;
-    store_t *S = instance->store;
+static elemaddr_t alloc_elem(store_t *S, elem_t *elem) {
     eleminst_t eleminst;
 
     VECTOR_NEW(&eleminst.elem, elem->init.len, elem->init.len);
 
     for(uint32_t j = 0; j < elem->init.len; j++) {
         expr_t *init = VECTOR_ELEM(&elem->init, j);
-        exec_expr(instance, init);
+        exec_expr(S, init);
         val_t val;
-        pop_val(stack, &val);
+        pop_val(S->stack, &val);
         *VECTOR_ELEM(&eleminst.elem, j) = val.ref;
     }
 
     return VECTOR_APPEND(&S->elems, eleminst);
 }
 
-error_t instantiate(instance_t **instance, module_t *module) {
-    __try {
-        // allocate instance
-        instance_t *inst = *instance = malloc(sizeof(instance_t));
-        
-        // allocate store
-        store_t *store = inst->store = malloc(sizeof(store_t));
-        
-        // allocate stack
-        new_stack(&inst->stack);
+store_t *new_store_from_module(module_t *module) {
+    // allocate store
+    store_t *S = malloc(sizeof(store_t));
+    // allocate stack
+    new_stack(&S->stack);
 
-        VECTOR_NEW(&store->funcs, 0, module->funcs.len);
-        VECTOR_NEW(&store->tables, 0, module->num_table_imports + module->tables.len);
-        VECTOR_NEW(&store->mems, 0, module->num_mem_imports + module->mems.len);
-        VECTOR_NEW(&store->globals, 0, module->num_global_imports + module->globals.len);
-        VECTOR_NEW(&store->elems, 0, module->elems.len);
-        VECTOR_NEW(&store->datas, 0, module->datas.len);
-        
+    VECTOR_INIT(&S->funcs);
+    VECTOR_INIT(&S->tables);
+    VECTOR_INIT(&S->mems);
+    VECTOR_INIT(&S->globals);
+    VECTOR_INIT(&S->elems);
+    VECTOR_INIT(&S->datas);
+
+    return S;
+}
+
+/*
+    In the spec, funcaddr is passed as an argument to invoke. 
+    This requires that the caller has access to the moduleinst. 
+    Therefore, it takes a pointer to moduleinst as its third argument.
+*/
+error_t instantiate(store_t *S, module_t *module, moduleinst_t **inst) {
+    __try {
         // todo: allocate imported objects
         uint32_t funcidx = module->num_func_imports;
         uint32_t tableidx = module->num_table_imports;
@@ -371,7 +359,15 @@ error_t instantiate(instance_t **instance, module_t *module) {
         uint32_t globalidx = module->num_global_imports;
         uint32_t elemidx = 0, dataidx = 0;
 
-        moduleinst_t *moduleinst = inst->moduleinst = malloc(sizeof(moduleinst_t));
+        // allocate space in store
+        VECTOR_GROW(&S->funcs, module->funcs.len);
+        VECTOR_GROW(&S->tables, module->tables.len);
+        VECTOR_GROW(&S->mems, module->mems.len);
+        VECTOR_GROW(&S->globals, module->globals.len);
+        VECTOR_GROW(&S->elems, module->elems.len);
+        VECTOR_GROW(&S->datas, module->datas.len);
+
+        moduleinst_t *moduleinst = *inst = malloc(sizeof(moduleinst_t));
         moduleinst->types = module->types.elem;
         moduleinst->funcaddrs = malloc(
             sizeof(funcaddr_t) * (module->num_func_imports + module->funcs.len)
@@ -390,40 +386,40 @@ error_t instantiate(instance_t **instance, module_t *module) {
         
         // alloc funcs
         VECTOR_FOR_EACH(func, &module->funcs) {
-            moduleinst->funcaddrs[funcidx] = alloc_func(inst, func);
+            moduleinst->funcaddrs[funcidx] = alloc_func(S, func, moduleinst);
             funcidx++;
         }
 
         // alloc tables
         VECTOR_FOR_EACH(table, &module->tables) {
-            moduleinst->tableaddrs[tableidx] = alloc_table(inst, table);
+            moduleinst->tableaddrs[tableidx] = alloc_table(S, table);
             tableidx++;
         }
 
         // alloc mems
         VECTOR_FOR_EACH(mem, &module->mems) {
-            moduleinst->memaddrs[memidx] = alloc_mem(inst, mem);
+            moduleinst->memaddrs[memidx] = alloc_mem(S, mem);
             memidx++;
         }
 
         // alloc datas
         VECTOR_FOR_EACH(data, &module->datas) {
-            moduleinst->dataaddrs[dataidx] = alloc_data(inst, data);
+            moduleinst->dataaddrs[dataidx] = alloc_data(S, data);
             dataidx++;
         }
 
         // alloc globals
         frame_t F = {.module = moduleinst, .locals = NULL};
-        __throwiferr(push_frame(inst->stack, F));
+        __throwiferr(push_frame(S->stack, F));
 
         VECTOR_FOR_EACH(global, &module->globals) {
-            moduleinst->globaladdrs[globalidx] = alloc_global(inst, global);
+            moduleinst->globaladdrs[globalidx] = alloc_global(S, global);
             globalidx++;
         }
 
         // alloc elems
         VECTOR_FOR_EACH(elem, &module->elems) {
-            moduleinst->elemaddrs[elemidx] = alloc_elem(inst, elem);
+            moduleinst->elemaddrs[elemidx] = alloc_elem(S, elem);
             elemidx++;
         }
 
@@ -435,11 +431,11 @@ error_t instantiate(instance_t **instance, module_t *module) {
                 continue;
             
             // exec instruction sequence
-            exec_expr(inst, &elem->mode.offset);
+            exec_expr(S, &elem->mode.offset);
 
             // exec i32.const 0; i32.const n;
-            __throwiferr(push_i32(inst->stack, 0));
-            __throwiferr(push_i32(inst->stack, elem->init.len));
+            __throwiferr(push_i32(S->stack, 0));
+            __throwiferr(push_i32(S->stack, elem->init.len));
 
             // table.init
             instr_t elem_drop = {
@@ -449,7 +445,7 @@ error_t instantiate(instance_t **instance, module_t *module) {
                 .op1 = OP_0XFC, .op2 = 0x0C, .x = elem->mode.table, .y = i, .next = &elem_drop
             };
             expr_t expr = &table_init;
-            exec_expr(inst, &expr);
+            exec_expr(S, &expr);
         }
 
         // init memory if datamode is active
@@ -461,21 +457,21 @@ error_t instantiate(instance_t **instance, module_t *module) {
             
             __throwif(ERR_FAILED, data->mode.memory != 0);
 
-            exec_expr(inst, &data->mode.offset);
+            exec_expr(S, &data->mode.offset);
             // i32.const 0
-            __throwiferr(push_i32(inst->stack, 0));
+            __throwiferr(push_i32(S->stack, 0));
             // i32.const n
-            __throwiferr(push_i32(inst->stack, data->init.len));
+            __throwiferr(push_i32(S->stack, data->init.len));
 
             // memory.init i
             instr_t memory_init = {
                 .op1 = OP_0XFC, .op2 = 8, .x = i, .next = NULL
             };
             expr_t expr = &memory_init;
-            exec_expr(inst, &expr);
+            exec_expr(S, &expr);
         }
 
-        pop_frame(inst->stack, &F);
+        pop_frame(S->stack, &F);
 
         // create exportinst
         uint32_t exportidx = 0;
@@ -536,7 +532,7 @@ static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
 // ref: https://github.com/wasm3/wasm3/blob/main/source/m3_exec.h
 // ref: https://github.com/wasm3/wasm3/blob/main/source/m3_math_utils.h
 // ref: https://en.wikipedia.org/wiki/Circular_shift
-static error_t invoke_func(instance_t *instance, funcaddr_t funcaddr);
+static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
 
 #define TRUNC(A, TYPE, RMIN, RMAX)                              \
     ({                                                          \
@@ -583,11 +579,11 @@ static error_t invoke_func(instance_t *instance, funcaddr_t funcaddr);
 #define I64_TRUNC_SAT_F64(A)    TRUNC_SAT(A, int64_t, -9223372036854777856.0 ,  9223372036854775808.0,  INT64_MIN,  INT64_MAX)
 #define U64_TRUNC_SAT_F64(A)    TRUNC_SAT(A, uint64_t,                  -1.0 , 18446744073709551616.0,       0ULL, UINT64_MAX)
 
-error_t exec_expr(instance_t *instance, expr_t *expr) {
+error_t exec_expr(store_t *S, expr_t *expr) {
     instr_t *ip = *expr;
 
-    store_t *S = instance->store;
-    stack_t *stack = instance->stack;
+    stack_t *stack = S->stack;
+
     // current frame
     frame_t *F = LIST_TAIL(&stack->frames, frame_t, link);
 
@@ -809,7 +805,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
 
                 case OP_CALL: {
                     // invoke func
-                    __throwiferr(invoke_func(instance, F->module->funcaddrs[ip->funcidx]));
+                    __throwiferr(invoke_func(S, F->module->funcaddrs[ip->funcidx]));
                     break;
                 }
 
@@ -844,7 +840,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                         valtype_t a = *VECTOR_ELEM(&ft_actual->rt2, i);
                         __throwif(ERR_TRAP_INDIRECT_CALL_TYPE_MISMATCH, e != a);
                     }
-                    __throwiferr(invoke_func(instance, r));
+                    __throwiferr(invoke_func(S, r));
                     break;
                 }
 
@@ -1803,7 +1799,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                                     .m = (memarg_t){.offset = 0, .align = 0}
                                 };
                                 expr_t expr = &i32_store8;
-                                exec_expr(instance, &expr);
+                                exec_expr(S, &expr);
                                 s++;
                                 d++;
                             }
@@ -1852,14 +1848,14 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                                 if(d <= s) {
                                     __throwiferr(push_i32(stack, d));
                                     __throwiferr(push_i32(stack, s));
-                                    exec_expr(instance, &expr);
+                                    exec_expr(S, &expr);
                                     d++;
                                     s++;
                                 }
                                 else {
                                     __throwiferr(push_i32(stack, d + n - 1));
                                     __throwiferr(push_i32(stack, s + n - 1));
-                                    exec_expr(instance, &expr);
+                                    exec_expr(S, &expr);
                                 }
                                 n--;
                             }
@@ -1888,7 +1884,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                                     .m = (memarg_t){.offset = 0, .align = 0}
                                 };
                                 expr_t expr = &i32_store8;
-                                exec_expr(instance, &expr);
+                                exec_expr(S, &expr);
                                 d++;
                             }
                             break;
@@ -1926,7 +1922,7 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                                     .x = ip->x
                                 };
                                 expr_t expr = &table_set;
-                                exec_expr(instance, &expr);
+                                exec_expr(S, &expr);
                                 push_i32(stack, d + 1);
                                 push_i32(stack, s + 1);
                                 push_i32(stack, n - 1);
@@ -1978,14 +1974,14 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
                                 if(d <= s) {
                                     __throwiferr(push_i32(stack, d));
                                     __throwiferr(push_i32(stack, s));
-                                    exec_expr(instance, &expr);
+                                    exec_expr(S, &expr);
                                     __throwiferr(push_i32(stack, d + 1));
                                     __throwiferr(push_i32(stack, s + 1));
                                 }
                                 else {
                                     __throwiferr(push_i32(stack, d + n - 1));
                                     __throwiferr(push_i32(stack, s + n - 1));
-                                    exec_expr(instance, &expr);
+                                    exec_expr(S, &expr);
                                     __throwiferr(push_i32(stack, d));
                                     __throwiferr(push_i32(stack, s));
                                 }
@@ -2080,10 +2076,9 @@ error_t exec_expr(instance_t *instance, expr_t *expr) {
 }
 
 // ref: https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
-static error_t invoke_func(instance_t *instance, funcaddr_t funcaddr) {
+static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
     __try {
-        store_t *S = instance->store;
-        stack_t *stack = instance->stack;
+        stack_t *stack = S->stack;
 
         funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, funcaddr);
         functype_t *functype = funcinst->type;
@@ -2092,7 +2087,7 @@ static error_t invoke_func(instance_t *instance, funcaddr_t funcaddr) {
         frame_t frame;
         uint32_t num_locals = functype->rt1.len + funcinst->code->locals.len;
         frame.module = funcinst->module;
-        frame.locals = malloc(sizeof(val_t) * num_locals);
+        frame.locals = calloc(sizeof(val_t), num_locals);
 
         // pop args
         for(int32_t i = (functype->rt1.len - 1); 0 <= i; i--) {
@@ -2109,7 +2104,7 @@ static error_t invoke_func(instance_t *instance, funcaddr_t funcaddr) {
         // enter instr* with label L
         __throwiferr(push_label(stack, L));
 
-        __throwiferr(exec_expr(instance, &funcinst->code->body));
+        __throwiferr(exec_expr(S, &funcinst->code->body));
 
         // return from a function("return" instruction)
         vals_t vals;
@@ -2124,10 +2119,9 @@ static error_t invoke_func(instance_t *instance, funcaddr_t funcaddr) {
 
 // The args is a reference to args_t. 
 // This is because args is also used to return results.
-error_t invoke(instance_t *instance, funcaddr_t funcaddr, args_t *args) {
+error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args) {
     __try {
-        stack_t *stack = instance->stack;
-        store_t *S = instance->store;
+        stack_t *stack = S->stack;
 
         funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, funcaddr);
         __throwif(ERR_FAILED, !funcinst);
@@ -2149,7 +2143,7 @@ error_t invoke(instance_t *instance, funcaddr_t funcaddr, args_t *args) {
         }
 
         // invoke func
-        __throwiferr(invoke_func(instance, funcaddr));
+        __throwiferr(invoke_func(S, funcaddr));
 
         // reuse args to return results since it is no longer used.
         //free(args->elem);

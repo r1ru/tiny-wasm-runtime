@@ -20,7 +20,7 @@ typedef struct {
     }
  
 #define VECTOR_INIT(vec)                                                                \
-    vector_init((vector_t *)vec)
+    vector_init((vector_t *)vec, sizeof(__typeof__(*(vec)->elem)))
 
 #define VECTOR_NEW(vec, l, c)                                                           \
     vector_new((vector_t *)vec, sizeof(__typeof__(*(vec)->elem)), l, c)
@@ -65,7 +65,7 @@ typedef struct {
         (vec)->len++;                                                                   \
     })
 
-void vector_init(vector_t *vec);
+void vector_init(vector_t *vec, size_t ent_size);
 void vector_copy(vector_t *dst, vector_t *src);
 error_t vector_new(vector_t *vec, size_t ent_size, size_t len, size_t cap);
 error_t vector_concat(vector_t *dst, vector_t *src1, vector_t *src2);

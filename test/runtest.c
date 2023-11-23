@@ -17,14 +17,17 @@
 #include <exec.h>
 
 typedef struct {
-    list_elem_t link;
-    const char  *name;
-    instance_t  *instance;
-} test_ctx_t;
+    list_elem_t     link;
+    const char      *name;
+    const char      *export_name;
+    moduleinst_t    *moduleinst;
+} test_module_t;
 
-static test_ctx_t *current_ctx = NULL;
+static test_module_t *current_test_module = NULL;
 
-list_t test_ctxs = {.prev = &test_ctxs, .next = &test_ctxs};
+static store_t *S = NULL;
+
+list_t test_modules = {.prev = &test_modules, .next = &test_modules};
 
 static const char *error_msg[] = {
     [-ERR_SUCCESS]                                              = "success",
@@ -61,35 +64,32 @@ static const char *error_msg[] = {
 };
 
 // helpers
-static exportinst_t *find_exportinst(const char *name) {
-    VECTOR_FOR_EACH(e, &current_ctx->instance->moduleinst->exports) {
-        if(strcmp(e->name, name) == 0) {
-            return e;
+static test_module_t *new_test_module(const char *name, const char *export_name, moduleinst_t *moduleinst) {
+    test_module_t *test_module = malloc(sizeof(test_module_t));
+    test_module->name = name;
+    test_module->export_name = export_name;
+    test_module->moduleinst = moduleinst;
+    return test_module;
+}
+
+static test_module_t *find_test_module(const char *name) {
+    LIST_FOR_EACH(module, &test_modules, test_module_t, link) {
+        if(strcmp(module->name, name) == 0) {
+            return module;
         }
     }
     return NULL;
 }
 
-error_t lookup_func_by_name(const char *name, funcaddr_t *addr) {
-    VECTOR_FOR_EACH(e, &current_ctx->instance->moduleinst->exports) {
-        if(strcmp(e->name, name) == 0 && e->value.kind == EXTERN_FUNC) {
-            *addr = e->value.func;
-            return ERR_SUCCESS;
+static externval_t find_export(test_module_t *from, const char *name) {
+    VECTOR_FOR_EACH(exportinst, &from->moduleinst->exports) {
+        if(strcmp(exportinst->name, name) == 0) {
+            return exportinst->value;
         }
     }
-    return ERR_FAILED;
+    printf("%s not found\n", name);
+    exit(1);
 }
-
-// always success
-static test_ctx_t *find_test_ctx(const char *name) {
-    LIST_FOR_EACH(ctx, &test_ctxs, test_ctx_t, link) {
-        if(strcmp(ctx->name, name) == 0) {
-            return ctx;
-        }
-    }
-    return NULL;
-}
-
 error_t decode_module_from_fpath(const char *fpath, module_t **mod) {
     __try {
         int fd = open(fpath, O_RDONLY);
@@ -210,25 +210,33 @@ static error_t run_command(JSON_Object *command) {
     const double line   = json_object_get_number(command, "line");
     __try {
         if(strcmp(type, "module") == 0) {
-            // create new test context
-            test_ctx_t *ctx = malloc(sizeof(test_ctx_t));
             module_t *module;
-            // *.wasm files expected in the same directory as the json.
+            moduleinst_t *moduleinst;
+
+            // decode
             const char *fpath = json_object_get_string(command, "filename");
             __throwiferr(decode_module_from_fpath(fpath, &module));
 
-            const char *name = json_object_get_string(command, "name");
-            if(name) {
-                ctx->name = name;
-                list_push_back(&test_ctxs, &ctx->link);
-            }
             // validate
             __throwiferr(validate_module(module));
+            
+            // create store if not exist
+            if(!S) {
+                S = new_store_from_module(module);
+            }
 
             // instantiate
-            __throwiferr(instantiate(&ctx->instance, module));
-            
-            current_ctx = ctx;
+            __throwiferr(instantiate(S, module, &moduleinst));
+
+            // create test module
+            const char *name = json_object_get_string(command, "name");
+            if(name) {
+               current_test_module = new_test_module(name, "", moduleinst);
+               list_push_back(&test_modules, &current_test_module->link);
+            }
+            else {
+                current_test_module = new_test_module("", "", moduleinst);
+            }
         }
         else if(strcmp(type, "assert_return") == 0 || strcmp(type, "assert_trap") == 0 || \
                 strcmp(type, "action") == 0  || strcmp(type, "assert_exhaustion") == 0) {
@@ -239,19 +247,19 @@ static error_t run_command(JSON_Object *command) {
             if(strcmp(action_type, "invoke") == 0) {
                 const char *module = json_object_get_string(action, "module");
                 if(module) {
-                    current_ctx = find_test_ctx(module);
+                    current_test_module = find_test_module(module);
                 }
 
                 const char *func = json_object_get_string(action, "field");
 
-                funcaddr_t addr;
-                __throwiferr(lookup_func_by_name(func, &addr));
-                
+                externval_t externval = find_export(current_test_module, func);
+                __throwif(ERR_FAILED, externval.kind != FUNC_EXPORTDESC);
+
                 args_t args;
                 convert_to_args(&args, json_object_get_array(action, "args"));
 
                 if(strcmp(type, "assert_return") == 0) {
-                    __throwiferr(invoke(current_ctx->instance, addr, &args));
+                    __throwiferr(invoke(S, externval.func, &args));
 
                     args_t expects;
                     convert_to_args(&expects, json_object_get_array(command, "expected"));
@@ -302,9 +310,9 @@ static error_t run_command(JSON_Object *command) {
                         }
                     }
                 } else if(strcmp(type, "action") == 0) {
-                    __throwiferr(invoke(current_ctx->instance, addr, &args));
+                    __throwiferr(invoke(S, externval.func, &args));
                 } else {
-                    error_t ret = invoke(current_ctx->instance, addr, &args);
+                    error_t ret = invoke(S, externval.func, &args);
                     // check that invocation fails
                     __throwif(ERR_FAILED, !IS_ERROR(ret));
 
@@ -318,22 +326,23 @@ static error_t run_command(JSON_Object *command) {
                     );
 
                     // empty stack if assert_{exhaustion, trap}
-                     current_ctx->instance->stack->idx = -1;
+                    S->stack->idx = -1;
                 }
             }
             else if(strcmp(action_type, "get") == 0) {
                 const char *module = json_object_get_string(action, "module");
                 if(module) {
-                    current_ctx = find_test_ctx(module);
+                    current_test_module = find_test_module(module);
                 }
                 const char *field = json_object_get_string(action, "field");
 
-                exportinst_t *exportinst = find_exportinst(field);
+                externval_t externval = find_export(current_test_module, field);
+                __throwif(ERR_FAILED, externval.kind != EXTERN_GLOBAL);
 
                 args_t expects;
                 convert_to_args(&expects, json_object_get_array(command, "expected"));
                 
-                val_t val = VECTOR_ELEM(&current_ctx->instance->store->globals, exportinst->value.global)->val;
+                val_t val = VECTOR_ELEM(&S->globals, externval.global)->val;
                 arg_t *expect = VECTOR_ELEM(&expects, 0);
                 switch(expect->type) {
                     case TYPE_NUM_I32:
@@ -389,16 +398,15 @@ static error_t run_command(JSON_Object *command) {
         }
         else if(strcmp(type, "assert_unlinkable") == 0) {
             module_t *module;
-            instance_t *instance;
+            moduleinst_t *moduleinst;
 
             const char *fpath = json_object_get_string(command, "filename");
             __throwiferr(decode_module_from_fpath(fpath, &module));
 
             // validate
             __throwiferr(validate_module(module));
-
-            // instantiate
-            error_t ret = instantiate(&instance, module);
+            
+            error_t ret = instantiate(S, module, &moduleinst);
            
             __throwif(ERR_FAILED, !IS_ERROR(ret));
 
