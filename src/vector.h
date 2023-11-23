@@ -22,8 +22,8 @@ typedef struct {
 #define VECTOR_INIT(vec)                                                                \
     vector_init((vector_t *)vec)
 
-#define VECTOR_NEW(vec, c, l)                                                           \
-    vector_new((vector_t *)vec, sizeof(__typeof__(*(vec)->elem)), c, l)
+#define VECTOR_NEW(vec, l, c)                                                           \
+    vector_new((vector_t *)vec, sizeof(__typeof__(*(vec)->elem)), l, c)
 
 #define VECTOR_COPY(dst, src)                                                           \
     vector_copy((vector_t *)dst, (vector_t *)src)
@@ -56,8 +56,16 @@ typedef struct {
 #define VECTOR_GROW(vec, n)                                                             \
     vector_grow((vector_t *)vec, n)
 
+#define VECTOR_APPEND(vec, val)                                                         \
+    ({                                                                                  \
+        if((vec)->len == (vec)->cap) {                                                  \
+            VECTOR_GROW(vec, (vec)->cap);                                               \
+        }                                                                               \
+        (vec)->elem[(vec)->len++] = val;                                                \
+    })
+
 void vector_init(vector_t *vec);
 void vector_copy(vector_t *dst, vector_t *src);
-error_t vector_new(vector_t *vec, size_t ent_size, size_t cap, size_t len);
+error_t vector_new(vector_t *vec, size_t ent_size, size_t len, size_t cap);
 error_t vector_concat(vector_t *dst, vector_t *src1, vector_t *src2);
 error_t vector_grow(vector_t *vec, size_t len);

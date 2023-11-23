@@ -10,7 +10,7 @@ void vector_init(vector_t *vec) {
     vec->elem = NULL;
 }
 
-error_t vector_new(vector_t *vec, size_t ent_size, size_t cap, size_t len) {
+error_t vector_new(vector_t *vec, size_t ent_size, size_t len, size_t cap) {
     __try {
         vec->elem = malloc(ent_size * cap);
         __throwif(ERR_FAILED, !vec->elem);
