@@ -267,52 +267,51 @@ static funcaddr_t alloc_func(instance_t *instance, func_t *func) {
     store_t *S = instance->store;
     moduleinst_t *moduleinst = instance->moduleinst;
 
-    funcinst_t *funcinst = VECTOR_ELEM(&S->funcs, S->funcaddr);
-    functype_t *functype = &moduleinst->types[func->type];
+    funcinst_t funcinst;
 
-    funcinst->type   = functype;
-    funcinst->module = moduleinst;
-    funcinst->code   = func;
+    funcinst.type = &moduleinst->types[func->type];
+    funcinst.module = moduleinst;
+    funcinst.code   = func;
 
-    return S->funcaddr++;
+    return VECTOR_APPEND(&S->funcs, funcinst);
 }
 
 static tableaddr_t alloc_table(instance_t *instance, table_t *table) {
     store_t *S = instance->store;
-    tableinst_t *tableinst = VECTOR_ELEM(&S->tables, S->tableaddr);
-
+    tableinst_t tableinst;
+    
     uint32_t n = table->type.limits.min;
-    tableinst->type = table->type;
-    VECTOR_NEW(&tableinst->elem, n, n);
+    tableinst.type = table->type;
+    VECTOR_NEW(&tableinst.elem, n, n);
 
     // init with ref.null
-    VECTOR_FOR_EACH(elem, &tableinst->elem) {
+    VECTOR_FOR_EACH(elem, &tableinst.elem) {
         *elem = REF_NULL;
     }
 
-    return S->tableaddr++;
+    return VECTOR_APPEND(&S->tables, tableinst);
 }
 
 static memaddr_t alloc_mem(instance_t *instance, mem_t *mem) {
     store_t *S = instance->store;
-    meminst_t *meminst = VECTOR_ELEM(&S->mems, S->memaddr);
+    meminst_t meminst;
     
-    meminst->type = mem->type;
-    meminst->num_pages = mem->type.min;
+    meminst.type = mem->type;
+    meminst.num_pages = mem->type.min;
     for(uint32_t i = 0; i < 4; i++) {
-        meminst->table2[i] = NULL;
+        meminst.table2[i] = NULL;
     }
 
-    return S->memaddr++;
+    return VECTOR_APPEND(&S->mems, meminst);
 }
 
 static dataaddr_t alloc_data(instance_t *instance, data_t *data) {
     store_t *S = instance->store;
-    datainst_t *datainst = VECTOR_ELEM(&S->datas, S->dataaddr);
+    datainst_t datainst;
 
-    VECTOR_COPY(&datainst->data, &data->init);
+    VECTOR_COPY(&datainst.data, &data->init);
 
-    return S->dataaddr++;
+    return VECTOR_APPEND(&S->datas, datainst);
 }
 
 error_t exec_expr(instance_t *instance, expr_t * expr);
@@ -332,19 +331,19 @@ static globaladdr_t alloc_global(instance_t *instance, global_t *global) {
 static elemaddr_t alloc_elem(instance_t *instance, elem_t *elem) {
     stack_t *stack = instance->stack;
     store_t *S = instance->store;
-    eleminst_t *eleminst = VECTOR_ELEM(&S->elems, S->elemaddr);
+    eleminst_t eleminst;
 
-    VECTOR_NEW(&eleminst->elem, elem->init.len, elem->init.len);
+    VECTOR_NEW(&eleminst.elem, elem->init.len, elem->init.len);
 
     for(uint32_t j = 0; j < elem->init.len; j++) {
         expr_t *init = VECTOR_ELEM(&elem->init, j);
         exec_expr(instance, init);
         val_t val;
         pop_val(stack, &val);
-        *VECTOR_ELEM(&eleminst->elem, j) = val.ref;
+        *VECTOR_ELEM(&eleminst.elem, j) = val.ref;
     }
 
-    return S->elemaddr++;
+    return VECTOR_APPEND(&S->elems, eleminst);
 }
 
 error_t instantiate(instance_t **instance, module_t *module) {
@@ -358,18 +357,12 @@ error_t instantiate(instance_t **instance, module_t *module) {
         // allocate stack
         new_stack(&inst->stack);
 
-        VECTOR_NEW(&store->funcs, module->funcs.len, module->funcs.len);
-        VECTOR_NEW(&store->tables, module->num_table_imports + module->tables.len, module->num_table_imports + module->tables.len);
-        VECTOR_NEW(&store->mems, module->num_mem_imports + module->mems.len, module->num_mem_imports + module->mems.len);
+        VECTOR_NEW(&store->funcs, 0, module->funcs.len);
+        VECTOR_NEW(&store->tables, 0, module->num_table_imports + module->tables.len);
+        VECTOR_NEW(&store->mems, 0, module->num_mem_imports + module->mems.len);
         VECTOR_NEW(&store->globals, 0, module->num_global_imports + module->globals.len);
-        VECTOR_NEW(&store->elems, module->elems.len, module->elems.len);
-        VECTOR_NEW(&store->datas, module->datas.len, module->datas.len);
-        store->funcaddr = 0;
-        store->tableaddr = 0;
-        store->memaddr = 0;
-        store->globaladdr = 0;
-        store->elemaddr = 0;
-        store->dataaddr = 0;
+        VECTOR_NEW(&store->elems, 0, module->elems.len);
+        VECTOR_NEW(&store->datas, 0, module->datas.len);
         
         // todo: allocate imported objects
         uint32_t funcidx = module->num_func_imports;

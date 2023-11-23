@@ -141,12 +141,6 @@ typedef struct {
     VECTOR(globalinst_t)    globals;
     VECTOR(eleminst_t)      elems;
     VECTOR(datainst_t)      datas;
-    funcaddr_t              funcaddr;
-    tableaddr_t             tableaddr;
-    memaddr_t               memaddr;
-    globaladdr_t            globaladdr;
-    elemaddr_t              elemaddr;
-    dataaddr_t              dataaddr;
 } store_t;
 
 typedef struct instance_t {
