@@ -345,6 +345,7 @@ store_t *new_store(void) {
     return S;
 }
 
+static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
 /*
     In the spec, funcaddr is passed as an argument to invoke. 
     This requires that the caller has access to the moduleinst. 
@@ -448,6 +449,31 @@ error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, modu
             elemidx++;
         }
 
+        // create exportinst
+        uint32_t exportidx = 0;
+        VECTOR_NEW(&moduleinst->exports, module->exports.len, module->exports.len);
+        VECTOR_FOR_EACH(export, &module->exports) {
+            exportinst_t *exportinst = VECTOR_ELEM(&moduleinst->exports, exportidx);
+            exportinst->name = export->name;
+            exportinst->value.kind = export->exportdesc.kind;
+
+            switch(export->exportdesc.kind) {
+                case FUNC_EXPORTDESC:
+                    exportinst->value.func = moduleinst->funcaddrs[export->exportdesc.idx];
+                    break;
+                case TABLE_EXPORTDESC:
+                    exportinst->value.table = moduleinst->tableaddrs[export->exportdesc.idx];
+                    break;
+                case MEM_EXPORTDESC:
+                    exportinst->value.mem = moduleinst->memaddrs[export->exportdesc.idx];
+                    break;
+                case GLOBAL_EXPORTDESC:
+                    exportinst->value.mem = moduleinst->globaladdrs[export->exportdesc.idx];
+                    break;
+            }
+            exportidx++;
+        }
+
         // init table if elemmode is active
         for(uint32_t i = 0; i < module->elems.len; i++) {
             elem_t *elem = VECTOR_ELEM(&module->elems, i);
@@ -497,32 +523,12 @@ error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, modu
             __throwiferr(exec_expr(S, &expr));
         }
 
-        pop_frame(S->stack, &F);
-
-        // create exportinst
-        uint32_t exportidx = 0;
-        VECTOR_NEW(&moduleinst->exports, module->exports.len, module->exports.len);
-        VECTOR_FOR_EACH(export, &module->exports) {
-            exportinst_t *exportinst = VECTOR_ELEM(&moduleinst->exports, exportidx);
-            exportinst->name = export->name;
-            exportinst->value.kind = export->exportdesc.kind;
-
-            switch(export->exportdesc.kind) {
-                case FUNC_EXPORTDESC:
-                    exportinst->value.func = moduleinst->funcaddrs[export->exportdesc.idx];
-                    break;
-                case TABLE_EXPORTDESC:
-                    exportinst->value.table = moduleinst->tableaddrs[export->exportdesc.idx];
-                    break;
-                case MEM_EXPORTDESC:
-                    exportinst->value.mem = moduleinst->memaddrs[export->exportdesc.idx];
-                    break;
-                case GLOBAL_EXPORTDESC:
-                    exportinst->value.mem = moduleinst->globaladdrs[export->exportdesc.idx];
-                    break;
-            }
-            exportidx++;
+        // exec start function if exists
+        if(module->has_start) {
+            __throwiferr(invoke_func(S, F.module->funcaddrs[module->start]));
         }
+
+        pop_frame(S->stack, &F);
         // todo: support start section
     }
     __catch:
@@ -558,8 +564,6 @@ static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
 // ref: https://github.com/wasm3/wasm3/blob/main/source/m3_exec.h
 // ref: https://github.com/wasm3/wasm3/blob/main/source/m3_math_utils.h
 // ref: https://en.wikipedia.org/wiki/Circular_shift
-static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
-
 #define TRUNC(A, TYPE, RMIN, RMAX)                              \
     ({                                                          \
         if(isnan(A)) {                                          \
