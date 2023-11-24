@@ -51,6 +51,7 @@ static const char *error_msg[] = {
     [-ERR_INVALID_RESULT_ARITY]                                 = "invalid result arity",
     [-ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL]            = "alignment must not be larger than natural",
     [-ERR_UNDECLARED_FUNCTIION_REFERENCE]                       = "undeclared function reference",
+    [-ERR_UNKNOWN_IMPORT]                                       = "unknown import",
     [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]                         = "integer divide by zero",
     [-ERR_TRAP_INTERGET_OVERFLOW]                               = "integer overflow",
     [-ERR_TRAP_INVALID_CONVERSION_TO_INTERGER]                  = "invalid conversion to integer",
@@ -92,14 +93,18 @@ static test_module_t *find_exported_module(const char *name) {
     return NULL;
 }
 
-static externval_t find_export(test_module_t *from, const char *name) {
-    VECTOR_FOR_EACH(exportinst, &from->moduleinst->exports) {
-        if(strcmp(exportinst->name, name) == 0) {
-            return exportinst->value;
+static error_t find_export(test_module_t *from, const char *name, externval_t *externval) {
+    __try {
+        VECTOR_FOR_EACH(exportinst, &from->moduleinst->exports) {
+            if(strcmp(exportinst->name, name) == 0) {
+                *externval = exportinst->value;
+                __throw(ERR_SUCCESS);
+            }
         }
+        __throw(ERR_UNKNOWN_IMPORT);
     }
-    printf("%s not found\n", name);
-    exit(1);
+    __catch:
+        return err;
 }
 error_t decode_module_from_fpath(const char *fpath, module_t **mod) {
     __try {
@@ -242,16 +247,100 @@ static void convert_to_args(args_t *args, JSON_Array *array) {
     }
 }
 
-// todo: return err?
-static void resolve_imports(module_t *module, externvals_t *externvals) {
-    VECTOR_NEW(externvals, 0, module->imports.len);
+static bool match_functype(functype_t *ft1, functype_t *ft2) {
+    if(ft1->rt1.len != ft2->rt1.len)
+        return false;
 
-    VECTOR_FOR_EACH(import, &module->imports) {
-        test_module_t *from = find_exported_module(import->module);
-        externval_t externval = find_export(from, import->name);
-       
-        VECTOR_APPEND(externvals, externval);
+    for(uint32_t i = 0; i < ft1->rt1.len; i++) {
+        if(*VECTOR_ELEM(&ft1->rt1, i) != *VECTOR_ELEM(&ft2->rt1, i)){
+            return false;
+        };
     }
+
+    if(ft1->rt2.len != ft2->rt2.len)
+        return false;
+
+    for(uint32_t i = 0; i < ft1->rt2.len; i++) {
+        if(*VECTOR_ELEM(&ft1->rt2, i) != *VECTOR_ELEM(&ft2->rt2, i)){
+            return false;
+        };
+    }
+
+    return true;
+}
+
+static bool match_limits(limits_t *l1, limits_t *l2) {
+    if(l1->min >= l2->min) {
+        if(l2->max == 0)
+            return true;
+        else if(l1->max != 0 && l2->max != 0 && l1->max <= l2->max)
+            return true;
+        else
+            return false;
+    }
+    return false;
+}
+
+static bool match_tabletype(tabletype_t *tt1, tabletype_t *tt2) {
+    if(tt1->reftype != tt2->reftype)
+        return false;
+    
+    return match_limits(&tt1->limits, &tt2->limits);
+}
+
+static bool match_memtype(memtype_t *mt1, memtype_t *mt2) {
+    return match_limits(mt1, mt2);
+}
+
+static bool match_globaltype(globaltype_t *gt1, globaltype_t *gt2) {
+    if(gt1->mut != gt2->mut || gt1->type != gt2->type)
+        return false;
+    return true;
+}
+
+static error_t resolve_imports(store_t *S, module_t *module, externvals_t *externvals) {
+    __try {
+        VECTOR_NEW(externvals, 0, module->imports.len);
+
+        VECTOR_FOR_EACH(import, &module->imports) {
+            test_module_t *from = find_exported_module(import->module);
+            externval_t externval;
+            __throwiferr(find_export(from, import->name, &externval));
+
+             // type check
+            switch(import->d.kind) {
+                case FUNC_IMPORTDESC: {
+                    functype_t *actual = VECTOR_ELEM(&S->funcs, externval.func)->type;
+                    functype_t *expect = VECTOR_ELEM(&module->types, import->d.func);
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_functype(actual, expect));
+                    break;
+                }
+                case TABLE_IMPORTDESC: {
+                    tabletype_t *actual = &VECTOR_ELEM(&S->tables, externval.table)->type;
+                    tabletype_t *expect = &import->d.table;
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_tabletype(actual, expect));
+                    break;
+                }
+                case MEM_IMPORTDESC: {
+                    memtype_t *actual = &VECTOR_ELEM(&S->mems, externval.mem)->type;
+                    memtype_t *expect = &import->d.mem;
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_memtype(actual, expect));
+                    break;
+
+                }
+                case GLOBAL_IMPORTDESC: {
+                    globaltype_t *actual = &VECTOR_ELEM(&S->globals, externval.global)->gt;
+                    globaltype_t *expect = &import->d.globaltype;
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_globaltype(actual, expect));
+                    break;
+                }
+            }
+
+            VECTOR_APPEND(externvals, externval);
+        }
+    }
+    __catch:
+        return err;
 }
 
 static error_t run_command(JSON_Object *command) {
@@ -271,7 +360,7 @@ static error_t run_command(JSON_Object *command) {
             
             // resolve imports
             externvals_t externvals;
-            resolve_imports(module, &externvals);
+            __throwiferr(resolve_imports(S, module, &externvals));
 
             // instantiate
             __throwiferr(instantiate(S, module, &externvals, &moduleinst));
@@ -300,7 +389,8 @@ static error_t run_command(JSON_Object *command) {
 
                 const char *func = json_object_get_string(action, "field");
 
-                externval_t externval = find_export(current_test_module, func);
+                externval_t externval;
+                __throwiferr(find_export(current_test_module, func, &externval));
                 __throwif(ERR_FAILED, externval.kind != FUNC_EXPORTDESC);
 
                 args_t args;
@@ -384,7 +474,8 @@ static error_t run_command(JSON_Object *command) {
                 }
                 const char *field = json_object_get_string(action, "field");
 
-                externval_t externval = find_export(current_test_module, field);
+                externval_t externval;
+                __throwiferr(find_export(current_test_module, field, &externval));
                 __throwif(ERR_FAILED, externval.kind != EXTERN_GLOBAL);
 
                 args_t expects;
@@ -444,7 +535,7 @@ static error_t run_command(JSON_Object *command) {
                 );
             }
         }
-        else if(strcmp(type, "assert_unlinkable") == 0) {
+        else if(strcmp(type, "assert_uninstantiable") == 0) {
             module_t *module;
             moduleinst_t *moduleinst;
 
@@ -456,10 +547,34 @@ static error_t run_command(JSON_Object *command) {
 
             // resolve imports
             externvals_t externvals;
-            resolve_imports(module, &externvals);
+            __throwiferr(resolve_imports(S, module, &externvals));
 
             // check that instantiation fails
             error_t ret = instantiate(S, module, &externvals, &moduleinst);
+            __throwif(ERR_FAILED, !IS_ERROR(ret));
+
+            // check that error messagees match
+            __throwif(
+                ERR_FAILED, 
+                strstr(
+                    json_object_get_string(command, "text"),
+                    error_msg[-ret]
+                ) == NULL
+            );
+        }
+        else if(strcmp(type, "assert_unlinkable") == 0) {
+            module_t *module;
+            moduleinst_t *moduleinst;
+
+            const char *fpath = json_object_get_string(command, "filename");
+            __throwiferr(decode_module_from_fpath(fpath, &module));
+
+            // validate
+            __throwiferr(validate_module(module));
+
+            // check that resolve failes
+            externvals_t externvals;
+            error_t ret = resolve_imports(S, module, &externvals);
             __throwif(ERR_FAILED, !IS_ERROR(ret));
 
             // check that error messagees match
