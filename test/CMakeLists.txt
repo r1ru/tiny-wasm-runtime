@@ -77,7 +77,6 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/nop.wast -o ${CMAKE_CURRENT_BINARY_DIR}/nop
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/select.wast -o ${CMAKE_CURRENT_BINARY_DIR}/select
     COMMAND cp -f ${CMAKE_CURRENT_SOURCE_DIR}/select.2.wasm ${CMAKE_CURRENT_BINARY_DIR}/select.2.wasm
-    COMMAND cp -f ${CMAKE_CURRENT_SOURCE_DIR}/spectest.wasm ${CMAKE_CURRENT_BINARY_DIR}/spectest.wasm
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/bulk.wast -o ${CMAKE_CURRENT_BINARY_DIR}/bulk
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/stack.wast -o ${CMAKE_CURRENT_BINARY_DIR}/stack
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/token.wast -o ${CMAKE_CURRENT_BINARY_DIR}/token
@@ -86,6 +85,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/ref_func.wast -o ${CMAKE_CURRENT_BINARY_DIR}/ref_func
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_copy.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_copy
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table_init.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table_init
+    COMMAND cp -f ${CMAKE_CURRENT_SOURCE_DIR}/spectest.wasm ${CMAKE_CURRENT_BINARY_DIR}/spectest.wasm
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/tokens.wast -o ${CMAKE_CURRENT_BINARY_DIR}/tokens
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/linking.wast -o ${CMAKE_CURRENT_BINARY_DIR}/linking
 )
@@ -512,5 +512,11 @@ add_test(
 add_test(
     NAME table_init
     COMMAND runtest table_init
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME tokens
+    COMMAND runtest tokens
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

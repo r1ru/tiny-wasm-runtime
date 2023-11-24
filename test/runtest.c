@@ -126,6 +126,32 @@ error_t decode_module_from_fpath(const char *fpath, module_t **mod) {
         return err;
 }
 
+error_t link_spec_test(store_t *S) {
+    __try {
+        module_t *module;
+        moduleinst_t *moduleinst;
+
+        // decode
+        __throwiferr(decode_module_from_fpath("./spectest.wasm", &module));
+
+        // validate
+        __throwiferr(validate_module(module));
+        
+        // spectest.wasm has no imports
+        externvals_t externvals;
+        VECTOR_INIT(&externvals);
+
+        // instantiate
+        __throwiferr(instantiate(S, module, &externvals, &moduleinst));
+        
+        // register to list
+        test_module_t *test_module = new_test_module("spectest", "spectest", moduleinst);
+        list_push_back(&test_modules, &test_module->link);
+    }
+    __catch:
+        return err;
+}
+
 // ref: https://github.com/WebAssembly/wabt/blob/main/docs/wast2json.md
 // used only in test
 #define TYPE_NAN_CANONICAL  (1<<7)
@@ -242,11 +268,6 @@ static error_t run_command(JSON_Object *command) {
 
             // validate
             __throwiferr(validate_module(module));
-            
-            // create store if not exist
-            if(!S) {
-                S = new_store();
-            }
             
             // resolve imports
             externvals_t externvals;
@@ -476,6 +497,12 @@ int main(int argc, char *argv[]) {
 
     __try {
         INFO("testsuite: %s", argv[1]);
+        
+        // allocate store
+        S = new_store();
+
+        // link spectest.wasm
+        __throwiferr(link_spec_test(S));
 
         root = json_parse_file(argv[1]);
         __throwif(ERR_FAILED, !root);
