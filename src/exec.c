@@ -532,7 +532,7 @@ error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, modu
                 continue;
             
             // exec instruction sequence
-            exec_expr(S, &elem->mode.offset);
+            __throwiferr(exec_expr(S, &elem->mode.offset));
 
             // exec i32.const 0; i32.const n;
             __throwiferr(push_i32(S->stack, 0));
@@ -546,7 +546,7 @@ error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, modu
                 .op1 = OP_0XFC, .op2 = 0x0C, .x = elem->mode.table, .y = i, .next = &elem_drop
             };
             expr_t expr = &table_init;
-            exec_expr(S, &expr);
+            __throwiferr(exec_expr(S, &expr));
         }
 
         // init memory if datamode is active
@@ -558,7 +558,8 @@ error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, modu
             
             __throwif(ERR_FAILED, data->mode.memory != 0);
 
-            exec_expr(S, &data->mode.offset);
+            __throwiferr(exec_expr(S, &data->mode.offset));
+
             // i32.const 0
             __throwiferr(push_i32(S->stack, 0));
             // i32.const n
@@ -569,7 +570,7 @@ error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, modu
                 .op1 = OP_0XFC, .op2 = 8, .x = i, .next = NULL
             };
             expr_t expr = &memory_init;
-            exec_expr(S, &expr);
+            __throwiferr(exec_expr(S, &expr));
         }
 
         pop_frame(S->stack, &F);
