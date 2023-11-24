@@ -989,12 +989,11 @@ error_t validate_mem(mem_t *mem) {
     return validate_memtype(&mem->type);
 }
 
-static bool is_constant_expr(expr_t *expr) {
+static bool is_constant_expr(context_t *C, expr_t *expr) {
     instr_t *i = *expr;
     while(i->op1 != OP_END) {
-        // return false if i is not t.const
-        if((i->op1 < 0x41 || 0x44 < i->op1) && (i->op1 != OP_REF_FUNC) && (i->op1 != OP_REF_NULL)) {
-            WARN("not constant: %x", i->op1);
+        if((i->op1 < 0x41 || 0x44 < i->op1) && (i->op1 != OP_REF_FUNC) && (i->op1 != OP_REF_NULL) \
+            &&(i->op1 != OP_GLOBAL_GET || VECTOR_ELEM(&C->globals, i->globalidx)->mut != 0)) {
             return false;
         }
         i = i->next;
@@ -1006,7 +1005,7 @@ error_t validate_global(context_t *ctx, global_t *global) {
     resulttype_t rt2 = {.len = 1, .elem = &global->gt.type};
     __try {
         __throwiferr(validate_expr(ctx, &global->expr, &rt2));
-        __throwif(ERR_FAILED, !is_constant_expr(&global->expr));
+        __throwif(ERR_FAILED, !is_constant_expr(ctx, &global->expr));
     }
     __catch:
         return err;
@@ -1026,7 +1025,7 @@ error_t validate_elemmode(context_t *ctx, elemmode_t *mode, reftype_t expect) {
                 __throwiferr(validate_expr(ctx, &mode->offset, &rt2));
 
                 // expr must be constant
-                __throwif(ERR_FAILED, !is_constant_expr(&mode->offset));
+                __throwif(ERR_FAILED, !is_constant_expr(ctx, &mode->offset));
 
                 __throwif(ERR_FAILED, tt->reftype != expect);
                 
@@ -1052,7 +1051,7 @@ error_t validate_elem(context_t *C, elem_t *elem) {
             resulttype_t rt2 = {.len = 1, .elem = &elem->type};
             __throwiferr(validate_expr(C, e, &rt2));
             // e must be constant
-            __throwif(ERR_FAILED, !is_constant_expr(e));
+            __throwif(ERR_FAILED, !is_constant_expr(C, e));
         }
 
         // elemmode must be valid with reference type t
@@ -1075,7 +1074,7 @@ error_t validate_data(context_t *C, data_t *data) {
                 __throwiferr(validate_expr(C, &data->mode.offset, &rt2));
 
                 // expr must be constant
-                __throwif(ERR_FAILED, !is_constant_expr(&data->mode.offset));
+                __throwif(ERR_FAILED, !is_constant_expr(C, &data->mode.offset));
                 break;
             case DATA_MODE_PASSIVE:
                 break;
