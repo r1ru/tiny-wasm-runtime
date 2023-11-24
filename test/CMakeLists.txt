@@ -520,3 +520,9 @@ add_test(
     COMMAND runtest tokens
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+add_test(
+    NAME linking
+    COMMAND runtest linking
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)

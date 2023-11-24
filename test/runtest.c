@@ -561,6 +561,9 @@ static error_t run_command(JSON_Object *command) {
                     error_msg[-ret]
                 ) == NULL
             );
+
+            // empty the stack
+            S->stack->idx = -1;
         }
         else if(strcmp(type, "assert_unlinkable") == 0) {
             module_t *module;
@@ -585,6 +588,9 @@ static error_t run_command(JSON_Object *command) {
                     error_msg[-ret]
                 ) == NULL
             );
+
+            // empty the stack
+            S->stack->idx = -1;
         }
         else if(strcmp(type, "register") == 0) {
             const char *as = json_object_get_string(command, "as");
