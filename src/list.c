@@ -1,5 +1,14 @@
 #include "list.h"
 
+void list_elem_init(list_elem_t *elem) {
+    elem->next = NULL;
+    elem->prev = NULL;
+}
+
+bool list_is_linked(list_elem_t *elem) {
+    return elem->next != NULL;
+}
+
 static void list_insert(list_elem_t *prev, list_elem_t *next, list_elem_t *new) {
     new->prev = prev;
     new->next = next;
