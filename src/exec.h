@@ -28,6 +28,8 @@ typedef struct {
     };
 } externval_t;
 
+typedef VECTOR(externval_t) externvals_t;
+
 typedef struct {
     uint8_t             *name;
     externval_t         value;
@@ -160,6 +162,6 @@ void pop_vals(stack_t *stack, vals_t *vals);
 void pop_label(stack_t *stack, label_t *label);
 void pop_frame(stack_t *stack, frame_t *frame);
 
-store_t *new_store_from_module(module_t *module);
-error_t instantiate(store_t *S, module_t *module, moduleinst_t **inst);
+store_t *new_store(void);
+error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, moduleinst_t **inst);
 error_t invoke(store_t *S, funcaddr_t funcaddr, args_t *args);

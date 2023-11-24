@@ -28,6 +28,7 @@ static test_module_t *current_test_module = NULL;
 static store_t *S = NULL;
 
 list_t test_modules = {.prev = &test_modules, .next = &test_modules};
+list_t exported_modules = {.prev = &exported_modules, .next = &exported_modules};
 
 static const char *error_msg[] = {
     [-ERR_SUCCESS]                                              = "success",
@@ -66,6 +67,7 @@ static const char *error_msg[] = {
 // helpers
 static test_module_t *new_test_module(const char *name, const char *export_name, moduleinst_t *moduleinst) {
     test_module_t *test_module = malloc(sizeof(test_module_t));
+    list_elem_init(&test_module->link);
     test_module->name = name;
     test_module->export_name = export_name;
     test_module->moduleinst = moduleinst;
@@ -75,6 +77,15 @@ static test_module_t *new_test_module(const char *name, const char *export_name,
 static test_module_t *find_test_module(const char *name) {
     LIST_FOR_EACH(module, &test_modules, test_module_t, link) {
         if(strcmp(module->name, name) == 0) {
+            return module;
+        }
+    }
+    return NULL;
+}
+
+static test_module_t *find_exported_module(const char *name) {
+    LIST_FOR_EACH(module, &test_modules, test_module_t, link) {
+        if(strcmp(module->export_name, name) == 0) {
             return module;
         }
     }
@@ -205,6 +216,18 @@ static void convert_to_args(args_t *args, JSON_Array *array) {
     }
 }
 
+// todo: return err?
+static void resolve_imports(module_t *module, externvals_t *externvals) {
+    VECTOR_NEW(externvals, 0, module->imports.len);
+
+    VECTOR_FOR_EACH(import, &module->imports) {
+        test_module_t *from = find_exported_module(import->module);
+        externval_t externval = find_export(from, import->name);
+       
+        VECTOR_APPEND(externvals, externval);
+    }
+}
+
 static error_t run_command(JSON_Object *command) {
     const char *type    = json_object_get_string(command, "type");
     const double line   = json_object_get_number(command, "line");
@@ -222,11 +245,15 @@ static error_t run_command(JSON_Object *command) {
             
             // create store if not exist
             if(!S) {
-                S = new_store_from_module(module);
+                S = new_store();
             }
+            
+            // resolve imports
+            externvals_t externvals;
+            resolve_imports(module, &externvals);
 
             // instantiate
-            __throwiferr(instantiate(S, module, &moduleinst));
+            __throwiferr(instantiate(S, module, &externvals, &moduleinst));
 
             // create test module
             const char *name = json_object_get_string(command, "name");
@@ -405,9 +432,13 @@ static error_t run_command(JSON_Object *command) {
 
             // validate
             __throwiferr(validate_module(module));
-            
-            error_t ret = instantiate(S, module, &moduleinst);
-           
+
+            // resolve imports
+            externvals_t externvals;
+            resolve_imports(module, &externvals);
+
+            // check that instantiation fails
+            error_t ret = instantiate(S, module, &externvals, &moduleinst);
             __throwif(ERR_FAILED, !IS_ERROR(ret));
 
             // check that error messagees match
@@ -418,6 +449,13 @@ static error_t run_command(JSON_Object *command) {
                     error_msg[-ret]
                 ) == NULL
             );
+        }
+        else if(strcmp(type, "register") == 0) {
+            const char *as = json_object_get_string(command, "as");
+            current_test_module->export_name = as;
+            if(!list_is_linked(&current_test_module->link)) {
+                list_push_back(&test_modules, &current_test_module->link);
+            }
         }
         // todo: add here
         else {

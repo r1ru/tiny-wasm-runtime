@@ -153,9 +153,12 @@ int main(int argc, char *argv[]) {
     if(IS_ERROR(err))
         PANIC("validation failed: %d", err);
     
-    store_t *S = new_store_from_module(mod);
+    store_t *S = new_store();
     moduleinst_t *moduleinst = NULL;
-    err = instantiate(S, mod, &moduleinst);
+    externvals_t externvals;
+    VECTOR_INIT(&externvals);
+
+    err = instantiate(S, mod, &externvals, &moduleinst);
     if(IS_ERROR(err))
         PANIC("insntiation failed");
     

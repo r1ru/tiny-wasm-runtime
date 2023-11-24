@@ -329,7 +329,7 @@ static elemaddr_t alloc_elem(store_t *S, elem_t *elem) {
     return VECTOR_APPEND(&S->elems, eleminst);
 }
 
-store_t *new_store_from_module(module_t *module) {
+store_t *new_store(void) {
     // allocate store
     store_t *S = malloc(sizeof(store_t));
     // allocate stack
@@ -345,20 +345,111 @@ store_t *new_store_from_module(module_t *module) {
     return S;
 }
 
+static bool match_functype(functype_t *ft1, functype_t *ft2) {
+    if(ft1->rt1.len != ft2->rt1.len)
+        return false;
+
+    for(uint32_t i = 0; i < ft1->rt1.len; i++) {
+        if(*VECTOR_ELEM(&ft1->rt1, i) != *VECTOR_ELEM(&ft2->rt1, i)){
+            return false;
+        };
+    }
+
+    if(ft1->rt2.len != ft2->rt2.len)
+        return false;
+
+    for(uint32_t i = 0; i < ft1->rt2.len; i++) {
+        if(*VECTOR_ELEM(&ft1->rt2, i) != *VECTOR_ELEM(&ft2->rt2, i)){
+            return false;
+        };
+    }
+
+    return true;
+}
+
+static bool match_limits(limits_t *l1, limits_t *l2) {
+    if(l1->min >= l2->min) {
+        if(l2->max == 0)
+            return true;
+        else if(l1->max != 0 && l2->max != 0 && l1->max <= l2->max)
+            return true;
+        else
+            return false;
+    }
+    return false;
+}
+
+static bool match_tabletype(tabletype_t *tt1, tabletype_t *tt2) {
+    if(tt1->reftype != tt2->reftype)
+        return false;
+    
+    return match_limits(&tt1->limits, &tt2->limits);
+}
+
+static bool match_memtype(memtype_t *mt1, memtype_t *mt2) {
+    return match_limits(mt1, mt2);
+}
+
+static bool match_globaltype(globaltype_t *gt1, globaltype_t *gt2) {
+    if(gt1->mut != gt2->mut || gt1->type != gt2->type)
+        return false;
+    return true;
+}
+
+static error_t resolve_imports(store_t *S, module_t *module, externvals_t *externvals, moduleinst_t *moduleinst) {
+    __try {
+        idx_t funcidx = 0, tableidx = 0, memidx = 0, globalidx = 0;
+        idx_t i = 0;
+
+        VECTOR_FOR_EACH(import, &module->imports) {
+            externval_t *externval = VECTOR_ELEM(externvals, i++);
+            __throwif(ERR_FAILED, import->d.kind != externval->kind);
+
+            // type check
+            switch(import->d.kind) {
+                case FUNC_IMPORTDESC: {
+                    functype_t *actual = VECTOR_ELEM(&S->funcs, externval->func)->type;
+                    functype_t *expect = VECTOR_ELEM(&module->types, import->d.func);
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_functype(actual, expect));
+                    moduleinst->funcaddrs[funcidx++] = externval->func;
+                    break;
+                }
+                case TABLE_IMPORTDESC: {
+                    tabletype_t *actual = &VECTOR_ELEM(&S->tables, externval->table)->type;
+                    tabletype_t *expect = &import->d.table;
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE,!match_tabletype(actual, expect));
+                    moduleinst->tableaddrs[tableidx++] = externval->table;
+                    break;
+                }
+                case MEM_IMPORTDESC: {
+                    memtype_t *actual = &VECTOR_ELEM(&S->mems, externval->mem)->type;
+                    memtype_t *expect = &import->d.mem;
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_memtype(actual, expect));
+                    moduleinst->memaddrs[memidx++] = externval->mem;
+                    break;
+
+                }
+                case GLOBAL_IMPORTDESC: {
+                    globaltype_t *actual = &VECTOR_ELEM(&S->globals, externval->global)->gt;
+                    globaltype_t *expect = &import->d.globaltype;
+                    __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_globaltype(actual, expect));
+                    moduleinst->globaladdrs[globalidx++] = externval->global;
+                    break;
+                }
+            }
+        }
+    }
+    __catch:
+        return err;
+    
+}
 /*
     In the spec, funcaddr is passed as an argument to invoke. 
     This requires that the caller has access to the moduleinst. 
     Therefore, it takes a pointer to moduleinst as its third argument.
 */
-error_t instantiate(store_t *S, module_t *module, moduleinst_t **inst) {
+error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, moduleinst_t **inst) {
     __try {
-        // todo: allocate imported objects
-        uint32_t funcidx = module->num_func_imports;
-        uint32_t tableidx = module->num_table_imports;
-        uint32_t memidx = module->num_mem_imports;
-        uint32_t globalidx = module->num_global_imports;
-        uint32_t elemidx = 0, dataidx = 0;
-
         // allocate space in store
         VECTOR_GROW(&S->funcs, module->funcs.len);
         VECTOR_GROW(&S->tables, module->tables.len);
@@ -367,6 +458,7 @@ error_t instantiate(store_t *S, module_t *module, moduleinst_t **inst) {
         VECTOR_GROW(&S->elems, module->elems.len);
         VECTOR_GROW(&S->datas, module->datas.len);
 
+        // create new moduleinst
         moduleinst_t *moduleinst = *inst = malloc(sizeof(moduleinst_t));
         moduleinst->types = module->types.elem;
         moduleinst->funcaddrs = malloc(
@@ -384,6 +476,15 @@ error_t instantiate(store_t *S, module_t *module, moduleinst_t **inst) {
         );
         moduleinst->elemaddrs = malloc(sizeof(elemaddr_t) * module->elems.len);
         
+        // resolve imports
+        __throwiferr(resolve_imports(S, module, externvals, moduleinst));
+        
+        uint32_t funcidx = module->num_func_imports;
+        uint32_t tableidx = module->num_table_imports;
+        uint32_t memidx = module->num_mem_imports;
+        uint32_t globalidx = module->num_global_imports;
+        uint32_t elemidx = 0, dataidx = 0;
+
         // alloc funcs
         VECTOR_FOR_EACH(func, &module->funcs) {
             moduleinst->funcaddrs[funcidx] = alloc_func(S, func, moduleinst);
