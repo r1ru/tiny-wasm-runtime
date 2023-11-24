@@ -496,3 +496,9 @@ add_test(
     COMMAND runtest skip-stack-guard-page
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+add_test(
+    NAME ref_func
+    COMMAND runtest ref_func
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
