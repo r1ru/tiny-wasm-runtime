@@ -502,3 +502,9 @@ add_test(
     COMMAND runtest ref_func
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+add_test(
+    NAME table_copy
+    COMMAND runtest table_copy
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
