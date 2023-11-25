@@ -306,8 +306,9 @@ static error_t resolve_imports(store_t *S, module_t *module, externvals_t *exter
             test_module_t *from = find_exported_module(import->module);
             externval_t externval;
             __throwiferr(find_export(from, import->name, &externval));
+            __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, import->d.kind != externval.kind);
 
-             // type check
+            // type check
             switch(import->d.kind) {
                 case FUNC_IMPORTDESC: {
                     functype_t *actual = VECTOR_ELEM(&S->funcs, externval.func)->type;
