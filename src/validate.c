@@ -1139,7 +1139,7 @@ error_t validate_module(module_t *mod) {
         }
 
         // C.mems must be larger than 1
-        __throwif(ERR_FAILED, C.mems.len > 1);
+        __throwif(ERR_MULTIPLE_MEMORIES, C.mems.len > 1);
 
         VECTOR_NEW(&C.refs, mod->num_func_imports + mod->funcs.len, mod->num_func_imports + mod->funcs.len);
         VECTOR_FOR_EACH(global, &mod->globals) {

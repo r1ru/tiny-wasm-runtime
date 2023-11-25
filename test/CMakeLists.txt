@@ -527,3 +527,9 @@ add_test(
     COMMAND runtest linking
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+add_test(
+    NAME imports
+    COMMAND runtest imports
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)

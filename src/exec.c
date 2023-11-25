@@ -1161,6 +1161,7 @@ error_t exec_expr(store_t *S, expr_t *expr) {
                     } else {
                         // grow n page(always success)
                         mem->num_pages += n;
+                        mem->type.min += n;
                         __throwiferr(push_i32(stack, sz));
                     }
                     break;

@@ -51,6 +51,7 @@ static const char *error_msg[] = {
     [-ERR_INVALID_RESULT_ARITY]                                 = "invalid result arity",
     [-ERR_ALIGNMENT_MUST_NOT_BE_LARGER_THAN_NATURAL]            = "alignment must not be larger than natural",
     [-ERR_UNDECLARED_FUNCTIION_REFERENCE]                       = "undeclared function reference",
+    [-ERR_MULTIPLE_MEMORIES]                                    = "multiple memories",
     [-ERR_UNKNOWN_IMPORT]                                       = "unknown import",
     [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]                         = "integer divide by zero",
     [-ERR_TRAP_INTERGET_OVERFLOW]                               = "integer overflow",
@@ -327,7 +328,6 @@ static error_t resolve_imports(store_t *S, module_t *module, externvals_t *exter
                     memtype_t *expect = &import->d.mem;
                     __throwif(ERR_INCOMPATIBLE_IMPORT_TYPE, !match_memtype(actual, expect));
                     break;
-
                 }
                 case GLOBAL_IMPORTDESC: {
                     globaltype_t *actual = &VECTOR_ELEM(&S->globals, externval.global)->gt;
@@ -358,7 +358,7 @@ static error_t run_command(JSON_Object *command) {
 
             // validate
             __throwiferr(validate_module(module));
-            
+
             // resolve imports
             externvals_t externvals;
             __throwiferr(resolve_imports(S, module, &externvals));
