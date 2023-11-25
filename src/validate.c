@@ -1099,48 +1099,16 @@ error_t validate_module(module_t *mod) {
         // create context C
         context_t C;
         VECTOR_COPY(&C.types, &mod->types);
-        VECTOR_NEW(&C.funcs, mod->num_func_imports + mod->funcs.len, mod->num_func_imports + mod->funcs.len);
-        VECTOR_NEW(&C.tables, mod->num_table_imports + mod->tables.len, mod->num_table_imports + mod->tables.len);
-        VECTOR_NEW(&C.mems, mod->num_mem_imports + mod->mems.len, mod->num_mem_imports + mod->mems.len);
-        VECTOR_NEW(&C.globals, mod->num_global_imports + mod->globals.len, mod->num_global_imports + mod->globals.len);
-        VECTOR_NEW(&C.elems, mod->elems.len, mod->elems.len);
-        VECTOR_NEW(&C.datas, mod->datas.len, mod->datas.len);
+        VECTOR_NEW(&C.funcs, 0, mod->num_func_imports + mod->funcs.len);
+        VECTOR_NEW(&C.tables, 0, mod->num_table_imports + mod->tables.len);
+        VECTOR_NEW(&C.mems, 0, mod->num_mem_imports + mod->mems.len);
+        VECTOR_NEW(&C.globals, 0, mod->num_global_imports + mod->globals.len);
+        VECTOR_NEW(&C.elems, 0, mod->elems.len);
+        VECTOR_NEW(&C.datas, 0, mod->datas.len);
         VECTOR_INIT(&C.locals);
         LIST_INIT(&C.labels);
         C.ret = NULL;
-
-        uint32_t funcidx = 0, tableidx = 0, memidx = 0, globalidx = 0, \
-                 elemidx = 0, dataidx = 0;
-
-        // validate imports
-        VECTOR_FOR_EACH(import, &mod->imports) {
-            switch(import->d.kind) {
-                case FUNC_IMPORTDESC: {
-                    functype_t *ft = VECTOR_ELEM(&C.types, import->d.func);
-                    __throwif(ERR_UNKNOWN_TYPE, !ft);
-                    *VECTOR_ELEM(&C.funcs, funcidx++) = *ft;
-                    break;
-                }
-                case TABLE_IMPORTDESC: {
-                    __throwiferr(validate_tabletype(&import->d.table));
-                    *VECTOR_ELEM(&C.tables, tableidx++) = import->d.table;
-                    break;
-                }
-                case MEM_IMPORTDESC: {
-                    __throwiferr(validate_memtype(&import->d.mem));
-                    *VECTOR_ELEM(&C.mems, memidx++) = import->d.mem;
-                    break;
-                }
-                case GLOBAL_IMPORTDESC: {
-                    *VECTOR_ELEM(&C.globals, globalidx++) = import->d.globaltype;
-                    break;
-                }
-            }
-        }
-
-        // C.mems must be larger than 1
-        __throwif(ERR_MULTIPLE_MEMORIES, C.mems.len > 1);
-
+        
         VECTOR_NEW(&C.refs, mod->num_func_imports + mod->funcs.len, mod->num_func_imports + mod->funcs.len);
         VECTOR_FOR_EACH(global, &mod->globals) {
             mark_funcidx_in_expr(&C, &global->expr);
@@ -1161,45 +1129,76 @@ error_t validate_module(module_t *mod) {
             }
         }
 
+        // validate imports
+        VECTOR_FOR_EACH(import, &mod->imports) {
+            switch(import->d.kind) {
+                case FUNC_IMPORTDESC: {
+                    functype_t *ft = VECTOR_ELEM(&C.types, import->d.func);
+                    __throwif(ERR_UNKNOWN_TYPE, !ft);
+                    VECTOR_APPEND(&C.funcs, *ft);
+                    break;
+                }
+                case TABLE_IMPORTDESC: {
+                    __throwiferr(validate_tabletype(&import->d.table));
+                    VECTOR_APPEND(&C.tables, import->d.table);
+                    break;
+                }
+                case MEM_IMPORTDESC: {
+                    __throwiferr(validate_memtype(&import->d.mem));
+                    VECTOR_APPEND(&C.mems, import->d.mem);
+                    break;
+                }
+                case GLOBAL_IMPORTDESC: {
+                    VECTOR_APPEND(&C.globals, import->d.globaltype);
+                    break;
+                }
+            }
+        }
+
+        VECTOR_FOR_EACH(func, &mod->funcs) {
+            functype_t *functype = VECTOR_ELEM(&C.types, func->type);
+            __throwif(ERR_UNKNOWN_TYPE, !functype);
+            VECTOR_APPEND(&C.funcs, *functype);
+        }
+
         // validate tables
         VECTOR_FOR_EACH(table, &mod->tables) {
             __throwiferr(validate_table(table));
-            *VECTOR_ELEM(&C.tables, tableidx++) = table->type;
+            VECTOR_APPEND(&C.tables, table->type);
         }
 
         // validate mems
         VECTOR_FOR_EACH(mem, &mod->mems) {
             __throwiferr(validate_mem(mem));
-            *VECTOR_ELEM(&C.mems, memidx++) = mem->type;
+            VECTOR_APPEND(&C.mems, mem->type);
         }
 
         // validate globals
         VECTOR_FOR_EACH(global, &mod->globals) {
             __throwiferr(validate_global(&C, global));
-            *VECTOR_ELEM(&C.globals, globalidx++) = global->gt;
+            VECTOR_APPEND(&C.globals, global->gt);
         }
 
         // validate elems
         VECTOR_FOR_EACH(elem, &mod->elems) {
             __throwiferr(validate_elem(&C, elem));
-            *VECTOR_ELEM(&C.elems, elemidx++) = elem->type;
+            VECTOR_APPEND(&C.elems, elem->type);
         }
 
         // validate datas
         VECTOR_FOR_EACH(data, &mod->datas) {
            __throwiferr(validate_data(&C, data));
+           VECTOR_APPEND(&C.datas, 1);
         }
 
         // validate funcs
         VECTOR_FOR_EACH(func, &mod->funcs) {
-            functype_t *functype = VECTOR_ELEM(&C.types, func->type);
-            __throwif(ERR_UNKNOWN_TYPE, !functype);
-            *VECTOR_ELEM(&C.funcs, funcidx++) = *functype;
-        }
-
-        VECTOR_FOR_EACH(func, &mod->funcs) {
             __throwiferr(validate_func(&C, func));
         }
+
+        // C.mems must be larger than 1
+        __throwif(ERR_MULTIPLE_MEMORIES, C.mems.len > 1);
+        
     }
     __catch:
         return err;
