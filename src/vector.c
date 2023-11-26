@@ -24,8 +24,7 @@ error_t vector_new(vector_t *vec, size_t ent_size, size_t len, size_t cap) {
 }
 
 void vector_copy(vector_t *dst, vector_t *src) {
-    dst->len  = src->len;
-    dst->elem = src->elem;
+    *dst = *src;
 }
 
 error_t vector_concat(vector_t *dst, vector_t *src1, vector_t *src2) {

@@ -323,7 +323,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_GLOBAL_SET: {
                 globaltype_t *gt = VECTOR_ELEM(&C->globals, ip->globalidx);
                 __throwif(ERR_UNKNOWN_GLOBAL, !gt);
-                __throwif(ERR_FAILED, !gt->mut);
+                __throwif(ERR_GLOBAL_IS_IMMUTABLE, !gt->mut);
                 __throwiferr(try_pop(stack, gt->type));
                 break;
             }
@@ -990,13 +990,24 @@ error_t validate_mem(mem_t *mem) {
 }
 
 static bool is_constant_expr(context_t *C, expr_t *expr) {
-    instr_t *i = *expr;
-    while(i->op1 != OP_END) {
-        if((i->op1 < 0x41 || 0x44 < i->op1) && (i->op1 != OP_REF_FUNC) && (i->op1 != OP_REF_NULL) \
-            &&(i->op1 != OP_GLOBAL_GET || VECTOR_ELEM(&C->globals, i->globalidx)->mut != 0)) {
-            return false;
+    for(instr_t *i = *expr; i->op1 != OP_END; i = i ->next) {
+        if(0x41 <= i->op1 && i->op1 <= 0x44)
+            continue;
+        else if(i->op1 == OP_REF_FUNC)
+            continue;
+        else if(i->op1 == OP_REF_NULL)
+            continue;
+        else if(i->op1 == OP_GLOBAL_GET) {
+            globaltype_t *gt = VECTOR_ELEM(&C->globals, i->globalidx);
+             // Validate that the global variable is immutable only if it exists.
+            if(!gt)
+                continue;
+            if(gt->mut != 0)
+                return false;
+            continue;
         }
-        i = i->next;
+        else
+            return false;
     }
     return true;
 }
@@ -1004,8 +1015,8 @@ static bool is_constant_expr(context_t *C, expr_t *expr) {
 error_t validate_global(context_t *ctx, global_t *global) {
     resulttype_t rt2 = {.len = 1, .elem = &global->gt.type};
     __try {
+        __throwif(ERR_CONSTANT_EXPRESSION_REQUIRED, !is_constant_expr(ctx, &global->expr));
         __throwiferr(validate_expr(ctx, &global->expr, &rt2));
-        __throwif(ERR_FAILED, !is_constant_expr(ctx, &global->expr));
     }
     __catch:
         return err;
@@ -1019,13 +1030,13 @@ error_t validate_elemmode(context_t *ctx, elemmode_t *mode, reftype_t expect) {
                 tabletype_t *tt = VECTOR_ELEM(&ctx->tables, mode->table);
                 __throwif(ERR_FAILED, !tt);
 
+                // expr must be constant
+                __throwif(ERR_CONSTANT_EXPRESSION_REQUIRED, !is_constant_expr(ctx, &mode->offset));
+
                 // expr must be valid with result type [i32]
                 valtype_t type_i32 = TYPE_NUM_I32;
                 resulttype_t rt2 = {.len = 1, .elem = &type_i32};
                 __throwiferr(validate_expr(ctx, &mode->offset, &rt2));
-
-                // expr must be constant
-                __throwif(ERR_FAILED, !is_constant_expr(ctx, &mode->offset));
 
                 __throwif(ERR_FAILED, tt->reftype != expect);
                 
@@ -1047,11 +1058,12 @@ error_t validate_elemmode(context_t *ctx, elemmode_t *mode, reftype_t expect) {
 error_t validate_elem(context_t *C, elem_t *elem) {
     __try {
         VECTOR_FOR_EACH(e, &elem->init) {
+            // e must be constant
+            __throwif(ERR_CONSTANT_EXPRESSION_REQUIRED, !is_constant_expr(C, e));
+
             // e must be valid with result type [t]
             resulttype_t rt2 = {.len = 1, .elem = &elem->type};
             __throwiferr(validate_expr(C, e, &rt2));
-            // e must be constant
-            __throwif(ERR_FAILED, !is_constant_expr(C, e));
         }
 
         // elemmode must be valid with reference type t
@@ -1068,13 +1080,15 @@ error_t validate_data(context_t *C, data_t *data) {
                 memtype_t *m = VECTOR_ELEM(&C->mems, data->mode.memory);
                 __throwif(ERR_FAILED, !m);
 
+                // expr must be constant
+                __throwif(ERR_CONSTANT_EXPRESSION_REQUIRED, !is_constant_expr(C, &data->mode.offset));
+
                 // expr must be valid with result type [i32]
                 valtype_t type_i32 = TYPE_NUM_I32;
                 resulttype_t rt2 = {.len = 1, .elem = &type_i32};
                 __throwiferr(validate_expr(C, &data->mode.offset, &rt2));
 
-                // expr must be constant
-                __throwif(ERR_FAILED, !is_constant_expr(C, &data->mode.offset));
+                
                 break;
             case DATA_MODE_PASSIVE:
                 break;
@@ -1161,6 +1175,21 @@ error_t validate_module(module_t *mod) {
             VECTOR_APPEND(&C.funcs, *functype);
         }
 
+        // create context C'
+        context_t C1;
+        VECTOR_COPY(&C1.globals, &C.globals);
+        VECTOR_COPY(&C1.funcs, &C.funcs);
+        VECTOR_COPY(&C1.refs, &C.refs);
+        VECTOR_INIT(&C1.types);
+        VECTOR_INIT(&C1.tables);
+        VECTOR_INIT(&C1.mems);
+        VECTOR_INIT(&C1.elems);
+        VECTOR_INIT(&C1.datas);
+        VECTOR_INIT(&C1.locals);
+        LIST_INIT(&C1.labels);
+        C1.ret = NULL;
+        
+        // under the context C'
         // validate tables
         VECTOR_FOR_EACH(table, &mod->tables) {
             __throwiferr(validate_table(table));
@@ -1191,6 +1220,7 @@ error_t validate_module(module_t *mod) {
            VECTOR_APPEND(&C.datas, 1);
         }
 
+        // under the context C
         // validate funcs
         VECTOR_FOR_EACH(func, &mod->funcs) {
             __throwiferr(validate_func(&C, func));
