@@ -250,14 +250,13 @@ error_t decode_typesec(module_t *mod, buffer_t*buf) {
 
 static error_t decode_limits(limits_t *limits, buffer_t *buf) {
     __try {
-        uint8_t has_max;
-        __throwiferr(read_byte(&has_max, buf));
+        __throwiferr(read_byte((uint8_t *)&limits->has_max, buf));
         __throwiferr(read_u32_leb128(&limits->min, buf));
-        if(has_max) {
+        if(limits->has_max) {
             __throwiferr(read_u32_leb128(&limits->max, buf));
         }
         else {
-            limits->max = 0;
+            limits->has_max = false;
         }
     }
     __catch:
@@ -356,7 +355,6 @@ error_t decode_memsec(module_t *mod, buffer_t *buf) {
     __try {
         uint32_t n;
         __throwiferr(read_u32_leb128(&n, buf));
-
         VECTOR_NEW(&mod->mems, n, n);
         
         VECTOR_FOR_EACH(mem, &mod->mems) {

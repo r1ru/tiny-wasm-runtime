@@ -359,7 +359,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I64_LOAD32_S:
             case OP_I64_LOAD32_U: {
                 memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
-                __throwif(ERR_FAILED, !mem);
+                __throwif(ERR_UNKNOWN_MEMORY, !mem);
                 int32_t n;
                 switch(ip->op1) {
                     case OP_I32_LOAD:
@@ -425,7 +425,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
             case OP_I64_STORE16:
             case OP_I64_STORE32: {
                 memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
-                __throwif(ERR_FAILED, !mem);
+                __throwif(ERR_UNKNOWN_MEMORY, !mem);
                 int32_t n;
                 switch(ip->op1) {
                     case OP_I32_STORE:
@@ -482,7 +482,7 @@ error_t validate_instr(context_t *C, instr_t *ip, type_stack *stack) {
 
             case OP_MEMORY_GROW: {
                 memtype_t *mem = VECTOR_ELEM(&C->mems, 0);
-                __throwif(ERR_FAILED, !mem);
+                __throwif(ERR_UNKNOWN_MEMORY, !mem);
                 // valid with [i32] -> [i32]
                 __throwiferr(try_pop(stack, TYPE_NUM_I32));
                 push(stack, TYPE_NUM_I32);
@@ -964,9 +964,9 @@ error_t validate_func(context_t *C, func_t *func) {
 static error_t validate_limits(limits_t *limits, uint32_t k) {
     __try {
         __throwif(ERR_FAILED, limits->min > k);
-        if(limits->max) {
+        if(limits->has_max) {
             __throwif(ERR_FAILED, limits->max > k);
-            __throwif(ERR_FAILED, limits->max < limits->min);
+            __throwif(ERR_SIZE_MINIMUM_MUST_NOT_BE_GREATER_THAN_MAXIMUM, limits->max < limits->min);
         }
     }
     __catch:
@@ -1078,7 +1078,7 @@ error_t validate_data(context_t *C, data_t *data) {
         switch(data->mode.kind) {
             case DATA_MODE_ACTIVE:
                 memtype_t *m = VECTOR_ELEM(&C->mems, data->mode.memory);
-                __throwif(ERR_FAILED, !m);
+                __throwif(ERR_UNKNOWN_MEMORY, !m);
 
                 // expr must be constant
                 __throwif(ERR_CONSTANT_EXPRESSION_REQUIRED, !is_constant_expr(C, &data->mode.offset));
