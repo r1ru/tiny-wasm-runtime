@@ -1228,9 +1228,9 @@ error_t validate_module(module_t *mod) {
 
         // under the context C
         // validate funcs
-        VECTOR_FOR_EACH(func, &mod->funcs) {
+        VECTOR_FOR_EACH(func, &mod->funcs) {   
             __throwiferr(validate_func(&C, func));
-        }
+        } 
 
         // C.mems must be larger than 1
         __throwif(ERR_MULTIPLE_MEMORIES, C.mems.len > 1);

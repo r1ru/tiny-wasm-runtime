@@ -276,9 +276,9 @@ static bool match_functype(functype_t *ft1, functype_t *ft2) {
 
 static bool match_limits(limits_t *l1, limits_t *l2) {
     if(l1->min >= l2->min) {
-        if(l2->max == 0)
+        if(!l2->has_max)
             return true;
-        else if(l1->max != 0 && l2->max != 0 && l1->max <= l2->max)
+        else if(l1->has_max && l2->has_max && l1->max <= l2->max)
             return true;
         else
             return false;
