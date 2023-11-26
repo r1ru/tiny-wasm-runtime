@@ -92,8 +92,10 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/func_ptrs.wast -o ${CMAKE_CURRENT_BINARY_DIR}/func_ptrs
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/start.wast -o ${CMAKE_CURRENT_BINARY_DIR}/start
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/data.wast -o ${CMAKE_CURRENT_BINARY_DIR}/data
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/global.wast -o ${CMAKE_CURRENT_BINARY_DIR}/global
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/elem.wast -o ${CMAKE_CURRENT_BINARY_DIR}/elem
 )
 
 add_test(
@@ -554,5 +556,11 @@ add_test(
 add_test(
     NAME func_ptrs
     COMMAND runtest func_ptrs
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME start
+    COMMAND runtest start
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

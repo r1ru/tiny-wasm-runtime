@@ -1180,6 +1180,16 @@ error_t validate_module(module_t *mod) {
             __throwif(ERR_UNKNOWN_TYPE, !functype);
             VECTOR_APPEND(&C.funcs, *functype);
         }
+        
+        // todo: validate exports
+
+        // validate start function if exists
+        if(mod->has_start) {
+            functype_t *ft = VECTOR_ELEM(&C.funcs, mod->start);
+            __throwif(ERR_UNKNOWN_FUNC, !ft);
+            // ft must be [] -> []
+            __throwif(ERR_START_FUNCTION, ft->rt1.len != 0 || ft->rt2.len != 0);
+        }
 
         // create context C'
         context_t C1;
