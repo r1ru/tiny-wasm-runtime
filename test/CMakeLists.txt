@@ -90,6 +90,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/linking.wast -o ${CMAKE_CURRENT_BINARY_DIR}/linking
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/imports.wast -o ${CMAKE_CURRENT_BINARY_DIR}/imports
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/memory.wast -o ${CMAKE_CURRENT_BINARY_DIR}/memory
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/table.wast -o ${CMAKE_CURRENT_BINARY_DIR}/table
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/data.wast -o ${CMAKE_CURRENT_BINARY_DIR}/data
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/global.wast -o ${CMAKE_CURRENT_BINARY_DIR}/global
 )
@@ -540,5 +541,11 @@ add_test(
 add_test(
     NAME memory
     COMMAND runtest memory
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME table
+    COMMAND runtest table
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

@@ -1034,7 +1034,7 @@ error_t validate_elemmode(context_t *ctx, elemmode_t *mode, reftype_t expect) {
             // active
             case 0x00:
                 tabletype_t *tt = VECTOR_ELEM(&ctx->tables, mode->table);
-                __throwif(ERR_FAILED, !tt);
+                __throwif(ERR_UNKNOWN_TABLE, !tt);
 
                 // expr must be constant
                 __throwif(ERR_CONSTANT_EXPRESSION_REQUIRED, !is_constant_expr(ctx, &mode->offset));
