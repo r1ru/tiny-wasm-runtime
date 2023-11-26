@@ -961,20 +961,17 @@ error_t validate_func(context_t *C, func_t *func) {
         return err;
 }
 
-static error_t validate_limits(limits_t *limits, uint32_t k) {
+error_t validate_tabletype(tabletype_t *tt) {
     __try {
-        __throwif(ERR_FAILED, limits->min > k);
-        if(limits->has_max) {
-            __throwif(ERR_FAILED, limits->max > k);
-            __throwif(ERR_SIZE_MINIMUM_MUST_NOT_BE_GREATER_THAN_MAXIMUM, limits->max < limits->min);
+        uint32_t k = UINT32_MAX;
+        __throwif(ERR_FAILED, tt->limits.min > k);
+        if(tt->limits.has_max) {
+            __throwif(ERR_FAILED, tt->limits.max > k);
+            __throwif(ERR_SIZE_MINIMUM_MUST_NOT_BE_GREATER_THAN_MAXIMUM, tt->limits.max < tt->limits.min);
         }
     }
     __catch:
         return err;
-}
-
-error_t validate_tabletype(tabletype_t *tt) {
-    return validate_limits(&tt->limits, UINT32_MAX);
 }
 
 error_t validate_table(table_t *table) {
@@ -982,7 +979,16 @@ error_t validate_table(table_t *table) {
 }
 
 error_t validate_memtype(memtype_t *memtype) {
-    return validate_limits(memtype, 1<<16);
+    __try {
+        uint32_t k = 1<<16;
+        __throwif(ERR_MEMORY_SIZE_MUST_BE_AT_MOST_65536_PAGES, memtype->min > k);
+        if(memtype->has_max) {
+            __throwif(ERR_MEMORY_SIZE_MUST_BE_AT_MOST_65536_PAGES, memtype->max > k);
+            __throwif(ERR_SIZE_MINIMUM_MUST_NOT_BE_GREATER_THAN_MAXIMUM, memtype->max < memtype->min);
+        }
+    }
+    __catch:
+        return err;
 }
 
 error_t validate_mem(mem_t *mem) {
