@@ -81,7 +81,7 @@ error_t read_i32(int32_t *d, buffer_t *buf) {
 }
 
 // Little Endian Base 128
-error_t read_u64_leb128(uint64_t *d, buffer_t *buf) {
+static error_t read_leb128_unsigned(uint64_t *d, uint32_t num_max_bits, buffer_t *buf) {
     __try {
         uint64_t result = 0;
         uint32_t shift = 0;
@@ -91,28 +91,13 @@ error_t read_u64_leb128(uint64_t *d, buffer_t *buf) {
 
             result |= (((uint64_t)byte & 0x7f) << shift);
             shift += 7;
-            if((byte & 0x80) == 0)
-                break;
-        }
-        *d = result;
-    }
-    __catch:
-        return err;
-}
 
-error_t read_i64_leb128(int64_t *d, buffer_t *buf) {
-    __try {
-        int64_t result = 0;
-        uint32_t shift = 0;
-        while(1) {
-            uint8_t byte;
-            __throwiferr(read_byte(&byte, buf));
-            result |= (((uint64_t)byte & 0x7f) << shift);
-            shift += 7;
             if((byte & 0x80) == 0) {
-                if((byte & 0x40) && (shift < 64))
-                    result |= (~0UL << shift);
                 break;
+            }
+
+            if(shift >= num_max_bits) {
+                __throw(ERR_INTEGER_TOO_LARGE);
             }
         }
         *d = result;
@@ -121,10 +106,54 @@ error_t read_i64_leb128(int64_t *d, buffer_t *buf) {
         return err;
 }
 
+static error_t read_leb128_signed(int64_t *d, uint32_t num_max_bits, buffer_t *buf) {
+    __try {
+        int64_t result = 0;
+        uint32_t shift = 0;
+        while(1) {
+            uint8_t byte;
+            __throwiferr(read_byte(&byte, buf));
+            result |= (((uint64_t)byte & 0x7f) << shift);
+            shift += 7;
+
+            if((byte & 0x80) == 0) {
+                if((byte & 0x40) && (shift < 64)) {
+                    result |= (~0UL << shift);
+                }
+                break;
+            }
+
+            if(shift >= num_max_bits) {
+                __throw(ERR_INTEGER_TOO_LARGE);
+            }
+        }
+        *d = result;
+    }
+    __catch:
+        return err;
+}
+
+
+error_t read_u7_leb128(uint8_t *d, buffer_t *buf) {
+    __try {
+        uint64_t val;
+        // todo: fix this?
+        __throwiferr(read_leb128_unsigned(&val, 7, buf));
+        *d = (uint8_t)val;
+    }
+    __catch:
+        return err;
+}
+
+error_t read_i64_leb128(int64_t *d, buffer_t *buf) {
+    return read_leb128_signed(d, 64, buf);
+}
+
 error_t read_u32_leb128(uint32_t *d, buffer_t *buf) {
     __try {
         uint64_t val;
-        __throwiferr(read_u64_leb128(&val, buf));
+        __throwiferr(read_leb128_unsigned(&val, 32, buf));
+        __throwif(ERR_INTEGER_TOO_LARGE, val > UINT32_MAX);
         *d = (uint32_t)val;
     }
     __catch:
@@ -134,7 +163,7 @@ error_t read_u32_leb128(uint32_t *d, buffer_t *buf) {
 error_t read_i32_leb128(int32_t *d, buffer_t *buf) {
     __try {
         int64_t val;
-        __throwiferr(read_i64_leb128(&val, buf));
+        __throwiferr(read_leb128_signed(&val, 32, buf));
         *d = (int32_t)val;
     }
     __catch:
@@ -524,9 +553,10 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
             
             case OP_MEMORY_SIZE:
             case OP_MEMORY_GROW: {
-                uint32_t zero;
-                __throwiferr(read_u32_leb128(&zero, buf));
-                __throwif(ERR_FAILED, zero != 0);
+                uint8_t zero;
+                // memory.grow reserved byte should not be a "long" LEB128 zero
+                __throwif(ERR_ZERO_BYTE_EXPECTED, IS_ERROR(read_u7_leb128(&zero, buf)));
+                __throwif(ERR_ZERO_BYTE_EXPECTED, zero != 0);
                 break;
             }
 
@@ -956,11 +986,13 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
             VECTOR_NEW(&localses, n2, n2);
 
             // count local variables
-            uint32_t num_locals = 0;
+            uint64_t num_locals = 0;
             VECTOR_FOR_EACH(locals, &localses) {
                 __throwiferr(read_u32_leb128(&locals->n, code));
                 __throwiferr(read_byte(&locals->type, code));
+                // No more than 2^32-1 locals
                 num_locals += locals->n;
+                __throwif(ERR_TOO_MANY_LOCALS, num_locals >= UINT32_MAX)
             }
 
             // create vec(valtype)

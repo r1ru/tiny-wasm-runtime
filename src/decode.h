@@ -20,7 +20,6 @@ error_t read_bytes(uint8_t **d, buffer_t *buf);
 error_t read_u32(uint32_t *d, buffer_t *buf);
 error_t read_i32(int32_t *d, buffer_t *buf);
 error_t read_u32_leb128(uint32_t *d, buffer_t *buf);
-error_t read_u64_leb128(uint64_t *d, buffer_t *buf);
 error_t read_i32_leb128(int32_t *d, buffer_t *buf);
 error_t read_i64_leb128(int64_t *d, buffer_t *buf);
 
