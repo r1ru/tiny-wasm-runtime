@@ -395,6 +395,7 @@ typedef struct {
     funcidx_t           start;
     VECTOR(import_t)    imports;
     VECTOR(export_t)    exports;
+    uint32_t            num_codes;
     uint32_t            num_func_imports;
     uint32_t            num_table_imports;
     uint32_t            num_mem_imports;

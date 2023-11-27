@@ -963,12 +963,11 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
 
 error_t decode_codesec(module_t *mod, buffer_t *buf) {
     __try {
-        uint32_t n1;
-        __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&n1, buf)));
+        __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&mod->num_codes, buf)));
 
         __throwif(
             ERR_FUNCTION_AND_CODE_SECTION_HAVE_INCOSISTENT_LENGTH, 
-            n1 != mod->funcs.len
+            mod->num_codes != mod->funcs.len
         );
 
         VECTOR_FOR_EACH(func, &mod->funcs) {
@@ -1094,6 +1093,7 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         VECTOR_INIT(&m->imports);
         VECTOR_INIT(&m->exports);
         m->has_start = false;
+        m->num_codes = 0;
         m->num_func_imports     = 0;
         m->num_table_imports    = 0;
         m->num_mem_imports      = 0;
@@ -1113,6 +1113,10 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
             else
                 __throw(ERR_MALFORMED_SECTION_ID);
         }
+
+        // Consider the case where the codesec is empty and the funcsec is non-empty
+        // See line 420 of binary.wast
+        __throwif(ERR_FUNCTION_AND_CODE_SECTION_HAVE_INCOSISTENT_LENGTH, m->num_codes != m->funcs.len);
     }
     __catch:
         return err;
