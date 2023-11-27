@@ -795,8 +795,7 @@ error_t decode_instr(module_t *mod, buffer_t *buf, instr_t **instr) {
                 break;
             
             default:
-            
-                PANIC("Decode: unsupported opcode: %x", i->op1);
+                __throw(ERR_ILLEGAL_OPCODE);
         }
         
         *instr = i;

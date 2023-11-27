@@ -45,6 +45,7 @@ static const char *error_msg[] = {
     [-ERR_INTEGER_TOO_LARGE]                                    = "integer too large",
     [-ERR_TOO_MANY_LOCALS]                                      = "too many locals",
     [-ERR_DATA_COUNT_SECTION_REQUIRED]                          = "data count section required",
+    [-ERR_ILLEGAL_OPCODE]                                       = "illegal opcode",
     [-ERR_TYPE_MISMATCH]                                        = "type mismatch",
     [-ERR_UNKNOWN_LOCAL]                                        = "unknown local",
     [-ERR_UNKNOWN_LABEL]                                        = "unknown label",
