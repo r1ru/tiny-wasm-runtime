@@ -121,15 +121,19 @@ error_t decode_module_from_fpath(const char *fpath, module_t **mod) {
         __throwif(ERR_FAILED, fstat(fd, &s) == -1);
 
         size_t size = s.st_size;
-        uint8_t *image =  mmap(
-            NULL,
-            size,
-            PROT_READ,
-            MAP_PRIVATE,
-            fd, 
-            0
-        );
-        __throwif(ERR_FAILED, image == MAP_FAILED);
+
+        uint8_t *image = NULL;
+        if(size != 0) {
+            image =  mmap(
+                NULL,
+                size,
+                PROT_READ,
+                MAP_PRIVATE,
+                fd, 
+                0
+            );
+            __throwif(ERR_FAILED, image == MAP_FAILED);
+        }
 
         __throwiferr(decode_module(mod, image, size));
     }
