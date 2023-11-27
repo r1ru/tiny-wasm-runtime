@@ -1039,6 +1039,7 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         __throwiferr(read_u32(&magic, buf));
         __throwif(ERR_MAGIC_HEADER_NOT_DETECTED, magic != 0x6d736100);
         __throwiferr(read_u32(&version, buf));
+        __throwif(ERR_UNKNOWN_BINARY_VERSION, version != 0x00000001);
 
         // init
         module_t *m = *mod = malloc(sizeof(module_t));

@@ -39,6 +39,7 @@ static const char *error_msg[] = {
     [-ERR_FUNCTION_AND_CODE_SECTION_HAVE_INCOSISTENT_LENGTH]    = "function and code section have inconsistent lengths",
     [-ERR_DATA_COUNT_AND_DATA_SECTION_HAVE_INCOSISTENT_LENGTH]  = "data count and data section have inconsistent lengths",
     [-ERR_MAGIC_HEADER_NOT_DETECTED]                            = "magic header not detected",
+    [-ERR_UNKNOWN_BINARY_VERSION]                               = "unknown binary version",
     [-ERR_TYPE_MISMATCH]                                        = "type mismatch",
     [-ERR_UNKNOWN_LOCAL]                                        = "unknown local",
     [-ERR_UNKNOWN_LABEL]                                        = "unknown label",
