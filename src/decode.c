@@ -1037,6 +1037,7 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
 
         uint32_t magic, version;
         __throwiferr(read_u32(&magic, buf));
+        __throwif(ERR_MAGIC_HEADER_NOT_DETECTED, magic != 0x6d736100);
         __throwiferr(read_u32(&version, buf));
 
         // init
