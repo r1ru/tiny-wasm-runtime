@@ -420,7 +420,7 @@ error_t decode_startsec(module_t *mod, buffer_t *buf) {
 }
 
 // todo: delete this?
-error_t decode_instr(instr_t **instr, buffer_t *buf) {
+error_t decode_instr(module_t *mod, buffer_t *buf, instr_t **instr) {
     __try {
         instr_t *i = malloc(sizeof(instr_t));
         __throwif(ERR_FAILED, !i);
@@ -440,18 +440,18 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 // todo: support s33
                 __throwiferr(read_bt(&i->bt, buf));
 
-                __throwiferr(decode_instr(&i->in1, buf));
+                __throwiferr(decode_instr(mod, buf, &i->in1));
                 instr_t *j = i->in1;
                 while(j->op1 != OP_END && j->op1 != OP_ELSE) {
-                    __throwiferr(decode_instr(&j->next, buf));
+                    __throwiferr(decode_instr(mod, buf, &j->next));
                     j = j->next;
                 }
 
                 if(j->op1 == OP_ELSE) {
-                    __throwiferr(decode_instr(&i->in2, buf));
+                    __throwiferr(decode_instr(mod, buf, &i->in2));
                     j = i->in2;
                     while(j->op1 != OP_END) {
-                        __throwiferr(decode_instr(&j->next, buf));
+                        __throwiferr(decode_instr(mod, buf, &j->next));
                         j = j->next;
                     }
                 }
@@ -738,6 +738,9 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                     
                     // memory.init
                     case 0x08: {
+                        // check that datacountsec exists 
+                        // ref: https://webassembly.github.io/spec/core/binary/modules.html#data-count-section
+                        __throwif(ERR_DATA_COUNT_SECTION_REQUIRED,  !mod->datas.len);
                         uint32_t zero;
                         __throwiferr(read_u32_leb128(&i->x, buf));
                         __throwiferr(read_u32_leb128(&zero, buf));
@@ -773,6 +776,8 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
 
                     // data.drop
                     case 0x09:
+                        // check that datacountsec exists
+                        __throwif(ERR_DATA_COUNT_SECTION_REQUIRED,  !mod->datas.len);
                    // elem.drop
                     case 0x0D:
                     // table.grow
@@ -790,6 +795,7 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
                 break;
             
             default:
+            
                 PANIC("Decode: unsupported opcode: %x", i->op1);
         }
         
@@ -799,16 +805,16 @@ error_t decode_instr(instr_t **instr, buffer_t *buf) {
         return err;
 }
 
-static error_t decode_expr(expr_t *expr, buffer_t *buf) {
+static error_t decode_expr(module_t *mod, buffer_t *buf, expr_t *expr) {
     __try {
-        __throwiferr(decode_instr(expr, buf));
+        __throwiferr(decode_instr(mod, buf, expr));
         instr_t *instr = *expr;
 
         while(!eof(buf)) {
             if(instr->op1 == OP_END)
                 break;
             
-            __throwiferr(decode_instr(&instr->next, buf));
+            __throwiferr(decode_instr(mod, buf, &instr->next));
             instr = instr->next;
         }
 
@@ -827,7 +833,7 @@ error_t decode_globalsec(module_t *mod, buffer_t *buf) {
         
         VECTOR_FOR_EACH(g, &mod->globals) {
             __throwiferr(decode_globaltype(&g->gt, buf));
-            __throwiferr(decode_expr(&g->expr, buf));
+            __throwiferr(decode_expr(mod, buf, &g->expr));
         }
     }
     __catch:
@@ -850,7 +856,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
 
                     elem->mode.kind = 0; // active
                     elem->mode.table = 0;
-                    __throwiferr(decode_expr(&elem->mode.offset, buf));
+                    __throwiferr(decode_expr(mod, buf, &elem->mode.offset));
 
                     uint32_t n;
                     __throwiferr(read_u32_leb128(&n, buf));
@@ -876,7 +882,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
 
                 case 2: {
                     __throwiferr(read_u32_leb128(&elem->mode.table, buf));
-                    __throwiferr(decode_expr(&elem->mode.offset, buf));
+                    __throwiferr(decode_expr(mod, buf, &elem->mode.offset));
 
                 case 1:
                 case 3:
@@ -918,12 +924,12 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     elem->type = TYPE_FUNCREF;
                     elem->mode.kind = 0; // active
                     elem->mode.table = 0;
-                    __throwiferr(decode_expr(&elem->mode.offset, buf));
+                    __throwiferr(decode_expr(mod, buf, &elem->mode.offset));
                     uint32_t n;
                     __throwiferr(read_u32_leb128(&n, buf));
                     VECTOR_NEW(&elem->init, n, n);
                     VECTOR_FOR_EACH(e, &elem->init) {
-                        __throwiferr(decode_expr(e, buf));
+                        __throwiferr(decode_expr(mod, buf, e));
                     }
                     break;
                 }
@@ -937,7 +943,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     else if(kind == 6) {
                         elem->mode.kind = 0; // active
                         __throwiferr(read_u32_leb128(&elem->mode.table, buf));
-                        __throwiferr(decode_expr(&elem->mode.offset, buf));
+                        __throwiferr(decode_expr(mod, buf, &elem->mode.offset));
                     }
                     else if(kind == 7) {
                         elem->mode.kind = 2; // declarative
@@ -947,7 +953,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     __throwiferr(read_u32_leb128(&n, buf));
                     VECTOR_NEW(&elem->init, n, n);
                     VECTOR_FOR_EACH(e, &elem->init) {
-                        __throwiferr(decode_expr(e, buf));
+                        __throwiferr(decode_expr(mod, buf, e));
                     }
                     break;
                 }
@@ -1004,7 +1010,7 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
             }
 
             // decode body
-            __throwiferr(decode_expr(&func->body, code));
+            __throwiferr(decode_expr(mod, code, &func->body));
         }
     }
     __catch:
@@ -1020,7 +1026,7 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
         if(mod->datas.len) {
             __throwif(
                 ERR_DATA_COUNT_AND_DATA_SECTION_HAVE_INCOSISTENT_LENGTH,
-                n1 !=  mod->datas.len
+                n1 != mod->datas.len
             );
         }
         // init vector
@@ -1035,7 +1041,7 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
                 case 0:
                     data->mode.kind = DATA_MODE_ACTIVE;
                     data->mode.memory = 0;
-                    __throwiferr(decode_expr(&data->mode.offset, buf));
+                    __throwiferr(decode_expr(mod, buf, &data->mode.offset));
                     break;
                 case 1:
                     data->mode.kind = DATA_MODE_PASSIVE;
@@ -1043,7 +1049,7 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
                 case 2:
                     data->mode.kind = DATA_MODE_ACTIVE;
                     __throwiferr(read_u32_leb128(&data->mode.memory, buf));
-                    __throwiferr(decode_expr(&data->mode.offset, buf));
+                    __throwiferr(decode_expr(mod, buf, &data->mode.offset));
                     break;
             }
             uint32_t n2;
