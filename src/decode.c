@@ -773,10 +773,16 @@ static error_t decode_expr(expr_t *expr, buffer_t *buf) {
     __try {
         __throwiferr(decode_instr(expr, buf));
         instr_t *instr = *expr;
-        while(instr->op1 != OP_END) {
+
+        while(!eof(buf)) {
+            if(instr->op1 == OP_END)
+                break;
+            
             __throwiferr(decode_instr(&instr->next, buf));
             instr = instr->next;
         }
+
+        __throwif(ERR_END_OPCODE_EXPECTED, instr->op1 != OP_END);
     }
     __catch:
         return err;
@@ -936,21 +942,24 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
         );
 
         VECTOR_FOR_EACH(func, &mod->funcs) {
-            // size is unused
+            // read code
             uint32_t size;
             __throwiferr(read_u32_leb128(&size, buf));
+
+            buffer_t *code;
+            __throwiferr(read_buffer(&code, size, buf));
 
             VECTOR(locals_t) localses;
             uint32_t n2;
 
-            __throwiferr(read_u32_leb128(&n2, buf));
+            __throwiferr(read_u32_leb128(&n2, code));
             VECTOR_NEW(&localses, n2, n2);
 
             // count local variables
             uint32_t num_locals = 0;
             VECTOR_FOR_EACH(locals, &localses) {
-                __throwiferr(read_u32_leb128(&locals->n, buf));
-                __throwiferr(read_byte(&locals->type, buf));
+                __throwiferr(read_u32_leb128(&locals->n, code));
+                __throwiferr(read_byte(&locals->type, code));
                 num_locals += locals->n;
             }
 
@@ -964,7 +973,7 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
             }
 
             // decode body
-            __throwiferr(decode_expr(&func->body, buf));
+            __throwiferr(decode_expr(&func->body, code));
         }
     }
     __catch:
