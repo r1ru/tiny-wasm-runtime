@@ -1004,8 +1004,7 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
 
 error_t decode_codesec(module_t *mod, buffer_t *buf) {
     __try {
-        __throwif(ERR_FAILED, IS_ERROR(read_u32_leb128(&mod->num_codes, buf)));
-
+        __throwiferr(read_u32_leb128(&mod->num_codes, buf));
         __throwif(
             ERR_FUNCTION_AND_CODE_SECTION_HAVE_INCOSISTENT_LENGTH, 
             mod->num_codes != mod->funcs.len
