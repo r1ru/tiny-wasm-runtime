@@ -1071,9 +1071,9 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
             VECTOR_NEW(&mod->datas, n1, n1);
         }
 
-        byte_t kind;
+        uint32_t kind;
         VECTOR_FOR_EACH(data, &mod->datas) {
-            __throwiferr(read_byte(&kind, buf));
+            __throwiferr(read_u32_leb128(&kind, buf));
             switch(kind) {
                 case 0:
                     data->mode.kind = DATA_MODE_ACTIVE;
@@ -1100,6 +1100,7 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
         __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
+        printf("[+] err = %d\n", err);
         return err;
 }
 
