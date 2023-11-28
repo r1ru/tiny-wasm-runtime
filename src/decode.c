@@ -1144,6 +1144,9 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
         m->num_table_imports    = 0;
         m->num_mem_imports      = 0;
         m->num_global_imports   = 0;
+
+        uint8_t section_order[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 10, 11};
+        uint8_t expected_id = 0;
         
         while(!eof(buf)) {
             uint8_t id;
@@ -1151,13 +1154,20 @@ error_t decode_module(module_t **mod, uint8_t *image, size_t image_size) {
             __throwiferr(read_byte(&id, buf));
             __throwiferr(read_u32_leb128(&size, buf));
 
+            if(id > 12) {
+                __throw(ERR_MALFORMED_SECTION_ID);
+            }
+            
+            if(id != 0) {
+                // Make sure that the section is in order and only appears once
+                while(section_order[expected_id++] != id) {
+                    __throwif(ERR_UNEXPECTED_CONTENT_AFTER_LAST_SECTION, expected_id >= 12);
+                }
+            }
+            
             buffer_t *sec;
             __throwiferr(read_buffer(&sec, size, buf));
-
-            if(id <= 12 && decoders[id])
-                __throwiferr(decoders[id](m, sec));
-            else
-                __throw(ERR_MALFORMED_SECTION_ID);
+            __throwiferr(decoders[id](m, sec));
         }
 
         // Consider the case where the codesec is empty and the funcsec is non-empty
