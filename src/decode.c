@@ -933,20 +933,35 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     break;
                 }
 
-                case 5:
-                case 6:
+                case 5: {
+                    elem->mode.kind = 1; // passive
+                    __throwiferr(read_byte(&elem->type, buf));
+                    __throwif(ERR_MALFORMED_REFERENCE_TYPE, elem->type != TYPE_FUNCREF);
+                    uint32_t n;
+                    __throwiferr(read_u32_leb128(&n, buf));
+                    VECTOR_NEW(&elem->init, n, n);
+                    VECTOR_FOR_EACH(e, &elem->init) {
+                        __throwiferr(decode_expr(mod, buf, e));
+                    }
+                    break;
+                }
+
+                case 6: {
+                    elem->mode.kind = 0; // active
+                    __throwiferr(read_u32_leb128(&elem->mode.table, buf));
+                    __throwiferr(decode_expr(mod, buf, &elem->mode.offset));
+                    __throwiferr(read_byte(&elem->type, buf));
+                    uint32_t n;
+                    __throwiferr(read_u32_leb128(&n, buf));
+                    VECTOR_NEW(&elem->init, n, n);
+                    VECTOR_FOR_EACH(e, &elem->init) {
+                        __throwiferr(decode_expr(mod, buf, e));
+                    }
+                    break;
+                }
+
                 case 7: {
-                    if(kind == 5) {
-                        elem->mode.kind = 1; // passive
-                    }
-                    else if(kind == 6) {
-                        elem->mode.kind = 0; // active
-                        __throwiferr(read_u32_leb128(&elem->mode.table, buf));
-                        __throwiferr(decode_expr(mod, buf, &elem->mode.offset));
-                    }
-                    else if(kind == 7) {
-                        elem->mode.kind = 2; // declarative
-                    }
+                    elem->mode.kind = 2; // declarative
                     __throwiferr(read_byte(&elem->type, buf));
                     uint32_t n;
                     __throwiferr(read_u32_leb128(&n, buf));
