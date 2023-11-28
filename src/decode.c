@@ -97,7 +97,7 @@ static error_t read_leb128_unsigned(uint64_t *d, uint32_t num_max_bits, buffer_t
             }
 
             if(shift >= num_max_bits) {
-                __throw(ERR_INTEGER_TOO_LARGE);
+                __throw(ERR_INTEGER_REPRESENTATION_TOO_LONG);
             }
         }
         *d = result;
@@ -124,7 +124,7 @@ static error_t read_leb128_signed(int64_t *d, uint32_t num_max_bits, buffer_t *b
             }
 
             if(shift >= num_max_bits) {
-                __throw(ERR_INTEGER_TOO_LARGE);
+                __throw(ERR_INTEGER_REPRESENTATION_TOO_LONG);
             }
         }
         *d = result;
@@ -281,7 +281,8 @@ error_t decode_typesec(module_t *mod, buffer_t*buf) {
 
 static error_t decode_limits(limits_t *limits, buffer_t *buf) {
     __try {
-        __throwiferr(read_byte((uint8_t *)&limits->has_max, buf));
+        __throwiferr(read_u7_leb128(&limits->has_max, buf));
+        __throwif(ERR_INTEGER_TOO_LARGE, limits->has_max != 0 && limits->has_max != 1);
         __throwiferr(read_u32_leb128(&limits->min, buf));
         if(limits->has_max) {
             __throwiferr(read_u32_leb128(&limits->max, buf));
@@ -296,7 +297,7 @@ static error_t decode_limits(limits_t *limits, buffer_t *buf) {
 
 static error_t decode_tabletype(tabletype_t *tt, buffer_t *buf) {
     __try {
-        __throwiferr(read_byte(&tt->reftype, buf));
+        __throwiferr(read_u7_leb128(&tt->reftype, buf));
         __throwiferr(decode_limits(&tt->limits, buf));
     }
     __catch:

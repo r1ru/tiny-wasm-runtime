@@ -293,7 +293,7 @@ typedef struct {
 
 typedef struct {
     uint32_t    min;
-    bool        has_max;
+    uint8_t     has_max;
     uint32_t    max;
 } limits_t;
 

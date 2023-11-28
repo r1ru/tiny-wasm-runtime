@@ -49,6 +49,7 @@ static const char *error_msg[] = {
     [-ERR_MALFORMED_REFERENCE_TYPE]                             = "malformed reference type",
     [-ERR_MALFORMED_IMPORT_KIND]                                = "malformed import kind",
     [-ERR_SECTION_SIZE_MISMATCH]                                = "section size mismatch",
+    [-ERR_INTEGER_REPRESENTATION_TOO_LONG]                      = "integer representation too long",
     [-ERR_TYPE_MISMATCH]                                        = "type mismatch",
     [-ERR_UNKNOWN_LOCAL]                                        = "unknown local",
     [-ERR_UNKNOWN_LABEL]                                        = "unknown label",
