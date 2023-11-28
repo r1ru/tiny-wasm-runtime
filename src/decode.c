@@ -117,6 +117,10 @@ static error_t read_leb128_signed(int64_t *d, uint32_t num_max_bits, buffer_t *b
             shift += 7;
 
             if((byte & 0x80) == 0) {
+                if(shift == 70 && byte != 0x7f && byte != 0x00) {
+                    __throw(ERR_INTEGER_TOO_LARGE);
+                }
+
                 if((byte & 0x40) && (shift < 64)) {
                     result |= (~0UL << shift);
                 }
@@ -164,6 +168,7 @@ error_t read_i32_leb128(int32_t *d, buffer_t *buf) {
     __try {
         int64_t val;
         __throwiferr(read_leb128_signed(&val, 32, buf));
+        __throwif(ERR_INTEGER_TOO_LARGE, val > INT32_MAX || val < INT32_MIN);
         *d = (int32_t)val;
     }
     __catch:
@@ -580,6 +585,7 @@ error_t decode_instr(module_t *mod, buffer_t *buf, instr_t **instr) {
 
             case OP_I64_CONST:
                 __throwiferr(read_i64_leb128(&i->c.i64, buf));
+                printf("%ld\n", i->c.i64);
                 break;
             
             case OP_F32_CONST:
