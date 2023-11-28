@@ -342,7 +342,7 @@ error_t decode_importsec(module_t *mod, buffer_t*buf) {
                     mod->num_global_imports++;
                     break;
                 default:
-                    PANIC("unknown import: %d\n", import->d.kind);
+                    __throw(ERR_MALFORMED_IMPORT_KIND);
             }
         }
     }

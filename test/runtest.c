@@ -47,6 +47,7 @@ static const char *error_msg[] = {
     [-ERR_DATA_COUNT_SECTION_REQUIRED]                          = "data count section required",
     [-ERR_ILLEGAL_OPCODE]                                       = "illegal opcode",
     [-ERR_MALFORMED_REFERENCE_TYPE]                             = "malformed reference type",
+    [-ERR_MALFORMED_IMPORT_KIND]                                = "malformed import kind",
     [-ERR_TYPE_MISMATCH]                                        = "type mismatch",
     [-ERR_UNKNOWN_LOCAL]                                        = "unknown local",
     [-ERR_UNKNOWN_LABEL]                                        = "unknown label",
