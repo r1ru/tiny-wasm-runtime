@@ -293,6 +293,12 @@ add_test(
 )
 
 add_test(
+    NAME loop
+    COMMAND runtest loop
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
     NAME load
     COMMAND runtest load
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
