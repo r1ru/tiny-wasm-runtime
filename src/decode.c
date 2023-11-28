@@ -244,7 +244,7 @@ error_t decode_customsec(module_t *mod, buffer_t *buf) {
         return err;
 }
  
-error_t decode_typesec(module_t *mod, buffer_t*buf) {
+error_t decode_typesec(module_t *mod, buffer_t *buf) {
     __try {
         uint32_t n1;
         __throwiferr(read_u32_leb128(&n1, buf));
@@ -365,6 +365,8 @@ error_t decode_funcsec(module_t *mod, buffer_t *buf) {
         VECTOR_FOR_EACH(func, &mod->funcs) {
             __throwiferr(read_u32_leb128(&func->type, buf));
         }
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -380,6 +382,8 @@ error_t decode_tablesec(module_t *mod, buffer_t *buf) {
         VECTOR_FOR_EACH(table, &mod->tables) {
             __throwiferr(decode_tabletype(&table->type, buf));
         }
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -394,6 +398,8 @@ error_t decode_memsec(module_t *mod, buffer_t *buf) {
         VECTOR_FOR_EACH(mem, &mod->mems) {
             __throwiferr(decode_limits(&mem->type, buf));
         }
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -410,6 +416,8 @@ error_t decode_exportsec(module_t *mod, buffer_t *buf) {
             __throwiferr(read_byte(&export->exportdesc.kind, buf));
             __throwiferr(read_u32_leb128(&export->exportdesc.idx, buf));
         }
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -419,6 +427,7 @@ error_t decode_startsec(module_t *mod, buffer_t *buf) {
     __try {
         mod->has_start = true;
         __throwiferr(read_u32_leb128(&mod->start, buf));
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -839,6 +848,8 @@ error_t decode_globalsec(module_t *mod, buffer_t *buf) {
             __throwiferr(decode_globaltype(&g->gt, buf));
             __throwiferr(decode_expr(mod, buf, &g->expr));
         }
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -984,6 +995,8 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                     PANIC("unsupported element: %x", kind);
             }
         }
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -1034,6 +1047,8 @@ error_t decode_codesec(module_t *mod, buffer_t *buf) {
             // decode body
             __throwiferr(decode_expr(mod, code, &func->body));
         }
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -1081,6 +1096,8 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
                 __throwiferr(read_byte(byte, buf));
             }
         }
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -1092,6 +1109,8 @@ error_t decode_datacountsec(module_t *mod, buffer_t *buf) {
         __throwiferr(read_u32_leb128(&num_datas, buf));
         // init data segment vector
         VECTOR_NEW(&mod->datas, num_datas, num_datas);
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;

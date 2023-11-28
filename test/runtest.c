@@ -545,7 +545,6 @@ static error_t run_command(JSON_Object *command) {
 
                 // check that decode fails
                 error_t ret = decode_module_from_fpath(fpath, &module);
-
                 __throwif(ERR_FAILED, !IS_ERROR(ret));
                 
                 // check that error messagees match
