@@ -259,7 +259,7 @@ error_t decode_typesec(module_t *mod, buffer_t *buf) {
         VECTOR_FOR_EACH(functype, &mod->types) {
             // expected to be 0x60
             uint8_t magic;
-            __throwiferr(read_byte(&magic, buf));
+            __throwiferr(read_u7_leb128(&magic, buf));
             __throwif(ERR_FAILED, magic != 0x60);
 
             // decode parameter types
@@ -1105,7 +1105,6 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
         __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
-        printf("[+] err = %d\n", err);
         return err;
 }
 
