@@ -744,7 +744,7 @@ error_t decode_instr(module_t *mod, buffer_t *buf, instr_t **instr) {
             }
 
             case OP_0XFC:
-                __throwiferr(read_byte(&i->op2, buf));
+                __throwiferr(read_u32_leb128(&i->op2, buf));
                 switch(i->op2) {
                     case 0x00:
                     case 0x01:

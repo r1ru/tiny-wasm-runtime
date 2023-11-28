@@ -243,7 +243,7 @@ typedef struct {
 typedef struct instr {
     struct instr                *next;
     uint8_t                     op1;
-    uint8_t                     op2;
+    uint32_t                    op2;
 
     union {
         // control instructions
