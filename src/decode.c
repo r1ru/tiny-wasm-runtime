@@ -238,7 +238,7 @@ error_t decode_customsec(module_t *mod, buffer_t *buf) {
         // check that name exists
         uint8_t *n;
         __throwiferr(read_bytes(&n, buf));
-        // ignore contentsfor now
+        // ignore contents for now
     }
     __catch:
         return err;
@@ -272,6 +272,8 @@ error_t decode_typesec(module_t *mod, buffer_t*buf) {
                 __throwiferr(read_byte(valtype, buf));
             }
         }
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -345,6 +347,8 @@ error_t decode_importsec(module_t *mod, buffer_t*buf) {
                     __throw(ERR_MALFORMED_IMPORT_KIND);
             }
         }
+
+        __throwif(ERR_SECTION_SIZE_MISMATCH, !eof(buf));
     }
     __catch:
         return err;
@@ -936,7 +940,10 @@ error_t decode_elemsec(module_t *mod, buffer_t *buf) {
                 case 5: {
                     elem->mode.kind = 1; // passive
                     __throwiferr(read_byte(&elem->type, buf));
-                    __throwif(ERR_MALFORMED_REFERENCE_TYPE, elem->type != TYPE_FUNCREF);
+                    __throwif(
+                        ERR_MALFORMED_REFERENCE_TYPE, 
+                        elem->type != TYPE_FUNCREF && elem->type != TYPE_EXTENREF
+                    );
                     uint32_t n;
                     __throwiferr(read_u32_leb128(&n, buf));
                     VECTOR_NEW(&elem->init, n, n);
@@ -1079,7 +1086,6 @@ error_t decode_datasec(module_t *mod, buffer_t *buf) {
 }
 
 error_t decode_datacountsec(module_t *mod, buffer_t *buf) {
-    // ignore data count section for now
     __try {
         uint32_t num_datas;
         __throwiferr(read_u32_leb128(&num_datas, buf));

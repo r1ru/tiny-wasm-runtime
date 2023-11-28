@@ -48,6 +48,7 @@ static const char *error_msg[] = {
     [-ERR_ILLEGAL_OPCODE]                                       = "illegal opcode",
     [-ERR_MALFORMED_REFERENCE_TYPE]                             = "malformed reference type",
     [-ERR_MALFORMED_IMPORT_KIND]                                = "malformed import kind",
+    [-ERR_SECTION_SIZE_MISMATCH]                                = "section size mismatch",
     [-ERR_TYPE_MISMATCH]                                        = "type mismatch",
     [-ERR_UNKNOWN_LOCAL]                                        = "unknown local",
     [-ERR_UNKNOWN_LABEL]                                        = "unknown label",
@@ -144,8 +145,8 @@ error_t decode_module_from_fpath(const char *fpath, module_t **mod) {
             );
             __throwif(ERR_FAILED, image == MAP_FAILED);
         }
-
-        __throwiferr(decode_module(mod, image, size));
+        error_t ret = decode_module(mod, image, size);
+        __throwiferr(ret);
     }
     __catch:
         return err;
@@ -543,6 +544,7 @@ static error_t run_command(JSON_Object *command) {
 
                 // check that decode fails
                 error_t ret = decode_module_from_fpath(fpath, &module);
+
                 __throwif(ERR_FAILED, !IS_ERROR(ret));
                 
                 // check that error messagees match
