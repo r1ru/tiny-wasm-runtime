@@ -474,29 +474,41 @@ error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, modu
             exportidx++;
         }
 
-        // init table if elemmode is active
         for(uint32_t i = 0; i < module->elems.len; i++) {
             elem_t *elem = VECTOR_ELEM(&module->elems, i);
             
-            if(elem->mode.kind != 0)
-                continue;
-            
-            // exec instruction sequence
-            __throwiferr(exec_expr(S, &elem->mode.offset));
-
-            // exec i32.const 0; i32.const n;
-            __throwiferr(push_i32(S->stack, 0));
-            __throwiferr(push_i32(S->stack, elem->init.len));
-
-            // table.init
             instr_t elem_drop = {
                 .op1 = OP_0XFC, .op2 = 0x0D, .x = i, .next = NULL
             };
             instr_t table_init = {
                 .op1 = OP_0XFC, .op2 = 0x0C, .x = elem->mode.table, .y = i, .next = &elem_drop
             };
-            expr_t expr = &table_init;
-            __throwiferr(exec_expr(S, &expr));
+
+            switch(elem->mode.kind) {
+                // init table if elemmode is active
+                case 0: {
+                     // exec instruction sequence
+                    __throwiferr(exec_expr(S, &elem->mode.offset));
+
+                    // exec i32.const 0; i32.const n;
+                    __throwiferr(push_i32(S->stack, 0));
+                    __throwiferr(push_i32(S->stack, elem->init.len));
+
+                    // table.init
+                    expr_t expr = &table_init;
+                    __throwiferr(exec_expr(S, &expr));
+                    
+                    break;
+                }
+
+                // exec elem.drop if elemmode is declarative
+                case 2: {
+                    // table.init
+                    expr_t expr = &elem_drop;
+                    __throwiferr(exec_expr(S, &expr));
+                    break;
+                }
+            }
         }
 
         // init memory if datamode is active
