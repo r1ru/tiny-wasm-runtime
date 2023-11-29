@@ -95,8 +95,8 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/start.wast -o ${CMAKE_CURRENT_BINARY_DIR}/start
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/binary.wast -o ${CMAKE_CURRENT_BINARY_DIR}/binary
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/binary-leb128.wast -o ${CMAKE_CURRENT_BINARY_DIR}/binary-leb128
-    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/data.wast -o ${CMAKE_CURRENT_BINARY_DIR}/data
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/global.wast -o ${CMAKE_CURRENT_BINARY_DIR}/global
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/data.wast -o ${CMAKE_CURRENT_BINARY_DIR}/data
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/elem.wast -o ${CMAKE_CURRENT_BINARY_DIR}/elem
 )
 
@@ -582,5 +582,11 @@ add_test(
 add_test(
     NAME binary-leb128
     COMMAND runtest binary-leb128
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME global
+    COMMAND runtest global
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
