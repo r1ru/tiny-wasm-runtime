@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <string.h>
 #include "validate.h"
 #include "print.h"
 #include "exception.h"
@@ -1281,6 +1282,16 @@ error_t validate_module(module_t *mod) {
         // C.mems must be larger than 1
         __throwif(ERR_MULTIPLE_MEMORIES, C.mems.len > 1);
         
+        // All export names export_{i}.name must be different
+        // todo: fix this
+        VECTOR_FOR_EACH(export1, &mod->exports) {
+            uint32_t match = 0;
+            VECTOR_FOR_EACH(export2, &mod->exports) {
+                if(strcmp(export1->name, export2->name) == 0)
+                    match++;
+            }
+            __throwif(ERR_DUPLICATE_EXPORT_NAME, match != 1);
+        }
 
         // validate exports
         VECTOR_FOR_EACH(export, &mod->exports) {

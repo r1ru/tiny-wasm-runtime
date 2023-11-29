@@ -71,6 +71,7 @@ static const char *error_msg[] = {
     [-ERR_SIZE_MINIMUM_MUST_NOT_BE_GREATER_THAN_MAXIMUM]        = "size minimum must not be greater than maximum",
     [-ERR_MEMORY_SIZE_MUST_BE_AT_MOST_65536_PAGES]              = "memory size must be at most 65536 pages (4GiB)",
     [-ERR_START_FUNCTION]                                       = "start function",
+    [-ERR_DUPLICATE_EXPORT_NAME]                                = "duplicate export name",
     [-ERR_UNKNOWN_IMPORT]                                       = "unknown import",
     [-ERR_TRAP_INTERGER_DIVIDE_BY_ZERO]                         = "integer divide by zero",
     [-ERR_TRAP_INTERGET_OVERFLOW]                               = "integer overflow",
