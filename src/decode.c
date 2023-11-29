@@ -313,6 +313,7 @@ static error_t decode_globaltype(globaltype_t *gt, buffer_t *buf) {
     __try {
         __throwiferr(read_byte(&gt->type, buf));
         __throwiferr(read_byte(&gt->mut, buf));
+        __throwif(ERR_MALFORMED_MUTABILITY, gt->mut != 0 && gt->mut != 1);
     }  
     __catch:
         return err;
@@ -585,7 +586,6 @@ error_t decode_instr(module_t *mod, buffer_t *buf, instr_t **instr) {
 
             case OP_I64_CONST:
                 __throwiferr(read_i64_leb128(&i->c.i64, buf));
-                printf("%ld\n", i->c.i64);
                 break;
             
             case OP_F32_CONST:
