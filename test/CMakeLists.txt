@@ -596,3 +596,9 @@ add_test(
     COMMAND runtest elem
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+add_test(
+    NAME data
+    COMMAND runtest data
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
