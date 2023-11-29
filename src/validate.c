@@ -1044,7 +1044,7 @@ error_t validate_elemmode(context_t *ctx, elemmode_t *mode, reftype_t expect) {
                 resulttype_t rt2 = {.len = 1, .elem = &type_i32};
                 __throwiferr(validate_expr(ctx, &mode->offset, &rt2));
 
-                __throwif(ERR_FAILED, tt->reftype != expect);
+                __throwif(ERR_TYPE_MISMATCH, tt->reftype != expect);
                 
                 break;
             
