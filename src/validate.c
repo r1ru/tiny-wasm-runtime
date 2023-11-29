@@ -1191,21 +1191,6 @@ error_t validate_module(module_t *mod) {
             __throwif(ERR_START_FUNCTION, ft->rt1.len != 0 || ft->rt2.len != 0);
         }
 
-        // create context C'
-        context_t C1;
-        VECTOR_COPY(&C1.globals, &C.globals);
-        VECTOR_COPY(&C1.funcs, &C.funcs);
-        VECTOR_COPY(&C1.refs, &C.refs);
-        VECTOR_INIT(&C1.types);
-        VECTOR_INIT(&C1.tables);
-        VECTOR_INIT(&C1.mems);
-        VECTOR_INIT(&C1.elems);
-        VECTOR_INIT(&C1.datas);
-        VECTOR_INIT(&C1.locals);
-        LIST_INIT(&C1.labels);
-        C1.ret = NULL;
-        
-        // under the context C'
         // validate tables
         VECTOR_FOR_EACH(table, &mod->tables) {
             __throwiferr(validate_table(table));
@@ -1218,10 +1203,13 @@ error_t validate_module(module_t *mod) {
             VECTOR_APPEND(&C.mems, mem->type);
         }
 
+        VECTOR(globaltype_t) globals;
+        VECTOR_COPY(&globals, &C.globals);
+
         // validate globals
         VECTOR_FOR_EACH(global, &mod->globals) {
             __throwiferr(validate_global(&C, global));
-            VECTOR_APPEND(&C.globals, global->gt);
+            VECTOR_APPEND(&globals, global->gt);
         }
 
         // validate elems
@@ -1235,6 +1223,8 @@ error_t validate_module(module_t *mod) {
            __throwiferr(validate_data(&C, data));
            VECTOR_APPEND(&C.datas, 1);
         }
+
+        VECTOR_COPY(&C.globals, &globals);
 
         // under the context C
         // validate funcs
