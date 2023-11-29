@@ -1828,8 +1828,10 @@ error_t exec_expr(store_t *S, expr_t *expr) {
                             pop_i32(stack, &s);
                             pop_i32(stack, &d);
 
-                            // todo: fix this
-                            __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, s + n > data->data.len || d + n > mem->num_pages * WASM_PAGE_SIZE);
+                            uint64_t ea1 = (uint32_t)s, ea2 = (uint32_t)d;
+                            ea1 += (uint32_t)n;
+                            ea2 += (uint32_t)n;
+                            __throwif(ERR_TRAP_OUT_OF_BOUNDS_MEMORY_ACCESS, ea1 > data->data.len || ea2 > mem->num_pages * WASM_PAGE_SIZE);
                             
                             while(n--) {
                                 byte_t b = *VECTOR_ELEM(&data->data, s);
@@ -1842,7 +1844,7 @@ error_t exec_expr(store_t *S, expr_t *expr) {
                                     .m = (memarg_t){.offset = 0, .align = 0}
                                 };
                                 expr_t expr = &i32_store8;
-                                exec_expr(S, &expr);
+                                __throwiferr(exec_expr(S, &expr));
                                 s++;
                                 d++;
                             }
