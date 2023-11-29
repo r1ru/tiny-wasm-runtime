@@ -98,6 +98,7 @@ add_custom_target(
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/global.wast -o ${CMAKE_CURRENT_BINARY_DIR}/global
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/elem.wast -o ${CMAKE_CURRENT_BINARY_DIR}/elem
     COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/data.wast -o ${CMAKE_CURRENT_BINARY_DIR}/data
+    COMMAND wast2json ${CMAKE_CURRENT_SOURCE_DIR}/testsuite/exports.wast -o ${CMAKE_CURRENT_BINARY_DIR}/exports
 )
 
 add_test(
@@ -600,5 +601,11 @@ add_test(
 add_test(
     NAME data
     COMMAND runtest data
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_test(
+    NAME exports
+    COMMAND runtest exports
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
