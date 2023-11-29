@@ -1028,6 +1028,42 @@ error_t validate_global(context_t *ctx, global_t *global) {
         return err;
 }
 
+error_t validate_exportdesc(context_t *C, exportdesc_t *desc) {
+    __try {
+        switch(desc->kind) {
+            case FUNC_EXPORTDESC: {
+                functype_t *ft = VECTOR_ELEM(&C->funcs, desc->idx);
+                __throwif(ERR_UNKNOWN_FUNC, !ft);
+                break;
+            }
+
+            case TABLE_EXPORTDESC: {
+                tabletype_t *tt = VECTOR_ELEM(&C->tables, desc->idx);
+                __throwif(ERR_UNKNOWN_TABLE, !tt);
+                break;
+            }
+
+            case MEM_EXPORTDESC: {
+                memtype_t *mt = VECTOR_ELEM(&C->mems, desc->idx);
+                __throwif(ERR_UNKNOWN_MEMORY, !mt);
+                break;
+            }
+            
+            case GLOBAL_IMPORTDESC: {
+                globaltype_t *gt = VECTOR_ELEM(&C->globals, desc->idx);
+                __throwif(ERR_UNKNOWN_GLOBAL, !gt);
+                break;
+            }
+        }
+    }
+    __catch:
+        return err;
+}
+
+error_t validate_export(context_t *C, export_t *export) {
+    return validate_exportdesc(C, &export->exportdesc);
+}
+
 error_t validate_elemmode(context_t *ctx, elemmode_t *mode, reftype_t expect) {
     __try {
         switch(mode->kind) {
@@ -1181,8 +1217,6 @@ error_t validate_module(module_t *mod) {
             VECTOR_APPEND(&C.funcs, *functype);
         }
         
-        // todo: validate exports
-
         // validate start function if exists
         if(mod->has_start) {
             functype_t *ft = VECTOR_ELEM(&C.funcs, mod->start);
@@ -1230,11 +1264,16 @@ error_t validate_module(module_t *mod) {
         // validate funcs
         VECTOR_FOR_EACH(func, &mod->funcs) {   
             __throwiferr(validate_func(&C, func));
-        } 
+        }
 
         // C.mems must be larger than 1
         __throwif(ERR_MULTIPLE_MEMORIES, C.mems.len > 1);
         
+
+        // validate exports
+        VECTOR_FOR_EACH(export, &mod->exports) {
+           __throwiferr(validate_export(&C, export));
+        }
     }
     __catch:
         return err;
