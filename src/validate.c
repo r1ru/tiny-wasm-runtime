@@ -1028,6 +1028,39 @@ error_t validate_global(context_t *ctx, global_t *global) {
         return err;
 }
 
+error_t validate_importdesc(context_t *C, importdesc_t *desc) {
+    __try {
+        switch(desc->kind) {
+            case FUNC_IMPORTDESC: {
+                functype_t *ft = VECTOR_ELEM(&C->types, desc->func);
+                __throwif(ERR_UNKNOWN_TYPE, !ft);
+                VECTOR_APPEND(&C->funcs, *ft);
+                break;
+            }
+            case TABLE_IMPORTDESC: {
+                __throwiferr(validate_tabletype(&desc->table));
+                VECTOR_APPEND(&C->tables, desc->table);
+                break;
+            }
+            case MEM_IMPORTDESC: {
+                __throwiferr(validate_memtype(&desc->mem));
+                VECTOR_APPEND(&C->mems, desc->mem);
+                break;
+            }
+            case GLOBAL_IMPORTDESC: {
+                VECTOR_APPEND(&C->globals, desc->globaltype);
+                break;
+            }
+        }
+    }
+    __catch:
+        return err;
+}
+
+error_t validate_import(context_t *C, import_t *import) {
+    return validate_importdesc(C, &import->d);
+}
+
 error_t validate_exportdesc(context_t *C, exportdesc_t *desc) {
     __try {
         switch(desc->kind) {
@@ -1187,28 +1220,7 @@ error_t validate_module(module_t *mod) {
 
         // validate imports
         VECTOR_FOR_EACH(import, &mod->imports) {
-            switch(import->d.kind) {
-                case FUNC_IMPORTDESC: {
-                    functype_t *ft = VECTOR_ELEM(&C.types, import->d.func);
-                    __throwif(ERR_UNKNOWN_TYPE, !ft);
-                    VECTOR_APPEND(&C.funcs, *ft);
-                    break;
-                }
-                case TABLE_IMPORTDESC: {
-                    __throwiferr(validate_tabletype(&import->d.table));
-                    VECTOR_APPEND(&C.tables, import->d.table);
-                    break;
-                }
-                case MEM_IMPORTDESC: {
-                    __throwiferr(validate_memtype(&import->d.mem));
-                    VECTOR_APPEND(&C.mems, import->d.mem);
-                    break;
-                }
-                case GLOBAL_IMPORTDESC: {
-                    VECTOR_APPEND(&C.globals, import->d.globaltype);
-                    break;
-                }
-            }
+            __throwiferr(validate_import(&C, import));
         }
 
         VECTOR_FOR_EACH(func, &mod->funcs) {
