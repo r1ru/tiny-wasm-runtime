@@ -3,4 +3,4 @@
 	url = https://github.com/kgabis/parson
 [submodule "test/testsuite"]
 	path = test/testsuite
-	url = https://github.com/WebAssembly/testsuite
+	url = https://github.com/RI5255/testsuite
