@@ -256,297 +256,6 @@ static paddr_t eaddr_to_paddr(meminst_t *meminst, eaddr_t eaddr) {
     return (uint64_t)table0[vpn0] | (eaddr & 0xfff);
 }
 
-static funcaddr_t alloc_func(store_t *S, func_t *func, moduleinst_t *moduleinst) {
-    funcinst_t funcinst;
-
-    funcinst.type = &moduleinst->types[func->type];
-    funcinst.module = moduleinst;
-    funcinst.code   = func;
-
-    return VECTOR_APPEND(&S->funcs, funcinst);
-}
-
-static tableaddr_t alloc_table(store_t *S, table_t *table) {
-    tableinst_t tableinst;
-    
-    uint32_t n = table->type.limits.min;
-    tableinst.type = table->type;
-    VECTOR_NEW(&tableinst.elem, n, n);
-
-    // init with ref.null
-    VECTOR_FOR_EACH(elem, &tableinst.elem) {
-        *elem = REF_NULL;
-    }
-
-    return VECTOR_APPEND(&S->tables, tableinst);
-}
-
-static memaddr_t alloc_mem(store_t *S, mem_t *mem) {
-    meminst_t meminst;
-    
-    meminst.type = mem->type;
-    meminst.num_pages = mem->type.min;
-    for(uint32_t i = 0; i < 4; i++) {
-        meminst.table2[i] = NULL;
-    }
-
-    return VECTOR_APPEND(&S->mems, meminst);
-}
-
-static dataaddr_t alloc_data(store_t *S, data_t *data) {
-    datainst_t datainst;
-
-    VECTOR_COPY(&datainst.data, &data->init);
-
-    return VECTOR_APPEND(&S->datas, datainst);
-}
-
-error_t exec_expr(store_t *S, expr_t * expr);
-static globaladdr_t alloc_global(store_t *S, global_t *global) {
-    globalinst_t globalinst;
-
-    globalinst.gt = global->gt;
-
-    exec_expr(S, &global->expr);
-    pop_val(S->stack, &globalinst.val);
-    
-    return VECTOR_APPEND(&S->globals, globalinst);
-}
-
-static elemaddr_t alloc_elem(store_t *S, elem_t *elem) {
-    eleminst_t eleminst;
-
-    VECTOR_NEW(&eleminst.elem, elem->init.len, elem->init.len);
-
-    for(uint32_t j = 0; j < elem->init.len; j++) {
-        expr_t *init = VECTOR_ELEM(&elem->init, j);
-        exec_expr(S, init);
-        val_t val;
-        pop_val(S->stack, &val);
-        *VECTOR_ELEM(&eleminst.elem, j) = val.ref;
-    }
-
-    return VECTOR_APPEND(&S->elems, eleminst);
-}
-
-store_t *new_store(void) {
-    // allocate store
-    store_t *S = malloc(sizeof(store_t));
-    // allocate stack
-    new_stack(&S->stack);
-
-    VECTOR_INIT(&S->funcs);
-    VECTOR_INIT(&S->tables);
-    VECTOR_INIT(&S->mems);
-    VECTOR_INIT(&S->globals);
-    VECTOR_INIT(&S->elems);
-    VECTOR_INIT(&S->datas);
-
-    return S;
-}
-
-static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
-/*
-    In the spec, funcaddr is passed as an argument to invoke. 
-    This requires that the caller has access to the moduleinst. 
-    Therefore, it takes a pointer to moduleinst as its third argument.
-*/
-error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, moduleinst_t **inst) {
-    __try {
-        // allocate space in store
-        VECTOR_GROW(&S->funcs, module->funcs.len);
-        VECTOR_GROW(&S->tables, module->tables.len);
-        VECTOR_GROW(&S->mems, module->mems.len);
-        VECTOR_GROW(&S->globals, module->globals.len);
-        VECTOR_GROW(&S->elems, module->elems.len);
-        VECTOR_GROW(&S->datas, module->datas.len);
-
-        // create new moduleinst
-        moduleinst_t *moduleinst = *inst = malloc(sizeof(moduleinst_t));
-        moduleinst->types = module->types.elem;
-        moduleinst->funcaddrs = malloc(
-            sizeof(funcaddr_t) * (module->num_func_imports + module->funcs.len)
-        );
-        moduleinst->tableaddrs = malloc(
-            sizeof(tableaddr_t) * (module->num_table_imports + module->tables.len)
-        );
-        moduleinst->memaddrs = malloc(sizeof(memaddr_t) * 1);
-        moduleinst->dataaddrs = malloc(
-            sizeof(dataaddr_t) * module->datas.len
-        );
-        moduleinst->globaladdrs = malloc(
-            sizeof(globaladdr_t) * (module->num_global_imports + module->globals.len)
-        );
-        moduleinst->elemaddrs = malloc(sizeof(elemaddr_t) * module->elems.len);
-        
-        // resolve imports (Trust the caller)
-        uint32_t funcidx = 0;
-        uint32_t tableidx = 0;
-        uint32_t memidx = 0;
-        uint32_t globalidx = 0;
-        uint32_t elemidx = 0, dataidx = 0;
-
-        size_t i = 0;
-        VECTOR_FOR_EACH(import, &module->imports) {
-            externval_t *externval = VECTOR_ELEM(externvals, i++);
-
-            switch(import->d.kind) {
-                case FUNC_IMPORTDESC:
-                    moduleinst->funcaddrs[funcidx++] = externval->func;
-                    break;
-                case TABLE_IMPORTDESC: {
-                    moduleinst->tableaddrs[tableidx++] = externval->table;
-                    break;
-                }
-                case MEM_IMPORTDESC: {
-                    moduleinst->memaddrs[memidx++] = externval->mem;
-                    break;
-
-                }
-                case GLOBAL_IMPORTDESC: {
-                    moduleinst->globaladdrs[globalidx++] = externval->global;
-                    break;
-                }
-            }
-        }
-
-        // alloc funcs
-        VECTOR_FOR_EACH(func, &module->funcs) {
-            moduleinst->funcaddrs[funcidx] = alloc_func(S, func, moduleinst);
-            funcidx++;
-        }
-
-        // alloc tables
-        VECTOR_FOR_EACH(table, &module->tables) {
-            moduleinst->tableaddrs[tableidx] = alloc_table(S, table);
-            tableidx++;
-        }
-
-        // alloc mems
-        VECTOR_FOR_EACH(mem, &module->mems) {
-            moduleinst->memaddrs[memidx] = alloc_mem(S, mem);
-            memidx++;
-        }
-
-        // alloc datas
-        VECTOR_FOR_EACH(data, &module->datas) {
-            moduleinst->dataaddrs[dataidx] = alloc_data(S, data);
-            dataidx++;
-        }
-
-        // alloc globals
-        frame_t F = {.module = moduleinst, .locals = NULL};
-        __throwiferr(push_frame(S->stack, F));
-
-        VECTOR_FOR_EACH(global, &module->globals) {
-            moduleinst->globaladdrs[globalidx] = alloc_global(S, global);
-            globalidx++;
-        }
-
-        // alloc elems
-        VECTOR_FOR_EACH(elem, &module->elems) {
-            moduleinst->elemaddrs[elemidx] = alloc_elem(S, elem);
-            elemidx++;
-        }
-
-        // create exportinst
-        uint32_t exportidx = 0;
-        VECTOR_NEW(&moduleinst->exports, module->exports.len, module->exports.len);
-        VECTOR_FOR_EACH(export, &module->exports) {
-            exportinst_t *exportinst = VECTOR_ELEM(&moduleinst->exports, exportidx);
-            exportinst->name = export->name;
-            exportinst->value.kind = export->exportdesc.kind;
-
-            switch(export->exportdesc.kind) {
-                case FUNC_EXPORTDESC:
-                    exportinst->value.func = moduleinst->funcaddrs[export->exportdesc.idx];
-                    break;
-                case TABLE_EXPORTDESC:
-                    exportinst->value.table = moduleinst->tableaddrs[export->exportdesc.idx];
-                    break;
-                case MEM_EXPORTDESC:
-                    exportinst->value.mem = moduleinst->memaddrs[export->exportdesc.idx];
-                    break;
-                case GLOBAL_EXPORTDESC:
-                    exportinst->value.mem = moduleinst->globaladdrs[export->exportdesc.idx];
-                    break;
-            }
-            exportidx++;
-        }
-
-        for(uint32_t i = 0; i < module->elems.len; i++) {
-            elem_t *elem = VECTOR_ELEM(&module->elems, i);
-            
-            instr_t elem_drop = {
-                .op1 = OP_0XFC, .op2 = 0x0D, .x = i, .next = NULL
-            };
-            instr_t table_init = {
-                .op1 = OP_0XFC, .op2 = 0x0C, .x = elem->mode.table, .y = i, .next = &elem_drop
-            };
-
-            switch(elem->mode.kind) {
-                // init table if elemmode is active
-                case 0: {
-                     // exec instruction sequence
-                    __throwiferr(exec_expr(S, &elem->mode.offset));
-
-                    // exec i32.const 0; i32.const n;
-                    __throwiferr(push_i32(S->stack, 0));
-                    __throwiferr(push_i32(S->stack, elem->init.len));
-
-                    // table.init
-                    expr_t expr = &table_init;
-                    __throwiferr(exec_expr(S, &expr));
-                    
-                    break;
-                }
-
-                // exec elem.drop if elemmode is declarative
-                case 2: {
-                    // table.init
-                    expr_t expr = &elem_drop;
-                    __throwiferr(exec_expr(S, &expr));
-                    break;
-                }
-            }
-        }
-
-        // init memory if datamode is active
-        for(uint32_t i = 0; i < module->datas.len; i++) {
-            data_t *data = VECTOR_ELEM(&module->datas, i);
-
-            if(data->mode.kind != DATA_MODE_ACTIVE)
-                continue;
-            
-            __throwif(ERR_FAILED, data->mode.memory != 0);
-
-            __throwiferr(exec_expr(S, &data->mode.offset));
-
-            // i32.const 0
-            __throwiferr(push_i32(S->stack, 0));
-            // i32.const n
-            __throwiferr(push_i32(S->stack, data->init.len));
-
-            // memory.init i
-            instr_t memory_init = {
-                .op1 = OP_0XFC, .op2 = 8, .x = i, .next = NULL
-            };
-            expr_t expr = &memory_init;
-            __throwiferr(exec_expr(S, &expr));
-        }
-
-        // exec start function if exists
-        if(module->has_start) {
-            __throwiferr(invoke_func(S, F.module->funcaddrs[module->start]));
-        }
-
-        pop_frame(S->stack, &F);
-        // todo: support start section
-    }
-    __catch:
-        return err;
-}
-
 static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
     ty->rt1 = (resulttype_t){.len = 0, .elem = NULL};
 
@@ -620,6 +329,8 @@ static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
 #define U64_TRUNC_SAT_F32(A)    TRUNC_SAT(A, uint64_t,                  -1.0f, 18446744073709551616.0f,      0ULL, UINT64_MAX)
 #define I64_TRUNC_SAT_F64(A)    TRUNC_SAT(A, int64_t, -9223372036854777856.0 ,  9223372036854775808.0,  INT64_MIN,  INT64_MAX)
 #define U64_TRUNC_SAT_F64(A)    TRUNC_SAT(A, uint64_t,                  -1.0 , 18446744073709551616.0,       0ULL, UINT64_MAX)
+
+static error_t invoke_func(store_t *S, funcaddr_t funcaddr);
 
 error_t exec_expr(store_t *S, expr_t *expr) {
     instr_t *ip = *expr;
@@ -2157,6 +1868,295 @@ static error_t invoke_func(store_t *S, funcaddr_t funcaddr) {
         pop_while_not_frame(stack);
         pop_frame(stack, &frame);
         __throwiferr(push_vals(stack, vals));
+    }
+    __catch:
+        return err;
+}
+
+static funcaddr_t alloc_func(store_t *S, func_t *func, moduleinst_t *moduleinst) {
+    funcinst_t funcinst;
+
+    funcinst.type = &moduleinst->types[func->type];
+    funcinst.module = moduleinst;
+    funcinst.code   = func;
+
+    return VECTOR_APPEND(&S->funcs, funcinst);
+}
+
+static tableaddr_t alloc_table(store_t *S, table_t *table) {
+    tableinst_t tableinst;
+    
+    uint32_t n = table->type.limits.min;
+    tableinst.type = table->type;
+    VECTOR_NEW(&tableinst.elem, n, n);
+
+    // init with ref.null
+    VECTOR_FOR_EACH(elem, &tableinst.elem) {
+        *elem = REF_NULL;
+    }
+
+    return VECTOR_APPEND(&S->tables, tableinst);
+}
+
+static memaddr_t alloc_mem(store_t *S, mem_t *mem) {
+    meminst_t meminst;
+    
+    meminst.type = mem->type;
+    meminst.num_pages = mem->type.min;
+    for(uint32_t i = 0; i < 4; i++) {
+        meminst.table2[i] = NULL;
+    }
+
+    return VECTOR_APPEND(&S->mems, meminst);
+}
+
+static dataaddr_t alloc_data(store_t *S, data_t *data) {
+    datainst_t datainst;
+
+    VECTOR_COPY(&datainst.data, &data->init);
+
+    return VECTOR_APPEND(&S->datas, datainst);
+}
+
+static globaladdr_t alloc_global(store_t *S, global_t *global) {
+    globalinst_t globalinst;
+
+    globalinst.gt = global->gt;
+
+    exec_expr(S, &global->expr);
+    pop_val(S->stack, &globalinst.val);
+    
+    return VECTOR_APPEND(&S->globals, globalinst);
+}
+
+static elemaddr_t alloc_elem(store_t *S, elem_t *elem) {
+    eleminst_t eleminst;
+
+    VECTOR_NEW(&eleminst.elem, elem->init.len, elem->init.len);
+
+    for(uint32_t j = 0; j < elem->init.len; j++) {
+        expr_t *init = VECTOR_ELEM(&elem->init, j);
+        exec_expr(S, init);
+        val_t val;
+        pop_val(S->stack, &val);
+        *VECTOR_ELEM(&eleminst.elem, j) = val.ref;
+    }
+
+    return VECTOR_APPEND(&S->elems, eleminst);
+}
+
+store_t *new_store(void) {
+    // allocate store
+    store_t *S = malloc(sizeof(store_t));
+    // allocate stack
+    new_stack(&S->stack);
+
+    VECTOR_INIT(&S->funcs);
+    VECTOR_INIT(&S->tables);
+    VECTOR_INIT(&S->mems);
+    VECTOR_INIT(&S->globals);
+    VECTOR_INIT(&S->elems);
+    VECTOR_INIT(&S->datas);
+
+    return S;
+}
+
+/*
+    In the spec, funcaddr is passed as an argument to invoke. 
+    This requires that the caller has access to the moduleinst. 
+    Therefore, it takes a pointer to moduleinst as its third argument.
+*/
+error_t instantiate(store_t *S, module_t *module, externvals_t *externvals, moduleinst_t **inst) {
+    __try {
+        // allocate space in store
+        VECTOR_GROW(&S->funcs, module->funcs.len);
+        VECTOR_GROW(&S->tables, module->tables.len);
+        VECTOR_GROW(&S->mems, module->mems.len);
+        VECTOR_GROW(&S->globals, module->globals.len);
+        VECTOR_GROW(&S->elems, module->elems.len);
+        VECTOR_GROW(&S->datas, module->datas.len);
+
+        // create new moduleinst
+        moduleinst_t *moduleinst = *inst = malloc(sizeof(moduleinst_t));
+        moduleinst->types = module->types.elem;
+        moduleinst->funcaddrs = malloc(
+            sizeof(funcaddr_t) * (module->num_func_imports + module->funcs.len)
+        );
+        moduleinst->tableaddrs = malloc(
+            sizeof(tableaddr_t) * (module->num_table_imports + module->tables.len)
+        );
+        moduleinst->memaddrs = malloc(sizeof(memaddr_t) * 1);
+        moduleinst->dataaddrs = malloc(
+            sizeof(dataaddr_t) * module->datas.len
+        );
+        moduleinst->globaladdrs = malloc(
+            sizeof(globaladdr_t) * (module->num_global_imports + module->globals.len)
+        );
+        moduleinst->elemaddrs = malloc(sizeof(elemaddr_t) * module->elems.len);
+        
+        // resolve imports (Trust the caller)
+        uint32_t funcidx = 0;
+        uint32_t tableidx = 0;
+        uint32_t memidx = 0;
+        uint32_t globalidx = 0;
+        uint32_t elemidx = 0, dataidx = 0;
+
+        size_t i = 0;
+        VECTOR_FOR_EACH(import, &module->imports) {
+            externval_t *externval = VECTOR_ELEM(externvals, i++);
+
+            switch(import->d.kind) {
+                case FUNC_IMPORTDESC:
+                    moduleinst->funcaddrs[funcidx++] = externval->func;
+                    break;
+                case TABLE_IMPORTDESC: {
+                    moduleinst->tableaddrs[tableidx++] = externval->table;
+                    break;
+                }
+                case MEM_IMPORTDESC: {
+                    moduleinst->memaddrs[memidx++] = externval->mem;
+                    break;
+
+                }
+                case GLOBAL_IMPORTDESC: {
+                    moduleinst->globaladdrs[globalidx++] = externval->global;
+                    break;
+                }
+            }
+        }
+
+        // alloc funcs
+        VECTOR_FOR_EACH(func, &module->funcs) {
+            moduleinst->funcaddrs[funcidx] = alloc_func(S, func, moduleinst);
+            funcidx++;
+        }
+
+        // alloc tables
+        VECTOR_FOR_EACH(table, &module->tables) {
+            moduleinst->tableaddrs[tableidx] = alloc_table(S, table);
+            tableidx++;
+        }
+
+        // alloc mems
+        VECTOR_FOR_EACH(mem, &module->mems) {
+            moduleinst->memaddrs[memidx] = alloc_mem(S, mem);
+            memidx++;
+        }
+
+        // alloc datas
+        VECTOR_FOR_EACH(data, &module->datas) {
+            moduleinst->dataaddrs[dataidx] = alloc_data(S, data);
+            dataidx++;
+        }
+
+        // alloc globals
+        frame_t F = {.module = moduleinst, .locals = NULL};
+        __throwiferr(push_frame(S->stack, F));
+
+        VECTOR_FOR_EACH(global, &module->globals) {
+            moduleinst->globaladdrs[globalidx] = alloc_global(S, global);
+            globalidx++;
+        }
+
+        // alloc elems
+        VECTOR_FOR_EACH(elem, &module->elems) {
+            moduleinst->elemaddrs[elemidx] = alloc_elem(S, elem);
+            elemidx++;
+        }
+
+        // create exportinst
+        uint32_t exportidx = 0;
+        VECTOR_NEW(&moduleinst->exports, module->exports.len, module->exports.len);
+        VECTOR_FOR_EACH(export, &module->exports) {
+            exportinst_t *exportinst = VECTOR_ELEM(&moduleinst->exports, exportidx);
+            exportinst->name = export->name;
+            exportinst->value.kind = export->exportdesc.kind;
+
+            switch(export->exportdesc.kind) {
+                case FUNC_EXPORTDESC:
+                    exportinst->value.func = moduleinst->funcaddrs[export->exportdesc.idx];
+                    break;
+                case TABLE_EXPORTDESC:
+                    exportinst->value.table = moduleinst->tableaddrs[export->exportdesc.idx];
+                    break;
+                case MEM_EXPORTDESC:
+                    exportinst->value.mem = moduleinst->memaddrs[export->exportdesc.idx];
+                    break;
+                case GLOBAL_EXPORTDESC:
+                    exportinst->value.mem = moduleinst->globaladdrs[export->exportdesc.idx];
+                    break;
+            }
+            exportidx++;
+        }
+
+        for(uint32_t i = 0; i < module->elems.len; i++) {
+            elem_t *elem = VECTOR_ELEM(&module->elems, i);
+            
+            instr_t elem_drop = {
+                .op1 = OP_0XFC, .op2 = 0x0D, .x = i, .next = NULL
+            };
+            instr_t table_init = {
+                .op1 = OP_0XFC, .op2 = 0x0C, .x = elem->mode.table, .y = i, .next = &elem_drop
+            };
+
+            switch(elem->mode.kind) {
+                // init table if elemmode is active
+                case 0: {
+                     // exec instruction sequence
+                    __throwiferr(exec_expr(S, &elem->mode.offset));
+
+                    // exec i32.const 0; i32.const n;
+                    __throwiferr(push_i32(S->stack, 0));
+                    __throwiferr(push_i32(S->stack, elem->init.len));
+
+                    // table.init
+                    expr_t expr = &table_init;
+                    __throwiferr(exec_expr(S, &expr));
+                    
+                    break;
+                }
+
+                // exec elem.drop if elemmode is declarative
+                case 2: {
+                    // table.init
+                    expr_t expr = &elem_drop;
+                    __throwiferr(exec_expr(S, &expr));
+                    break;
+                }
+            }
+        }
+
+        // init memory if datamode is active
+        for(uint32_t i = 0; i < module->datas.len; i++) {
+            data_t *data = VECTOR_ELEM(&module->datas, i);
+
+            if(data->mode.kind != DATA_MODE_ACTIVE)
+                continue;
+            
+            __throwif(ERR_FAILED, data->mode.memory != 0);
+
+            __throwiferr(exec_expr(S, &data->mode.offset));
+
+            // i32.const 0
+            __throwiferr(push_i32(S->stack, 0));
+            // i32.const n
+            __throwiferr(push_i32(S->stack, data->init.len));
+
+            // memory.init i
+            instr_t memory_init = {
+                .op1 = OP_0XFC, .op2 = 8, .x = i, .next = NULL
+            };
+            expr_t expr = &memory_init;
+            __throwiferr(exec_expr(S, &expr));
+        }
+
+        // exec start function if exists
+        if(module->has_start) {
+            __throwiferr(invoke_func(S, F.module->funcaddrs[module->start]));
+        }
+
+        pop_frame(S->stack, &F);
+        // todo: support start section
     }
     __catch:
         return err;
