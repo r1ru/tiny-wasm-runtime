@@ -249,11 +249,10 @@ static paddr_t eaddr_to_paddr(meminst_t *meminst, eaddr_t eaddr) {
     uint8_t **table0 = table1[vpn1];
 
     if(table0[vpn0] == NULL) {
-        table0[vpn0] = aligned_alloc(4096, 4096);
-        memset(table0[vpn0], 0, 4096);
+        table0[vpn0] = calloc(1, 4096);
     }
 
-    return (uint64_t)table0[vpn0] | (eaddr & 0xfff);
+    return (uint64_t)table0[vpn0] + (eaddr & 0xfff);
 }
 
 static void expand_F(functype_t *ty, blocktype_t bt, frame_t *F) {
